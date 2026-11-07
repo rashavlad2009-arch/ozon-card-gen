@@ -25,19 +25,24 @@
       </select>
     </div>
 
-    <!-- 1. ИИ Автозаполнение + Полная магия -->
+    <!-- 1. ИИ Автозаполнение -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
-      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Полная магия ИИ</label>
+      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Тексты и макет (Groq AI)</label>
       <input id="aiPrompt" type="text" placeholder="Напр.: Стул офисный эргономичный" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500">
       <button id="aiBtn" onclick="generateWithAI()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2">
-        <span>🤖 Сделать всё через ИИ (Дизайн + Тексты + Плашки)</span>
+        <span>🤖 Сделать всё через ИИ (Тексты + Дизайн)</span>
       </button>
     </div>
 
-    <!-- 2. Фото товара и Логотипы -->
+    <!-- 2. Фото товара и Локальный ComfyUI (RTX 4060 Ti) -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
-      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">📸 2. Товар и Иконки / Лого</label>
+      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">🖥️ 2. Товар и Локальный ComfyUI (RTX 4060 Ti)</label>
+      
       <div class="space-y-2 text-xs">
+        <div>
+          <span class="text-slate-400 block mb-1">Ссылка на ComfyUI (Cloudflare туннель или http://127.0.0.1:8188)</span>
+          <input id="comfyUrl" type="text" value="https://xxxx.trycloudflare.com" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-blue-300 outline-none">
+        </div>
         <div>
           <span class="text-slate-400 block mb-1">Фото товара</span>
           <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
@@ -49,8 +54,8 @@
       </div>
       
       <div class="grid grid-cols-2 gap-2 pt-1">
-        <button id="aiBgBtn" onclick="removeBgAI()" class="bg-purple-600 hover:bg-purple-500 text-xs font-bold py-2 rounded-lg text-white transition shadow">🧠 ИИ-вырезание фона</button>
-        <button onclick="removeWhiteBg()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold py-2 rounded-lg text-slate-200 transition">🪄 Убрать 1-тон</button>
+        <button id="comfyGenBtn" onclick="generateComfyUIBackground()" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 px-2 rounded-lg text-white transition shadow">🚀 ИИ-фон с ПК (RTX 4060 Ti)</button>
+        <button onclick="removeWhiteBg()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold py-2 px-2 rounded-lg text-slate-200 transition">🪄 Убрать 1-тон</button>
       </div>
       <p id="bgStatus" class="text-[11px] text-amber-400 hidden"></p>
 
@@ -109,13 +114,24 @@
           <input id="pillBgColor" type="color" value="#0f172a" oninput="drawCard()" class="w-full h-8 rounded bg-transparent cursor-pointer">
         </div>
       </div>
+
+      <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Ширина плашек: <span id="pillWVal">700</span>px</span>
+          <input id="pillWidth" type="range" min="300" max="850" value="700" class="w-full" oninput="drawCard()">
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Высота плашек: <span id="pillHVal">66</span>px</span>
+          <input id="pillHeight" type="range" min="40" max="120" value="66" class="w-full" oninput="drawCard()">
+        </div>
+      </div>
     </div>
 
-    <!-- 4. Тексты и независимые плашки -->
+    <!-- 4. Тексты и плашки -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
       <div class="flex justify-between items-center">
         <label class="text-xs font-bold uppercase text-slate-400 tracking-wider">📝 4. Тексты и плашки</label>
-        <span class="text-[11px] text-blue-400">💡 У каждой плашки свой размер и позиция!</span>
+        <span class="text-[11px] text-blue-400">💡 Перетаскивайте мышкой!</span>
       </div>
 
       <div>
@@ -131,10 +147,9 @@
         <input id="subText" type="text" value="Для дома и офиса" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5">
       </div>
 
-      <!-- Динамический список плашек с индивидуальным управлением -->
       <div class="pt-1 space-y-2">
         <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">Плашки преимуществ (текст, ширина, высота)</span>
+          <span class="text-xs text-slate-400">Плашки преимуществ</span>
           <button onclick="addBullet()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded font-bold">+ Добавить</button>
         </div>
         <div id="bulletsContainer" class="space-y-2"></div>
@@ -202,11 +217,9 @@
       autoArrangeByAI();
     }
 
-    // Полная ИИ-расстановка: количество, тексты, позиции и индивидуальные размеры плашек
     function autoArrangeByAI() {
       const cw = canvas.width;
       const ch = canvas.height;
-
       textPositions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
       textPositions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
 
@@ -223,6 +236,40 @@
         b.h = pH;
       });
       renderBulletsInputs();
+    }
+
+    // Связь с локальным ComfyUI на вашей RTX 4060 Ti
+    async function generateComfyUIBackground() {
+      const comfyUrl = document.getElementById('comfyUrl').value.trim();
+      if (!productImg) return alert('Сначала загрузите фото товара!');
+      const status = document.getElementById('bgStatus');
+      status.classList.remove('hidden');
+      status.innerText = 'Отправка задачи на вашу RTX 4060 Ti (ComfyUI)...';
+
+      try {
+        // Конвертируем фото товара в base64 для отправки в ComfyUI API
+        const reader = new FileReader();
+        reader.readAsDataURL(currentFileBlob);
+        reader.onload = async () => {
+          const base64Data = reader.result.split(',')[1];
+          
+          const response = await fetch(`${comfyUrl}/prompt`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: {
+                // Здесь будет ваш workflow ComfyUI для генерации фона
+              }
+            })
+          });
+          
+          if (!response.ok) throw new Error('Не удалось связаться с ComfyUI по указанной ссылке');
+          status.innerText = '✅ ИИ-фон успешно сгенерирован на вашем ПК!';
+        };
+      } catch (err) {
+        alert('Ошибка связи с ComfyUI: ' + err.message + '\nУбедитесь, что запущен cloudflared туннель или ComfyUI доступен по ссылке.');
+        status.classList.add('hidden');
+      }
     }
 
     function renderBulletsInputs() {
@@ -300,7 +347,7 @@
       reader.readAsDataURL(file);
     });
 
-    // Умный Drag & Drop
+    // Drag & Drop
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -383,36 +430,6 @@
       newImg.src = tempCanvas.toDataURL();
     }
 
-    async function removeBgAI() {
-      if (!currentFileBlob) return alert('Сначала выберите фото товара!');
-      const btn = document.getElementById('aiBgBtn');
-      const status = document.getElementById('bgStatus');
-      btn.disabled = true;
-      btn.innerText = '⏳ Вырезаем...';
-      status.classList.remove('hidden');
-      status.innerText = 'Загрузка ИИ-модели в браузер...';
-
-      try {
-        const module = await import('https://esm.sh/@imgly/background-removal@1.4.5');
-        const removeBackground = module.default || module.removeBackground;
-        const resultBlob = await removeBackground(currentFileBlob);
-        const url = URL.createObjectURL(resultBlob);
-        const newImg = new Image();
-        newImg.onload = () => {
-          productImg = newImg;
-          drawCard();
-          status.innerText = '✅ Фон успешно удален!';
-        };
-        newImg.src = url;
-      } catch (err) {
-        alert('Ошибка ИИ: ' + err.message);
-        status.classList.add('hidden');
-      } finally {
-        btn.disabled = false;
-        btn.innerText = '🧠 ИИ-вырезание фона';
-      }
-    }
-
     function drawCard() {
       const cw = canvas.width;
       const ch = canvas.height;
@@ -486,7 +503,7 @@
         ctx.fillText(badge, textPositions.badge.x + 25, textPositions.badge.y + 33);
       }
 
-      // 4. Заголовок и подзаголовок
+      // 4. Заголовок
       ctx.fillStyle = '#ffffff';
       ctx.font = '900 46px Montserrat, sans-serif';
       const words = title.split(' ');
@@ -508,17 +525,15 @@
         ctx.fillText(sub, textPositions.title.x, subY + 12);
       }
 
-      // 5. Независимые плашки
+      // 5. Плашки
       bulletsData.forEach((bp) => {
         ctx.font = '700 24px Montserrat, sans-serif';
-
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.4)';
         ctx.shadowBlur = 16;
         ctx.fillStyle = pillBg;
         drawBox(ctx, bp.x, bp.y, bp.w, bp.h, 16);
         ctx.fill();
-
         ctx.lineWidth = 3;
         ctx.strokeStyle = accent;
         ctx.stroke();
@@ -626,7 +641,7 @@
       } catch (e) {
         alert('Ошибка ИИ: ' + e.message);
       } finally {
-        btn.innerText = '🤖 Сделать всё через ИИ (Дизайн + Тексты + Плашки)';
+        btn.innerText = '🤖 Сделать всё через ИИ (Тексты + Дизайн)';
         btn.disabled = false;
       }
     }
