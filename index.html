@@ -31,32 +31,32 @@
     <!-- 1. Полная магия ИИ -->
     <div class="bg-slate-900/80 p-4 rounded-xl border border-indigo-500/40 space-y-3">
       <label class="block text-xs font-bold uppercase text-indigo-400 tracking-wider">⚡ 1. ИИ-упаковка товара под ключ</label>
-      <textarea id="aiPrompt" rows="2" placeholder="Опишите товар или вставьте черновик текста (напр.: Именной новогодний шар Семья Гембарь, деревянный/пластик, подарок на елку)" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs outline-none focus:border-indigo-500"></textarea>
+      <textarea id="aiPrompt" rows="2" placeholder="Опишите товар или вставьте черновик текста (напр.: Беспроводные наушники с шумоподавлением, до 40 часов работы)" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs outline-none focus:border-indigo-500"></textarea>
       <button id="aiBtn" onclick="generateWithAI()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-lg text-xs transition shadow-lg">
         🤖 Сделать всё через ИИ (Тексты + Промпт фона + Расстановка)
       </button>
     </div>
 
-    <!-- 2. Генерация ИИ-Фона (ComfyUI на ПК) -->
+    <!-- 2. Генерация ИИ-Фона (ComfyUI) -->
     <div class="bg-slate-900/80 p-4 rounded-xl border border-emerald-500/40 space-y-3">
       <div class="flex justify-between items-center">
         <label class="block text-xs font-bold uppercase text-emerald-400 tracking-wider">🎨 2. Генератор ИИ-фона (ComfyUI)</label>
-        <button onclick="toggleComfySettings()" class="text-[11px] text-slate-400 hover:text-white underline">⚙️ Настройки ПК</button>
+        <button onclick="toggleComfySettings()" class="text-[11px] text-slate-400 hover:text-white underline">⚙️ Настройки API</button>
       </div>
 
-      <!-- Скрытая настройка адреса (хранится только локально в вашем браузере!) -->
+      <!-- Скрытая настройка адреса (хранится только локально в браузере) -->
       <div id="comfySettingsBox" class="hidden bg-slate-950 p-3 rounded-lg border border-slate-700 space-y-1.5 text-xs">
-        <span class="text-slate-400 block text-[11px]">🔒 Локальный адрес ComfyUI (сохраняется только в вашем браузере):</span>
+        <span class="text-slate-400 block text-[11px]">🔒 Локальный адрес сервера (сохраняется только в вашем браузере):</span>
         <input id="comfyUrl" type="password" placeholder="http://127.0.0.1:8188" oninput="saveComfyUrl()" class="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1 text-xs text-emerald-300 outline-none">
         <div class="flex justify-between items-center text-[10px] text-slate-500">
-          <span>Для работы с ПК запускайте ComfyUI с флагом: <code>--enable-cors-header</code></span>
+          <span>Запускайте сервер с флагом: <code>--enable-cors-header</code></span>
           <button onclick="toggleShowUrl()" class="text-blue-400 hover:underline">Показать/Скрыть</button>
         </div>
       </div>
 
       <div>
         <span class="text-[11px] text-slate-400 block mb-1">Описание заднего фона (генерируется ИИ автоматически или впишите своё):</span>
-        <textarea id="bgPromptInput" rows="2" placeholder="Luxury wooden table with warm Christmas lights bokeh and pine branches, studio lighting, 8k" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-500"></textarea>
+        <textarea id="bgPromptInput" rows="2" placeholder="Minimalist product podium with soft neon studio lighting, modern abstract background, 8k" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-500"></textarea>
       </div>
 
       <div class="grid grid-cols-2 gap-2">
@@ -70,7 +70,7 @@
       <p id="bgStatus" class="text-[11px] text-amber-400 hidden"></p>
     </div>
 
-    <!-- 3. Фото товара и Логотип (Двигаются мышкой!) -->
+    <!-- 3. Фото товара и Логотип -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
       <label class="block text-xs font-bold uppercase text-slate-300 tracking-wider">📸 3. Товар и Логотип (Таскайте мышкой по холсту!)</label>
       
@@ -105,7 +105,7 @@
         </div>
       </div>
 
-      <!-- Удаление фона у товара или логотипа -->
+      <!-- Удаление фона -->
       <div class="grid grid-cols-3 gap-2 pt-1">
         <button id="aiBgRemoveBtn" onclick="removeProductBgAI()" class="bg-purple-600 hover:bg-purple-500 text-[11px] font-bold py-2 px-2 rounded-lg text-white transition">
           🧠 ИИ-вырезка фона
@@ -180,11 +180,11 @@
 
       <div>
         <span class="text-[11px] text-slate-400">Главный заголовок</span>
-        <input id="titleText" type="text" value="ИМЕННОЙ ШАР НА ЁЛКУ" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5 font-bold">
+        <input id="titleText" type="text" value="БЕСПРОВОДНЫЕ НАУШНИКИ" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5 font-bold">
       </div>
       <div>
         <span class="text-[11px] text-slate-400">Подзаголовок</span>
-        <input id="subText" type="text" value="Семейный подарок • Ручная работа" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-xs mt-0.5">
+        <input id="subText" type="text" value="Чистый звук • Активное шумоподавление" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-xs mt-0.5">
       </div>
 
       <div class="pt-1 space-y-2">
@@ -226,25 +226,23 @@
     let customBgImg = null;
     let currentFileBlob = null;
 
-    // Все элементы теперь имеют свои координаты и свободно перетаскиваются мышкой!
     let positions = {
-      product: { x: 450, y: 580 }, // Центр товара
-      logo: { x: 760, y: 140 },    // Центр логотипа
+      product: { x: 450, y: 580 },
+      logo: { x: 760, y: 140 },
       badge: { x: 50, y: 45 },
       title: { x: 50, y: 160 }
     };
 
     let bulletsData = [
-      { text: "✓ Индивидуальный дизайн", x: 50, y: 920, w: 560, h: 64 },
-      { text: "✓ Экологичный материал", x: 50, y: 1000, w: 540, h: 64 },
-      { text: "✓ Подарочная упаковка", x: 50, y: 1080, w: 520, h: 64 }
+      { text: "✓ До 40 часов без подзарядки", x: 50, y: 920, w: 560, h: 64 },
+      { text: "✓ Глубокий бас и чистый звук", x: 50, y: 1000, w: 540, h: 64 },
+      { text: "✓ Гарантия качества 1 год", x: 50, y: 1080, w: 520, h: 64 }
     ];
 
     let draggingItem = null;
     let dragIndex = null;
     let dragOffsetX = 0, dragOffsetY = 0;
 
-    // Загружаем сохраненный адрес ComfyUI из localStorage браузера (приватно)
     const savedComfy = localStorage.getItem('ozon_comfy_url') || 'http://127.0.0.1:8188';
     document.getElementById('comfyUrl').value = savedComfy;
 
@@ -284,7 +282,6 @@
       autoArrangeByAI();
     }
 
-    // Умная композиция и автоподбор ширины каждой плашки под её текст
     function autoArrangeByAI() {
       const cw = canvas.width;
       const ch = canvas.height;
@@ -309,7 +306,6 @@
       renderBulletsInputs();
     }
 
-    // Реальная генерация фона через локальный ComfyUI (автоматически находит вашу модель в ComfyUI)
     async function generateComfyUIBackground() {
       const comfyUrl = document.getElementById('comfyUrl').value.trim().replace(/\/$/, '');
       const bgPrompt = document.getElementById('bgPromptInput').value.trim() || 'Professional product photography studio background, soft lighting, bokeh, 8k';
@@ -321,7 +317,6 @@
       btn.disabled = true;
 
       try {
-        // 1. Узнаем, какой чекпоинт установлен в ComfyUI
         let ckptName = 'v1-5-pruned-emaonly.safetensors';
         const infoRes = await fetch(`${comfyUrl}/object_info/CheckpointLoaderSimple`);
         if (infoRes.ok) {
@@ -330,9 +325,8 @@
           if (Array.isArray(list) && list.length > 0) ckptName = list[0];
         }
 
-        status.innerText = `🎨 Генерация фона на ПК (${ckptName})... Подождите 5-15 сек`;
+        status.innerText = `🎨 Генерация фона (${ckptName})... Подождите 5-15 сек`;
 
-        // 2. Формируем универсальный API-граф для ComfyUI
         const seed = Math.floor(Math.random() * 1000000000);
         const workflow = {
           "3": {
@@ -367,7 +361,6 @@
         if (!promptRes.ok) throw new Error('Ошибка запуска workflow в ComfyUI');
         const { prompt_id } = await promptRes.json();
 
-        // 3. Ожидаем готовую картинку из /history
         let filename = null;
         for (let attempt = 0; attempt < 45; attempt++) {
           await new Promise(r => setTimeout(r, 1000));
@@ -395,7 +388,7 @@
         bgImg.src = imgUrl;
 
       } catch (err) {
-        alert('Не удалось подключиться к ComfyUI (' + err.message + ').\n\nПроверьте:\n1. Запущен ли ComfyUI на ПК с параметром --enable-cors-header\n2. Правильный ли адрес в ⚙️ Настройках ПК.');
+        alert('Не удалось подключиться к ComfyUI (' + err.message + ').\n\nПроверьте:\n1. Запущен ли ComfyUI с параметром --enable-cors-header\n2. Правильный ли адрес в ⚙️ Настройках API.');
         status.classList.add('hidden');
       } finally {
         btn.disabled = false;
@@ -477,7 +470,6 @@
       reader.readAsDataURL(file);
     });
 
-    // Универсальный Drag & Drop для всех элементов (включая товар и логотип!)
     function getPointerPos(e) {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -491,7 +483,6 @@
     function handleStart(e) {
       const { x: mouseX, y: mouseY } = getPointerPos(e);
 
-      // 1. Проверяем плашки
       for (let i = bulletsData.length - 1; i >= 0; i--) {
         const bp = bulletsData[i];
         if (mouseX >= bp.x && mouseX <= bp.x + bp.w && mouseY >= bp.y && mouseY <= bp.y + bp.h) {
@@ -503,7 +494,6 @@
         }
       }
 
-      // 2. Проверяем логотип
       if (logoImg) {
         const lSize = parseInt(document.getElementById('logoScale').value) || 140;
         if (Math.abs(mouseX - positions.logo.x) <= lSize / 2 && Math.abs(mouseY - positions.logo.y) <= lSize / 2) {
@@ -514,7 +504,6 @@
         }
       }
 
-      // 3. Проверяем бейдж
       if (mouseX >= positions.badge.x && mouseX <= positions.badge.x + 240 && mouseY >= positions.badge.y && mouseY <= positions.badge.y + 54) {
         draggingItem = 'badge';
         dragOffsetX = mouseX - positions.badge.x;
@@ -522,7 +511,6 @@
         return;
       }
 
-      // 4. Проверяем заголовок
       if (mouseX >= positions.title.x && mouseX <= positions.title.x + 750 && mouseY >= positions.title.y - 50 && mouseY <= positions.title.y + 90) {
         draggingItem = 'title';
         dragOffsetX = mouseX - positions.title.x;
@@ -530,7 +518,6 @@
         return;
       }
 
-      // 5. Проверяем фото товара
       if (productImg) {
         const scale = document.getElementById('imgScale').value / 100;
         const baseRatio = Math.min((canvas.width * 0.8) / productImg.width, (canvas.height * 0.55) / productImg.height);
@@ -579,7 +566,6 @@
       ctx.closePath();
     }
 
-    // Удаление однотонного фона у товара или логотипа
     function removeWhiteBg(target) {
       const imgObj = target === 'logo' ? logoImg : productImg;
       if (!imgObj) return alert('Сначала загрузите изображение!');
@@ -605,7 +591,6 @@
       newImg.src = tempCanvas.toDataURL();
     }
 
-    // ИИ-вырезка фона прямо в браузере
     async function removeProductBgAI() {
       if (!currentFileBlob) return alert('Сначала выберите фото товара!');
       const btn = document.getElementById('aiBgRemoveBtn');
@@ -649,7 +634,6 @@
       const sub = document.getElementById('subText').value;
       const badge = document.getElementById('badgeText').value.toUpperCase();
 
-      // 1. Фон (ИИ-картинка из ComfyUI либо градиент)
       if (customBgImg) {
         ctx.drawImage(customBgImg, 0, 0, cw, ch);
       } else {
@@ -666,7 +650,6 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // 2. Фото товара (с перемещением и вращением)
       if (productImg) {
         const scale = document.getElementById('imgScale').value / 100;
         const rot = (parseInt(document.getElementById('imgRotate').value) || 0) * Math.PI / 180;
@@ -696,7 +679,6 @@
         ctx.textAlign = 'left';
       }
 
-      // 3. Логотип / Иконка (свободно двигается и крутится!)
       if (logoImg) {
         const lSize = parseInt(document.getElementById('logoScale').value) || 140;
         const lRot = (parseInt(document.getElementById('logoRotate').value) || 0) * Math.PI / 180;
@@ -713,7 +695,6 @@
         ctx.restore();
       }
 
-      // 4. Бейдж
       if (badge) {
         ctx.font = '900 24px Montserrat, sans-serif';
         const bw = ctx.measureText(badge).width + 50;
@@ -724,7 +705,6 @@
         ctx.fillText(badge, positions.badge.x + 25, positions.badge.y + 33);
       }
 
-      // 5. Заголовок и подзаголовок
       ctx.fillStyle = '#ffffff';
       ctx.font = `900 ${titleFontSize}px Montserrat, sans-serif`;
       const words = title.split(' ');
@@ -746,7 +726,6 @@
         ctx.fillText(sub, positions.title.x, subY + 10);
       }
 
-      // 6. Плашки преимуществ
       bulletsData.forEach((bp) => {
         ctx.font = '700 24px Montserrat, sans-serif';
         ctx.save();
