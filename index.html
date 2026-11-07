@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Montserrat', sans-serif; }
-    canvas { max-height: 78vh; width: auto; max-width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border-radius: 12px; }
+    canvas { max-height: 82vh; width: auto; max-width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.6); border-radius: 14px; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col lg:flex-row">
@@ -22,8 +22,8 @@
 
     <!-- Блок 1: ИИ-автозаполнение -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
-      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Автозаполнение через ИИ (или вручную ниже)</label>
-      <input id="aiPrompt" type="text" placeholder="Напр.: Термопринт на одежду ТПУ, яркий, не трескается" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none">
+      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Автозаполнение через ИИ</label>
+      <input id="aiPrompt" type="text" placeholder="Напр.: Термопринт на одежду ТПУ, не трескается" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none">
       <button id="aiBtn" onclick="generateWithAI()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm transition flex justify-center items-center gap-2 shadow-lg">
         <span>✨ Придумать тексты и плашки</span>
       </button>
@@ -31,13 +31,17 @@
 
     <!-- Блок 2: Фото товара -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
-      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">📸 2. Фото товара (лучше PNG без фона)</label>
+      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">📸 2. Фото товара</label>
       <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
       
-      <div class="grid grid-cols-3 gap-2 pt-2 text-xs">
+      <button id="removeBgBtn" onclick="removeWhiteBg()" class="w-full bg-slate-700 hover:bg-slate-600 text-xs font-bold py-2 rounded-lg text-slate-200 transition">
+        🪄 Вырезать светлый/однородный фон
+      </button>
+
+      <div class="grid grid-cols-3 gap-2 pt-1 text-xs">
         <div>
           <span class="text-slate-400 block mb-1">Масштаб</span>
-          <input id="imgScale" type="range" min="20" max="180" value="85" class="w-full" oninput="drawCard()">
+          <input id="imgScale" type="range" min="20" max="180" value="90" class="w-full" oninput="drawCard()">
         </div>
         <div>
           <span class="text-slate-400 block mb-1">Позиция X</span>
@@ -45,7 +49,7 @@
         </div>
         <div>
           <span class="text-slate-400 block mb-1">Позиция Y</span>
-          <input id="imgY" type="range" min="-300" max="300" value="40" class="w-full" oninput="drawCard()">
+          <input id="imgY" type="range" min="-300" max="300" value="20" class="w-full" oninput="drawCard()">
         </div>
       </div>
     </div>
@@ -109,10 +113,10 @@
     let productImg = null;
 
     const themes = {
-      ozon: { bg1: '#003399', bg2: '#0f172a', accent: '#005bff', badge: '#f91155', text: '#ffffff', sub: '#93c5fd', pillBg: 'rgba(15, 23, 42, 0.85)', pillBorder: '#3b82f6' },
+      ozon: { bg1: '#003399', bg2: '#0f172a', accent: '#3b82f6', badge: '#f91155', text: '#ffffff', sub: '#93c5fd', pillBg: 'rgba(15, 23, 42, 0.88)', pillBorder: '#3b82f6' },
       dark: { bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', text: '#ffffff', sub: '#fde68a', pillBg: 'rgba(24, 24, 27, 0.9)', pillBorder: '#f59e0b' },
-      emerald: { bg1: '#065f46', bg2: '#022c22', accent: '#10b981', badge: '#f59e0b', text: '#ffffff', sub: '#a7f3d0', pillBg: 'rgba(2, 44, 34, 0.85)', pillBorder: '#34d399' },
-      sunset: { bg1: '#be123c', bg2: '#4c0519', accent: '#fb7185', badge: '#facc15', text: '#ffffff', sub: '#fecdd3', pillBg: 'rgba(76, 5, 25, 0.85)', pillBorder: '#fb7185' },
+      emerald: { bg1: '#065f46', bg2: '#022c22', accent: '#10b981', badge: '#f59e0b', text: '#ffffff', sub: '#a7f3d0', pillBg: 'rgba(2, 44, 34, 0.88)', pillBorder: '#34d399' },
+      sunset: { bg1: '#be123c', bg2: '#4c0519', accent: '#fb7185', badge: '#facc15', text: '#ffffff', sub: '#fecdd3', pillBg: 'rgba(76, 5, 25, 0.88)', pillBorder: '#fb7185' },
       minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', text: '#0f172a', sub: '#334155', pillBg: 'rgba(255, 255, 255, 0.95)', pillBorder: '#94a3b8' }
     };
 
@@ -128,42 +132,20 @@
       reader.readAsDataURL(file);
     });
 
-    function roundRect(ctx, x, y, w, h, r) {
+    function drawBox(ctx, x, y, w, h, r) {
       ctx.beginPath();
-      ctx.roundRect(x, y, w, h, r);
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
       ctx.closePath();
     }
 
-    function drawCard() {
-      const t = themes[document.getElementById('themeSelect').value];
-      const title = document.getElementById('titleText').value.toUpperCase();
-      const sub = document.getElementById('subText').value;
-      const badge = document.getElementById('badgeText').value.toUpperCase();
-      const bullets = [
-        document.getElementById('b1').value,
-        document.getElementById('b2').value,
-        document.getElementById('b3').value
-      ].filter(Boolean);
-
-      // 1. Фон
-      const grad = ctx.createLinearGradient(0, 0, 900, 1200);
-      grad.addColorStop(0, t.bg1);
-      grad.addColorStop(1, t.bg2);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 900, 1200);
-
-      // Декоративное свечение в центре
-      const rad = ctx.createRadialGradient(450, 620, 50, 450, 620, 420);
-      rad.addColorStop(0, t.accent + '55');
-      rad.addColorStop(1, 'transparent');
-      ctx.fillStyle = rad;
-      ctx.fillRect(0, 0, 900, 1200);
-
-      // 2. Бейдж
-      if (badge) {
-        ctx.font = '900 26px Montserrat';
-        const bw = ctx.measureText(badge).width + 50;
-        ctx.fillStyle = t.badge;
-        roundRect(ctx, 50, 45, bw, 54, 14);
-        ctx.fill();
-        ctx.fillStyle = (
+    function removeWhiteBg() {
+      if (!productImg) return alert('Сначала загрузите фото товара!');
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = productImg.width;
+      tempCanvas.height = productImg.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.drawImage(productImg,
