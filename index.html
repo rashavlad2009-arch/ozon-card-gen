@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ozon Card Pro — Генератор продающих карточек 900x1200</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Montserrat', sans-serif; }
+    canvas { max-height: 78vh; width: auto; max-width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border-radius: 12px; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col lg:flex-row">
+
+  <!-- Левая панель управления -->
+  <div class="w-full lg:w-[460px] bg-slate-800 p-6 overflow-y-auto h-screen border-r border-slate-700 space-y-5">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-black text-blue-400 tracking-wide">OZON CARD PRO</h1>
+      <span class="text-xs bg-blue-600/30 text-blue-300 px-2.5 py-1 rounded-full font-semibold">900 × 1200 px</span>
+    </div>
+
+    <!-- Блок 1: ИИ-автозаполнение -->
+    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
+      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Автозаполнение через ИИ (или вручную ниже)</label>
+      <input id="aiPrompt" type="text" placeholder="Напр.: Термопринт на одежду ТПУ, яркий, не трескается" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none">
+      <button id="aiBtn" onclick="generateWithAI()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm transition flex justify-center items-center gap-2 shadow-lg">
+        <span>✨ Придумать тексты и плашки</span>
+      </button>
+    </div>
+
+    <!-- Блок 2: Фото товара -->
+    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
+      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">📸 2. Фото товара (лучше PNG без фона)</label>
+      <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
+      
+      <div class="grid grid-cols-3 gap-2 pt-2 text-xs">
+        <div>
+          <span class="text-slate-400 block mb-1">Масштаб</span>
+          <input id="imgScale" type="range" min="20" max="180" value="85" class="w-full" oninput="drawCard()">
+        </div>
+        <div>
+          <span class="text-slate-400 block mb-1">Позиция X</span>
+          <input id="imgX" type="range" min="-300" max="300" value="0" class="w-full" oninput="drawCard()">
+        </div>
+        <div>
+          <span class="text-slate-400 block mb-1">Позиция Y</span>
+          <input id="imgY" type="range" min="-300" max="300" value="40" class="w-full" oninput="drawCard()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Блок 3: Стиль и Фон -->
+    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
+      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">🎨 3. Шаблон дизайна</label>
+      <select id="themeSelect" onchange="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm outline-none">
+        <option value="ozon">Ozon Brand (Сине-фиолетовый неон)</option>
+        <option value="dark">Dark Premium (Графит + Золото)</option>
+        <option value="emerald">Fresh Eco (Изумрудный градиент)</option>
+        <option value="sunset">Hot Sale (Яркий коралл + Оранж)</option>
+        <option value="minimal">Clean Light (Светлый минимализм)</option>
+      </select>
+    </div>
+
+    <!-- Блок 4: Тексты и плашки на картинке -->
+    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-2.5">
+      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">📝 4. Тексты на карточке</label>
+      
+      <div>
+        <span class="text-xs text-slate-400">Бейдж в углу (оставьте пустым, чтобы скрыть)</span>
+        <input id="badgeText" type="text" value="ХИТ ПРОДАЖ" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+      </div>
+      <div>
+        <span class="text-xs text-slate-400">Главный заголовок (крупно сверху)</span>
+        <input id="titleText" type="text" value="ТЕРМОПРИНТ НА ОДЕЖДУ" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5 font-bold">
+      </div>
+      <div>
+        <span class="text-xs text-slate-400">Подзаголовок</span>
+        <input id="subText" type="text" value="Премиум ТПУ пластик • Перенос утюгом" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+      </div>
+      <div class="pt-1 space-y-2">
+        <span class="text-xs text-slate-400 block">Преимущества (плашки)</span>
+        <input id="b1" type="text" value="✓ Выдерживает 50+ стирок" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm">
+        <input id="b2" type="text" value="✓ Не трескается и тянется" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm">
+        <input id="b3" type="text" value="✓ Нанесение за 15 секунд" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm">
+      </div>
+    </div>
+
+    <!-- Кнопка скачивания -->
+    <button onclick="downloadCard()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-base shadow-lg transition">
+      ⬇ СКАЧАТЬ КАРТОЧКУ (PNG 900×1200)
+    </button>
+
+    <!-- Блок 5: Сгенерированное SEO описание -->
+    <div id="seoBox" class="hidden bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-2">
+      <label class="block text-xs font-bold uppercase text-emerald-400">📋 Готовое SEO-описание для Ozon</label>
+      <textarea id="seoResult" rows="5" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-200"></textarea>
+    </div>
+  </div>
+
+  <!-- Правая часть: Предпросмотр холста -->
+  <div class="flex-1 flex flex-col items-center justify-center p-6 bg-slate-950 relative">
+    <canvas id="cardCanvas" width="900" height="1200"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cardCanvas');
+    const ctx = canvas.getContext('2d');
+    let productImg = null;
+
+    const themes = {
+      ozon: { bg1: '#003399', bg2: '#0f172a', accent: '#005bff', badge: '#f91155', text: '#ffffff', sub: '#93c5fd', pillBg: 'rgba(15, 23, 42, 0.85)', pillBorder: '#3b82f6' },
+      dark: { bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', text: '#ffffff', sub: '#fde68a', pillBg: 'rgba(24, 24, 27, 0.9)', pillBorder: '#f59e0b' },
+      emerald: { bg1: '#065f46', bg2: '#022c22', accent: '#10b981', badge: '#f59e0b', text: '#ffffff', sub: '#a7f3d0', pillBg: 'rgba(2, 44, 34, 0.85)', pillBorder: '#34d399' },
+      sunset: { bg1: '#be123c', bg2: '#4c0519', accent: '#fb7185', badge: '#facc15', text: '#ffffff', sub: '#fecdd3', pillBg: 'rgba(76, 5, 25, 0.85)', pillBorder: '#fb7185' },
+      minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', text: '#0f172a', sub: '#334155', pillBg: 'rgba(255, 255, 255, 0.95)', pillBorder: '#94a3b8' }
+    };
+
+    document.getElementById('imgUpload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => { productImg = img; drawCard(); };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, r);
+      ctx.closePath();
+    }
+
+    function drawCard() {
+      const t = themes[document.getElementById('themeSelect').value];
+      const title = document.getElementById('titleText').value.toUpperCase();
+      const sub = document.getElementById('subText').value;
+      const badge = document.getElementById('badgeText').value.toUpperCase();
+      const bullets = [
+        document.getElementById('b1').value,
+        document.getElementById('b2').value,
+        document.getElementById('b3').value
+      ].filter(Boolean);
+
+      // 1. Фон
+      const grad = ctx.createLinearGradient(0, 0, 900, 1200);
+      grad.addColorStop(0, t.bg1);
+      grad.addColorStop(1, t.bg2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 900, 1200);
+
+      // Декоративное свечение в центре
+      const rad = ctx.createRadialGradient(450, 620, 50, 450, 620, 420);
+      rad.addColorStop(0, t.accent + '55');
+      rad.addColorStop(1, 'transparent');
+      ctx.fillStyle = rad;
+      ctx.fillRect(0, 0, 900, 1200);
+
+      // 2. Бейдж
+      if (badge) {
+        ctx.font = '900 26px Montserrat';
+        const bw = ctx.measureText(badge).width + 50;
+        ctx.fillStyle = t.badge;
+        roundRect(ctx, 50, 45, bw, 54, 14);
+        ctx.fill();
+        ctx.fillStyle = (
