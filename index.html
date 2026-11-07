@@ -34,9 +34,9 @@
       </button>
     </div>
 
-    <!-- 2. Фото товара и Локальный ComfyUI (RTX 4060 Ti) -->
+    <!-- 2. Фото товара и Локальный ComfyUI -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
-      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">🖥️ 2. Товар и Локальный ComfyUI (RTX 4060 Ti)</label>
+      <label class="block text-xs font-bold uppercase text-slate-400 tracking-wider">🖥️ 2. Товар и Локальный ComfyUI</label>
       
       <div class="space-y-2 text-xs">
         <div>
@@ -54,7 +54,7 @@
       </div>
       
       <div class="grid grid-cols-2 gap-2 pt-1">
-        <button id="comfyGenBtn" onclick="generateComfyUIBackground()" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 px-2 rounded-lg text-white transition shadow">🚀 ИИ-фон с ПК (RTX 4060 Ti)</button>
+        <button id="comfyGenBtn" onclick="generateComfyUIBackground()" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 px-2 rounded-lg text-white transition shadow">🚀 ИИ-фон</button>
         <button onclick="removeWhiteBg()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold py-2 px-2 rounded-lg text-slate-200 transition">🪄 Убрать 1-тон</button>
       </div>
       <p id="bgStatus" class="text-[11px] text-amber-400 hidden"></p>
@@ -116,7 +116,7 @@
       </div>
     </div>
 
-    <!-- 4. Тексты и независимые плашки -->
+    <!-- 4. Тексты и плашки -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
       <div class="flex justify-between items-center">
         <label class="text-xs font-bold uppercase text-slate-400 tracking-wider">📝 4. Тексты и плашки</label>
@@ -136,10 +136,9 @@
         <input id="subText" type="text" value="Для дома и офиса" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5">
       </div>
 
-      <!-- Список плашек с независимыми настройками ширины и высоты -->
       <div class="pt-1 space-y-2">
         <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">Плашки преимуществ (размеры и текст)</span>
+          <span class="text-xs text-slate-400">Плашки преимуществ</span>
           <button onclick="addBullet()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded font-bold">+ Добавить</button>
         </div>
         <div id="bulletsContainer" class="space-y-2"></div>
@@ -233,20 +232,19 @@
       if (!productImg) return alert('Сначала загрузите фото товара!');
       const status = document.getElementById('bgStatus');
       status.classList.remove('hidden');
-      status.innerText = 'Отправка задачи на вашу RTX 4060 Ti (ComfyUI)...';
+      status.innerText = 'Отправка задачи в ComfyUI...';
 
       try {
         const reader = new FileReader();
         reader.readAsDataURL(currentFileBlob);
         reader.onload = async () => {
-          const base64Data = reader.result.split(',')[1];
           const response = await fetch(`${comfyUrl}/prompt`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: {} })
           });
           if (!response.ok) throw new Error('Не удалось связаться с ComfyUI');
-          status.innerText = '✅ ИИ-фон сгенерирован на ПК!';
+          status.innerText = '✅ ИИ-фон сгенерирован!';
         };
       } catch (err) {
         alert('Ошибка связи с ComfyUI: ' + err.message);
@@ -329,7 +327,6 @@
       reader.readAsDataURL(file);
     });
 
-    // Drag & Drop
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -425,21 +422,18 @@
       const sub = document.getElementById('subText').value;
       const badge = document.getElementById('badgeText').value.toUpperCase();
 
-      // 1. Фон
       const grad = ctx.createLinearGradient(0, 0, cw, ch);
       grad.addColorStop(0, bg1);
       grad.addColorStop(1, bg2);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, cw, ch);
 
-      // Свечение
       const rad = ctx.createRadialGradient(cw/2, ch/2, 40, cw/2, ch/2, cw/2);
       rad.addColorStop(0, accent + '55');
       rad.addColorStop(1, 'transparent');
       ctx.fillStyle = rad;
       ctx.fillRect(0, 0, cw, ch);
 
-      // 2. Фото товара
       if (productImg) {
         const scale = document.getElementById('imgScale').value / 100;
         const offX = parseInt(document.getElementById('imgX').value);
@@ -474,7 +468,6 @@
         ctx.textAlign = 'left';
       }
 
-      // 3. Бейдж
       if (badge) {
         ctx.font = '900 24px Montserrat, sans-serif';
         const bw = ctx.measureText(badge).width + 50;
@@ -485,7 +478,6 @@
         ctx.fillText(badge, textPositions.badge.x + 25, textPositions.badge.y + 33);
       }
 
-      // 4. Заголовок
       ctx.fillStyle = '#ffffff';
       ctx.font = '900 46px Montserrat, sans-serif';
       const words = title.split(' ');
@@ -507,7 +499,6 @@
         ctx.fillText(sub, textPositions.title.x, subY + 12);
       }
 
-      // 5. Индивидуальные плашки
       bulletsData.forEach((bp) => {
         ctx.font = '700 24px Montserrat, sans-serif';
         ctx.save();
