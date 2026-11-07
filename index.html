@@ -117,7 +117,7 @@
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
       <div class="flex justify-between items-center">
         <label class="text-xs font-bold uppercase text-slate-400 tracking-wider">📝 4. Тексты и плашки</label>
-        <span class="text-[11px] text-blue-400">💡 Текст на холсте можно таскать мышкой!</span>
+        <span class="text-[11px] text-blue-400">💡 Все тексты и плашки можно таскать мышкой!</span>
       </div>
 
       <div>
@@ -136,7 +136,7 @@
       <!-- Динамический список преимуществ -->
       <div class="pt-1 space-y-2">
         <div class="flex justify-between items-center">
-          <span class="text-xs text-slate-400">Преимущества (плашки снизу)</span>
+          <span class="text-xs text-slate-400">Преимущества (плашки)</span>
           <button onclick="addBullet()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded font-bold">+ Добавить плашку</button>
         </div>
         <div id="bulletsContainer" class="space-y-2"></div>
@@ -178,9 +178,15 @@
 
     let textPositions = {
       badge: { x: 50, y: 45 },
-      title: { x: 50, y: 165 }
+      title: { x: 50, y: 165 },
+      bullets: [
+        { x: 50, y: 960 },
+        { x: 50, y: 1045 },
+        { x: 50, y: 1130 }
+      ]
     };
     let draggingItem = null;
+    let dragIndex = null;
     let dragOffsetX = 0, dragOffsetY = 0;
 
     const themes = {
@@ -210,6 +216,9 @@
       const container = document.getElementById('bulletsContainer');
       container.innerHTML = '';
       bulletsList.forEach((text, idx) => {
+        if (!textPositions.bullets[idx]) {
+          textPositions.bullets[idx] = { x: 50, y: 960 + idx * 85 };
+        }
         const div = document.createElement('div');
         div.className = 'flex gap-2 items-center';
         div.innerHTML = `
@@ -221,13 +230,23 @@
       drawCard();
     }
 
-    function addBullet() { bulletsList.push("✓ Новое преимущество"); renderBulletsInputs(); }
+    function addBullet() {
+      bulletsList.push("✓ Новое преимущество");
+      textPositions.bullets.push({ x: 50, y: 960 + (bulletsList.length - 1) * 85 });
+      renderBulletsInputs();
+    }
+
     function removeBullet(idx) {
       if (bulletsList.length <= 1) return alert('Нужна хотя бы одна плашка!');
       bulletsList.splice(idx, 1);
+      textPositions.bullets.splice(idx, 1);
       renderBulletsInputs();
     }
-    function updateBullet(idx, val) { bulletsList[idx] = val; drawCard(); }
+
+    function updateBullet(idx, val) {
+      bulletsList[idx] = val;
+      drawCard();
+    }
 
     function applyThemePreset() {
       const key = document.getElementById('themeSelect').value;
@@ -266,6 +285,7 @@
       reader.readAsDataURL(file);
     });
 
+    // Умный Drag & Drop для всех элементов
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -273,11 +293,26 @@
       const mouseX = (e.clientX - rect.left) * scaleX;
       const mouseY = (e.clientY - rect.top) * scaleY;
 
+      // Проверяем плашки
+      for (let i = 0; i < textPositions.bullets.length; i++) {
+        const bp = textPositions.bullets[i];
+        if (mouseX >= bp.x && mouseX <= bp.x + 700 && mouseY >= bp.y && mouseY <= bp.y + 66) {
+          draggingItem = 'bullet';
+          dragIndex = i;
+          dragOffsetX = mouseX - bp.x;
+          dragOffsetY = mouseY - bp.y;
+          return;
+        }
+      }
+
+      // Проверяем бейдж
       if (mouseX >= textPositions.badge.x && mouseX <= textPositions.badge.x + 200 && mouseY >= textPositions.badge.y && mouseY <= textPositions.badge.y + 54) {
         draggingItem = 'badge';
         dragOffsetX = mouseX - textPositions.badge.x;
         dragOffsetY = mouseY - textPositions.badge.y;
-      } else if (mouseX >= textPositions.title.x && mouseX <= textPositions.title.x + 800 && mouseY >= textPositions.title.y && mouseY <= textPositions.title.y + 110) {
+      } 
+      // Проверяем заголовок
+      else if (mouseX >= textPositions.title.x && mouseX <= textPositions.title.x + 800 && mouseY >= textPositions.title.y && mouseY <= textPositions.title.y + 110) {
         draggingItem = 'title';
         dragOffsetX = mouseX - textPositions.title.x;
         dragOffsetY = mouseY - textPositions.title.y;
@@ -298,11 +333,14 @@
       } else if (draggingItem === 'title') {
         textPositions.title.x = mouseX - dragOffsetX;
         textPositions.title.y = mouseY - dragOffsetY;
+      } else if (draggingItem === 'bullet' && dragIndex !== null) {
+        textPositions.bullets[dragIndex].x = mouseX - dragOffsetX;
+        textPositions.bullets[dragIndex].y = mouseY - dragOffsetY;
       }
       drawCard();
     });
 
-    window.addEventListener('mouseup', () => { draggingItem = null; });
+    window.addEventListener('mouseup', () => { draggingItem = null; dragIndex = null; });
 
     function drawBox(ctx, x, y, w, h, r) {
       ctx.beginPath();
@@ -377,7 +415,7 @@
       const sub = document.getElementById('subText').value;
       const badge = document.getElementById('badgeText').value.toUpperCase();
 
-      // 1. Фон
+      // 1. Градиентный фон
       const grad = ctx.createLinearGradient(0, 0, cw, ch);
       grad.addColorStop(0, bg1);
       grad.addColorStop(1, bg2);
@@ -409,10 +447,8 @@
         ctx.drawImage(productImg, x, y, w, h);
         ctx.restore();
 
-        // Если есть логотип/иконка поверх товара
         if (logoImg) {
-          const lw = 140, lh = 140;
-          ctx.drawImage(logoImg, x + w - 100, y + 20, lw, lh);
+          ctx.drawImage(logoImg, x + w - 100, y + 20, 140, 140);
         }
       } else {
         ctx.strokeStyle = '#94a3b8';
@@ -461,10 +497,12 @@
         ctx.fillText(sub, textPositions.title.x, subY + 12);
       }
 
-      // 5. Плашки с преимуществами внизу
-      let startY = ch - (bulletsList.length * 82) - 40;
+      // 5. Плашки с преимуществами (каждая теперь имеет свои независимые координаты x, y и двигается мышкой)
       bulletsList.forEach((b, idx) => {
-        const py = startY + idx * 82;
+        if (!textPositions.bullets[idx]) {
+          textPositions.bullets[idx] = { x: 50, y: 960 + idx * 85 };
+        }
+        const bp = textPositions.bullets[idx];
         ctx.font = '700 26px Montserrat, sans-serif';
         const tw = Math.min(ctx.measureText(b).width + 70, cw - 100);
 
@@ -472,7 +510,7 @@
         ctx.shadowColor = 'rgba(0,0,0,0.4)';
         ctx.shadowBlur = 16;
         ctx.fillStyle = pillBg;
-        drawBox(ctx, 50, py, tw, 66, 16);
+        drawBox(ctx, bp.x, bp.y, tw, 66, 16);
         ctx.fill();
 
         ctx.lineWidth = 3;
@@ -481,7 +519,7 @@
         ctx.restore();
 
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(b, 78, py + 42);
+        ctx.fillText(b, bp.x + 28, bp.y + 42);
       });
     }
 
@@ -498,6 +536,7 @@
         subtitle: document.getElementById('subText').value,
         badge: document.getElementById('badgeText').value,
         bullets: bulletsList,
+        positions: textPositions,
         bg1: document.getElementById('customBg1').value,
         bg2: document.getElementById('customBg2').value,
         accent: document.getElementById('customAccent').value
@@ -522,6 +561,7 @@
           if (data.subtitle) document.getElementById('subText').value = data.subtitle;
           if (data.badge) document.getElementById('badgeText').value = data.badge;
           if (data.bullets) { bulletsList = data.bullets; renderBulletsInputs(); }
+          if (data.positions) { textPositions = data.positions; }
           if (data.bg1) document.getElementById('customBg1').value = data.bg1;
           if (data.bg2) document.getElementById('customBg2').value = data.bg2;
           if (data.accent) document.getElementById('customAccent').value = data.accent;
