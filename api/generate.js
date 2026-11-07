@@ -3,18 +3,19 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { product } = req.body;
+  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  const product = body?.product;
   const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel' });
+    return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
   }
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${apiKey.trim()}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -35,6 +36,10 @@ export default async function handler(req, res) {
     });
 
     const result = await response.json();
+    if (!response.ok) {
+      return res.status(500).json({ error: result.error?.message || 'Ошибка ответа Groq API' });
+    }
+
     const content = JSON.parse(result.choices[0].message.content);
     return res.status(200).json(content);
   } catch (err) {
