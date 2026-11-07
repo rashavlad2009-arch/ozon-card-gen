@@ -12,59 +12,82 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Автоматически узнаем список доступных текстовых моделей на вашем ключе Groq
-    let selectedModel = 'llama-3.1-8b-instant';
+    // 1. Получаем список только текстовых чат-моделей Groq (исключая аудио/голос/модерацию)
     const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
       headers: { 'Authorization': `Bearer ${apiKey}` }
     });
     
+    let candidates = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant', 'gemma2-9b-it'];
+
     if (modelsRes.ok) {
       const modelsData = await modelsRes.json();
-      const available = (modelsData.data || [])
+      const chatModels = (modelsData.data || [])
         .map(m => m.id)
-        .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('vision'));
+        .filter(id => {
+          const s = id.toLowerCase();
+          return !s.includes('whisper') &&
+                 !s.includes('guard') &&
+                 !s.includes('tts') &&
+                 !s.includes('orpheus') &&
+                 !s.includes('playai') &&
+                 !s.includes('vision') &&
+                 !s.includes('allam') &&
+                 !s.includes('safeguard') &&
+                 !s.includes('prompt-guard');
+        });
 
-      const preferred = [
-        'llama-3.3-70b-versatile',
-        'llama-3.1-8b-instant',
-        'qwen-qwq-32b',
-        'deepseek-r1-distill-llama-70b',
-        'gemma2-9b-it'
-      ];
-      selectedModel = preferred.find(p => available.includes(p)) || available[0] || selectedModel;
+      // Ставим проверенные модели Llama / Qwen / GPT-OSS / DeepSeek в приоритет
+      const sorted = chatModels.sort((a, b) => {
+        const score = (name) => {
+          if (name.includes('gpt-oss')) return 10;
+          if (name.includes('llama') && name.includes('70b')) return 9;
+          if (name.includes('qwen')) return 8;
+          if (name.includes('llama')) return 7;
+          if (name.includes('gemma')) return 6;
+          return 1;
+        };
+        return score(b) - score(a);
+      });
+
+      if (sorted.length > 0) candidates = sorted;
     }
 
-    // 2. Генерируем тексты карточки и SEO
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: 'Ты эксперт по инфографике и SEO для маркетплейса Ozon. Верни строго JSON на русском языке со следующими полями: "title" (короткий мощный заголовок товара для обложки, 2-3 слова, КАПСОМ), "subtitle" (подзаголовок до 4-5 слов), "badge" (короткий триггер 1-2 слова, например ХИТ ПРОДАЖ или ПРЕМИУМ), "bullets" (массив ровно из 3 коротких главных преимуществ для плашек, каждое не длиннее 4 слов, без галочек в начале), "seo" (продающее SEO-описание товара для карточки Ozon на 400-600 символов с ключевыми словами).'
-          },
-          {
-            role: 'user',
-            content: `Товар: ${product}`
-          }
-        ],
-        temperature: 0.7
-      })
-    });
+    // 2. Пробуем модели по очереди, пока одна из них не ответит без ошибок доступа
+    let lastError = 'Не удалось получить ответ от моделей Groq';
+    for (const modelId of candidates.slice(0, 4)) {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: modelId,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content: 'Ты эксперт по инфографике и SEO для маркетплейса Ozon. Верни строго JSON на русском языке со следующими полями: "title" (короткий мощный заголовок товара для обложки, 2-3 слова, КАПСОМ), "subtitle" (подзаголовок до 4-5 слов), "badge" (короткий триггер 1-2 слова, например ХИТ ПРОДАЖ или ПРЕМИУМ), "bullets" (массив ровно из 3 коротких главных преимуществ для плашек, каждое не длиннее 4 слов, без галочек в начале), "seo" (продающее SEO-описание товара для карточки Ozon на 400-600 символов с ключевыми словами).'
+            },
+            {
+              role: 'user',
+              content: `Товар: ${product}`
+            }
+          ],
+          temperature: 0.7
+        })
+      });
 
-    const result = await response.json();
-    if (!response.ok) {
-      return res.status(500).json({ error: result.error?.message || 'Ошибка ответа Groq API' });
+      const result = await response.json();
+      if (response.ok && result.choices?.[0]?.message?.content) {
+        const content = JSON.parse(result.choices[0].message.content);
+        return res.status(200).json(content);
+      } else {
+        lastError = result.error?.message || lastError;
+      }
     }
 
-    const content = JSON.parse(result.choices[0].message.content);
-    return res.status(200).json(content);
+    return res.status(500).json({ error: lastError });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
