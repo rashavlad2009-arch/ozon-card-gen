@@ -79,4 +79,497 @@
       <div class="grid grid-cols-2 gap-2">
         <div>
           <span class="text-[11px] text-slate-400 block mb-1">Шаблон дизайна</span>
-          <select id="themeSelect" onchange="applyThemePreset()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px
+          <select id="themeSelect" onchange="applyThemePreset()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-2.5 py-2 text-xs outline-none">
+            <option value="ozon">Ozon (Синий неон)</option>
+            <option value="dark">Dark Premium (Золото)</option>
+            <option value="emerald">Fresh Eco (Изумруд)</option>
+            <option value="sunset">Hot Sale (Коралл)</option>
+            <option value="violet">Neon Cyber (Фиолет)</option>
+            <option value="minimal">Clean Light (Светлый)</option>
+          </select>
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Цвета фона (Градиент)</span>
+          <div class="flex items-center gap-2">
+            <input id="customBg1" type="color" value="#003399" oninput="drawCard()" class="w-8 h-8 rounded bg-transparent cursor-pointer">
+            <input id="customBg2" type="color" value="#0f172a" oninput="drawCard()" class="w-8 h-8 rounded bg-transparent cursor-pointer">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 pt-1 text-xs">
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Акцент / Плашки</span>
+          <input id="customAccent" type="color" value="#3b82f6" oninput="drawCard()" class="w-full h-8 rounded bg-transparent cursor-pointer">
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Цвет бейджа</span>
+          <input id="customBadge" type="color" value="#f91155" oninput="drawCard()" class="w-full h-8 rounded bg-transparent cursor-pointer">
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Фон плашек</span>
+          <input id="pillBgColor" type="color" value="#0f172a" oninput="drawCard()" class="w-full h-8 rounded bg-transparent cursor-pointer">
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Настройка текстов и плашек -->
+    <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
+      <div class="flex justify-between items-center">
+        <label class="text-xs font-bold uppercase text-slate-400 tracking-wider">📝 4. Тексты и плашки</label>
+        <span class="text-[11px] text-blue-400">💡 Текст на холсте можно таскать мышкой!</span>
+      </div>
+
+      <div>
+        <span class="text-xs text-slate-400">Бейдж в углу</span>
+        <input id="badgeText" type="text" value="ХИТ ПРОДАЖ" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+      </div>
+      <div>
+        <span class="text-xs text-slate-400">Главный заголовок</span>
+        <input id="titleText" type="text" value="ТЕРМОПРИНТ НА ОДЕЖДУ" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5 font-bold">
+      </div>
+      <div>
+        <span class="text-xs text-slate-400">Подзаголовок</span>
+        <input id="subText" type="text" value="Премиум ТПУ пластик • Перенос утюгом" oninput="drawCard()" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm mt-0.5">
+      </div>
+
+      <!-- Динамический список преимуществ -->
+      <div class="pt-1 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs text-slate-400">Преимущества (плашки снизу)</span>
+          <button onclick="addBullet()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded font-bold">+ Добавить плашку</button>
+        </div>
+        <div id="bulletsContainer" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- Кнопки сохранения и скачивания -->
+    <div class="grid grid-cols-2 gap-2">
+      <button onclick="saveProjectJSON()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl text-xs transition">
+        💾 Сохранить шаблон
+      </button>
+      <button onclick="loadProjectJSON()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl text-xs transition">
+        📂 Загрузить шаблон
+      </button>
+    </div>
+
+    <button onclick="downloadCard()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-base shadow-lg transition">
+      ⬇ СКАЧАТЬ КАРТОЧКУ (PNG)
+    </button>
+
+    <!-- SEO блок -->
+    <div id="seoBox" class="hidden bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-2">
+      <label class="block text-xs font-bold uppercase text-emerald-400">📋 Готовое SEO-описание для Ozon</label>
+      <textarea id="seoResult" rows="5" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-xs text-slate-200"></textarea>
+    </div>
+  </div>
+
+  <!-- Правая часть: Холст -->
+  <div class="flex-1 flex flex-col items-center justify-center p-6 bg-slate-950 relative">
+    <canvas id="cardCanvas" width="900" height="1200"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cardCanvas');
+    const ctx = canvas.getContext('2d');
+    let productImg = null;
+    let logoImg = null;
+    let currentFileBlob = null;
+
+    let textPositions = {
+      badge: { x: 50, y: 45 },
+      title: { x: 50, y: 165 }
+    };
+    let draggingItem = null;
+    let dragOffsetX = 0, dragOffsetY = 0;
+
+    const themes = {
+      ozon: { bg1: '#003399', bg2: '#0f172a', accent: '#3b82f6', badge: '#f91155', pillBg: '#0f172a' },
+      dark: { bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', pillBg: '#18181b' },
+      emerald: { bg1: '#065f46', bg2: '#022c22', accent: '#10b981', badge: '#f59e0b', pillBg: '#022c22' },
+      sunset: { bg1: '#be123c', bg2: '#4c0519', accent: '#fb7185', badge: '#facc15', pillBg: '#4c0519' },
+      violet: { bg1: '#581c87', bg2: '#2e1065', accent: '#a855f7', badge: '#ec4899', pillBg: '#2e1065' },
+      minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff' }
+    };
+
+    let bulletsList = [
+      "✓ Выдерживает 50+ стирок",
+      "✓ Не трескается и тянется",
+      "✓ Нанесение за 15 секунд"
+    ];
+
+    function changeCanvasFormat() {
+      const val = document.getElementById('canvasFormat').value;
+      if (val === 'ozon') { canvas.width = 900; canvas.height = 1200; }
+      else if (val === 'square') { canvas.width = 900; canvas.height = 900; }
+      else if (val === 'story') { canvas.width = 1080; canvas.height = 1920; }
+      drawCard();
+    }
+
+    function renderBulletsInputs() {
+      const container = document.getElementById('bulletsContainer');
+      container.innerHTML = '';
+      bulletsList.forEach((text, idx) => {
+        const div = document.createElement('div');
+        div.className = 'flex gap-2 items-center';
+        div.innerHTML = `
+          <input type="text" value="${text}" oninput="updateBullet(${idx}, this.value)" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-sm">
+          <button onclick="removeBullet(${idx})" class="bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition">✕</button>
+        `;
+        container.appendChild(div);
+      });
+      drawCard();
+    }
+
+    function addBullet() { bulletsList.push("✓ Новое преимущество"); renderBulletsInputs(); }
+    function removeBullet(idx) {
+      if (bulletsList.length <= 1) return alert('Нужна хотя бы одна плашка!');
+      bulletsList.splice(idx, 1);
+      renderBulletsInputs();
+    }
+    function updateBullet(idx, val) { bulletsList[idx] = val; drawCard(); }
+
+    function applyThemePreset() {
+      const key = document.getElementById('themeSelect').value;
+      const t = themes[key];
+      if (!t) return;
+      document.getElementById('customBg1').value = t.bg1;
+      document.getElementById('customBg2').value = t.bg2;
+      document.getElementById('customAccent').value = t.accent;
+      document.getElementById('customBadge').value = t.badge;
+      document.getElementById('pillBgColor').value = t.pillBg;
+      drawCard();
+    }
+
+    document.getElementById('imgUpload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      currentFileBlob = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => { productImg = img; drawCard(); };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('logoUpload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => { logoImg = img; drawCard(); };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+
+      if (mouseX >= textPositions.badge.x && mouseX <= textPositions.badge.x + 200 && mouseY >= textPositions.badge.y && mouseY <= textPositions.badge.y + 54) {
+        draggingItem = 'badge';
+        dragOffsetX = mouseX - textPositions.badge.x;
+        dragOffsetY = mouseY - textPositions.badge.y;
+      } else if (mouseX >= textPositions.title.x && mouseX <= textPositions.title.x + 800 && mouseY >= textPositions.title.y && mouseY <= textPositions.title.y + 110) {
+        draggingItem = 'title';
+        dragOffsetX = mouseX - textPositions.title.x;
+        dragOffsetY = mouseY - textPositions.title.y;
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!draggingItem) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+
+      if (draggingItem === 'badge') {
+        textPositions.badge.x = mouseX - dragOffsetX;
+        textPositions.badge.y = mouseY - dragOffsetY;
+      } else if (draggingItem === 'title') {
+        textPositions.title.x = mouseX - dragOffsetX;
+        textPositions.title.y = mouseY - dragOffsetY;
+      }
+      drawCard();
+    });
+
+    window.addEventListener('mouseup', () => { draggingItem = null; });
+
+    function drawBox(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function removeWhiteBg() {
+      if (!productImg) return alert('Сначала выберите фото товара!');
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = productImg.width;
+      tempCanvas.height = productImg.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.drawImage(productImg, 0, 0);
+      const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      const d = imgData.data;
+      const bgR = d[0], bgG = d[1], bgB = d[2];
+      for (let i = 0; i < d.length; i += 4) {
+        const diff = Math.abs(d[i] - bgR) + Math.abs(d[i+1] - bgG) + Math.abs(d[i+2] - bgB);
+        if (diff < 150) d[i+3] = 0;
+      }
+      tCtx.putImageData(imgData, 0, 0);
+      const newImg = new Image();
+      newImg.onload = () => { productImg = newImg; drawCard(); };
+      newImg.src = tempCanvas.toDataURL();
+    }
+
+    async function removeBgAI() {
+      if (!currentFileBlob) return alert('Сначала выберите фото товара!');
+      const btn = document.getElementById('aiBgBtn');
+      const status = document.getElementById('bgStatus');
+      btn.disabled = true;
+      btn.innerText = '⏳ Вырезаем...';
+      status.classList.remove('hidden');
+      status.innerText = 'Загрузка ИИ-модели в браузер...';
+
+      try {
+        const module = await import('https://esm.sh/@imgly/background-removal@1.4.5');
+        const removeBackground = module.default || module.removeBackground;
+        const resultBlob = await removeBackground(currentFileBlob);
+        const url = URL.createObjectURL(resultBlob);
+        const newImg = new Image();
+        newImg.onload = () => {
+          productImg = newImg;
+          drawCard();
+          status.innerText = '✅ Фон успешно удален!';
+        };
+        newImg.src = url;
+      } catch (err) {
+        alert('Ошибка ИИ: ' + err.message);
+        status.classList.add('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '🧠 ИИ-вырезание фона';
+      }
+    }
+
+    function drawCard() {
+      const cw = canvas.width;
+      const ch = canvas.height;
+      const bg1 = document.getElementById('customBg1').value;
+      const bg2 = document.getElementById('customBg2').value;
+      const accent = document.getElementById('customAccent').value;
+      const badgeColor = document.getElementById('customBadge').value;
+      const pillBg = document.getElementById('pillBgColor').value;
+      
+      const title = document.getElementById('titleText').value.toUpperCase();
+      const sub = document.getElementById('subText').value;
+      const badge = document.getElementById('badgeText').value.toUpperCase();
+
+      // 1. Фон
+      const grad = ctx.createLinearGradient(0, 0, cw, ch);
+      grad.addColorStop(0, bg1);
+      grad.addColorStop(1, bg2);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, cw, ch);
+
+      // Свечение
+      const rad = ctx.createRadialGradient(cw/2, ch/2, 40, cw/2, ch/2, cw/2);
+      rad.addColorStop(0, accent + '55');
+      rad.addColorStop(1, 'transparent');
+      ctx.fillStyle = rad;
+      ctx.fillRect(0, 0, cw, ch);
+
+      // 2. Фото товара
+      if (productImg) {
+        const scale = document.getElementById('imgScale').value / 100;
+        const offX = parseInt(document.getElementById('imgX').value);
+        const offY = parseInt(document.getElementById('imgY').value);
+        const baseRatio = Math.min((cw * 0.8) / productImg.width, (ch * 0.55) / productImg.height);
+        const w = productImg.width * baseRatio * scale;
+        const h = productImg.height * baseRatio * scale;
+        const x = (cw - w) / 2 + offX;
+        const y = (ch - h) / 2 + offY;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 40;
+        ctx.shadowOffsetY = 20;
+        ctx.drawImage(productImg, x, y, w, h);
+        ctx.restore();
+
+        // Если есть логотип/иконка поверх товара
+        if (logoImg) {
+          const lw = 140, lh = 140;
+          ctx.drawImage(logoImg, x + w - 100, y + 20, lw, lh);
+        }
+      } else {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([12, 12]);
+        drawBox(ctx, cw * 0.2, ch * 0.3, cw * 0.6, ch * 0.4, 28);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '700 24px Montserrat, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Загрузите фото товара слева', cw/2, ch/2);
+        ctx.textAlign = 'left';
+      }
+
+      // 3. Бейдж
+      if (badge) {
+        ctx.font = '900 24px Montserrat, sans-serif';
+        const bw = ctx.measureText(badge).width + 50;
+        ctx.fillStyle = badgeColor;
+        drawBox(ctx, textPositions.badge.x, textPositions.badge.y, bw, 50, 14);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(badge, textPositions.badge.x + 25, textPositions.badge.y + 33);
+      }
+
+      // 4. Заголовок и подзаголовок
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 46px Montserrat, sans-serif';
+      const words = title.split(' ');
+      let line1 = '', line2 = '';
+      words.forEach(w => {
+        if ((line1 + w).length < 18 || !line1) line1 += (line1 ? ' ' : '') + w;
+        else line2 += (line2 ? ' ' : '') + w;
+      });
+      ctx.fillText(line1, textPositions.title.x, textPositions.title.y);
+      let subY = textPositions.title.y + 52;
+      if (line2) {
+        ctx.fillText(line2, textPositions.title.x, textPositions.title.y + 55);
+        subY += 52;
+      }
+
+      if (sub) {
+        ctx.fillStyle = '#93c5fd';
+        ctx.font = '700 24px Montserrat, sans-serif';
+        ctx.fillText(sub, textPositions.title.x, subY + 12);
+      }
+
+      // 5. Плашки с преимуществами внизу
+      let startY = ch - (bulletsList.length * 82) - 40;
+      bulletsList.forEach((b, idx) => {
+        const py = startY + idx * 82;
+        ctx.font = '700 26px Montserrat, sans-serif';
+        const tw = Math.min(ctx.measureText(b).width + 70, cw - 100);
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = pillBg;
+        drawBox(ctx, 50, py, tw, 66, 16);
+        ctx.fill();
+
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = accent;
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(b, 78, py + 42);
+      });
+    }
+
+    function downloadCard() {
+      const link = document.createElement('a');
+      link.download = 'ozon-card.png';
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.click();
+    }
+
+    function saveProjectJSON() {
+      const state = {
+        title: document.getElementById('titleText').value,
+        subtitle: document.getElementById('subText').value,
+        badge: document.getElementById('badgeText').value,
+        bullets: bulletsList,
+        bg1: document.getElementById('customBg1').value,
+        bg2: document.getElementById('customBg2').value,
+        accent: document.getElementById('customAccent').value
+      };
+      const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ozon-card-template.json';
+      a.click();
+    }
+
+    function loadProjectJSON() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = event => {
+          const data = JSON.parse(event.target.result);
+          if (data.title) document.getElementById('titleText').value = data.title;
+          if (data.subtitle) document.getElementById('subText').value = data.subtitle;
+          if (data.badge) document.getElementById('badgeText').value = data.badge;
+          if (data.bullets) { bulletsList = data.bullets; renderBulletsInputs(); }
+          if (data.bg1) document.getElementById('customBg1').value = data.bg1;
+          if (data.bg2) document.getElementById('customBg2').value = data.bg2;
+          if (data.accent) document.getElementById('customAccent').value = data.accent;
+          drawCard();
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    async function generateWithAI() {
+      const prompt = document.getElementById('aiPrompt').value.trim();
+      if (!prompt) return alert('Опишите товар в поле для ИИ!');
+      const btn = document.getElementById('aiBtn');
+      btn.innerText = '⏳ Генерация...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product: prompt })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        if (data.title) document.getElementById('titleText').value = data.title;
+        if (data.subtitle) document.getElementById('subText').value = data.subtitle;
+        if (data.badge) document.getElementById('badgeText').value = data.badge;
+        if (data.bullets && Array.isArray(data.bullets)) {
+          bulletsList = data.bullets.map(b => '✓ ' + b);
+          renderBulletsInputs();
+        }
+
+        if (data.seo) {
+          document.getElementById('seoBox').classList.remove('hidden');
+          document.getElementById('seoResult').value = data.seo;
+        }
+        drawCard();
+      } catch (e) {
+        alert('Ошибка ИИ: ' + e.message);
+      } finally {
+        btn.innerText = '✨ Придумать тексты и плашки';
+        btn.disabled = false;
+      }
+    }
+
+    renderBulletsInputs();
+  </script>
+</body>
+</html>
