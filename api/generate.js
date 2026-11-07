@@ -5,21 +5,44 @@ export default async function handler(req, res) {
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   const product = body?.product;
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = (process.env.GROQ_API_KEY || '').trim();
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
+    return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel' });
   }
 
   try {
+    // 1. Автоматически узнаем список доступных текстовых моделей на вашем ключе Groq
+    let selectedModel = 'llama-3.1-8b-instant';
+    const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    
+    if (modelsRes.ok) {
+      const modelsData = await modelsRes.json();
+      const available = (modelsData.data || [])
+        .map(m => m.id)
+        .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('vision'));
+
+      const preferred = [
+        'llama-3.3-70b-versatile',
+        'llama-3.1-8b-instant',
+        'qwen-qwq-32b',
+        'deepseek-r1-distill-llama-70b',
+        'gemma2-9b-it'
+      ];
+      selectedModel = preferred.find(p => available.includes(p)) || available[0] || selectedModel;
+    }
+
+    // 2. Генерируем тексты карточки и SEO
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey.trim()}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: selectedModel,
         response_format: { type: 'json_object' },
         messages: [
           {
