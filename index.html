@@ -18,21 +18,19 @@
   <div class="w-full lg:w-[500px] bg-slate-800 p-6 overflow-y-auto h-screen border-r border-slate-700 space-y-5">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-black text-blue-400 tracking-wide">OZON CARD STUDIO</h1>
-      <div class="flex items-center gap-2">
-        <select id="canvasFormat" onchange="changeCanvasFormat()" class="text-xs bg-slate-700 text-blue-300 px-2.5 py-1 rounded-lg font-semibold outline-none cursor-pointer">
-          <option value="ozon">Ozon (900×1200)</option>
-          <option value="square">Квадрат (900×900)</option>
-          <option value="story">Сторис (1080×1920)</option>
-        </select>
-      </div>
+      <select id="canvasFormat" onchange="changeCanvasFormat()" class="text-xs bg-slate-700 text-blue-300 px-2.5 py-1 rounded-lg font-semibold outline-none cursor-pointer">
+        <option value="ozon">Ozon (900×1200)</option>
+        <option value="square">Квадрат (900×900)</option>
+        <option value="story">Сторис (1080×1920)</option>
+      </select>
     </div>
 
-    <!-- 1. ИИ Автозаполнение -->
+    <!-- 1. ИИ Автозаполнение + Авторасстановка -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
-      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Автозаполнение (Groq AI)</label>
+      <label class="block text-xs font-bold uppercase text-blue-400 tracking-wider">⚡ 1. Полная магия ИИ</label>
       <input id="aiPrompt" type="text" placeholder="Напр.: Термопринт на одежду ТПУ" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500">
-      <button id="aiBtn" onclick="generateWithAI()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-lg">
-        ✨ Придумать тексты и плашки
+      <button id="aiBtn" onclick="generateWithAI()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2">
+        <span>🤖 Сделать всё через ИИ (Тексты + Дизайн)</span>
       </button>
     </div>
 
@@ -111,13 +109,25 @@
           <input id="pillBgColor" type="color" value="#0f172a" oninput="drawCard()" class="w-full h-8 rounded bg-transparent cursor-pointer">
         </div>
       </div>
+
+      <!-- Размер плашек -->
+      <div class="grid grid-cols-2 gap-2 pt-1 text-xs">
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Ширина плашек: <span id="pillWVal">700</span>px</span>
+          <input id="pillWidth" type="range" min="300" max="850" value="700" class="w-full" oninput="drawCard()">
+        </div>
+        <div>
+          <span class="text-[11px] text-slate-400 block mb-1">Высота плашек: <span id="pillHVal">66</span>px</span>
+          <input id="pillHeight" type="range" min="40" max="120" value="66" class="w-full" oninput="drawCard()">
+        </div>
+      </div>
     </div>
 
     <!-- 4. Настройка текстов и плашек -->
     <div class="bg-slate-900/70 p-4 rounded-xl border border-slate-700 space-y-3">
       <div class="flex justify-between items-center">
         <label class="text-xs font-bold uppercase text-slate-400 tracking-wider">📝 4. Тексты и плашки</label>
-        <span class="text-[11px] text-blue-400">💡 Все тексты и плашки можно таскать мышкой!</span>
+        <span class="text-[11px] text-blue-400">💡 Перетаскивайте мышкой!</span>
       </div>
 
       <div>
@@ -145,12 +155,8 @@
 
     <!-- Кнопки сохранения и скачивания -->
     <div class="grid grid-cols-2 gap-2">
-      <button onclick="saveProjectJSON()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl text-xs transition">
-        💾 Сохранить шаблон
-      </button>
-      <button onclick="loadProjectJSON()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl text-xs transition">
-        📂 Загрузить шаблон
-      </button>
+      <button onclick="saveProjectJSON()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl text-xs transition">💾 Сохранить</button>
+      <button onclick="loadProjectJSON()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl text-xs transition">📂 Загрузить</button>
     </div>
 
     <button onclick="downloadCard()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-base shadow-lg transition">
@@ -209,6 +215,30 @@
       if (val === 'ozon') { canvas.width = 900; canvas.height = 1200; }
       else if (val === 'square') { canvas.width = 900; canvas.height = 900; }
       else if (val === 'story') { canvas.width = 1080; canvas.height = 1920; }
+      autoArrangeByAI(); // Авторасстановка под новый формат
+    }
+
+    // Умная ИИ-расстановка всех элементов на холсте
+    function autoArrangeByAI() {
+      const cw = canvas.width;
+      const ch = canvas.height;
+
+      // Бейдж в левый верхний угол
+      textPositions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
+      // Заголовок чуть ниже
+      textPositions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
+
+      // Плашки аккуратно стопкой внизу
+      const pHeight = parseInt(document.getElementById('pillHeight').value) || 66;
+      const gap = 16;
+      const totalBlockHeight = bulletsList.length * (pHeight + gap);
+      let startY = ch - totalBlockHeight - Math.round(ch * 0.06);
+
+      bulletsList.forEach((_, idx) => {
+        if (!textPositions.bullets[idx]) textPositions.bullets[idx] = {};
+        textPositions.bullets[idx].x = Math.round(cw * 0.06);
+        textPositions.bullets[idx].y = startY + idx * (pHeight + gap);
+      });
       drawCard();
     }
 
@@ -232,7 +262,9 @@
 
     function addBullet() {
       bulletsList.push("✓ Новое преимущество");
-      textPositions.bullets.push({ x: 50, y: 960 + (bulletsList.length - 1) * 85 });
+      const pHeight = parseInt(document.getElementById('pillHeight').value) || 66;
+      const lastY = textPositions.bullets.length > 0 ? textPositions.bullets[textPositions.bullets.length - 1].y : 900;
+      textPositions.bullets.push({ x: 50, y: lastY + pHeight + 16 });
       renderBulletsInputs();
     }
 
@@ -285,18 +317,18 @@
       reader.readAsDataURL(file);
     });
 
-    // Умный Drag & Drop для всех элементов
+    // Drag & Drop
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const mouseX = (e.clientX - rect.left) * scaleX;
       const mouseY = (e.clientY - rect.top) * scaleY;
+      const pH = parseInt(document.getElementById('pillHeight').value) || 66;
 
-      // Проверяем плашки
       for (let i = 0; i < textPositions.bullets.length; i++) {
         const bp = textPositions.bullets[i];
-        if (mouseX >= bp.x && mouseX <= bp.x + 700 && mouseY >= bp.y && mouseY <= bp.y + 66) {
+        if (mouseX >= bp.x && mouseX <= bp.x + 700 && mouseY >= bp.y && mouseY <= bp.y + pH) {
           draggingItem = 'bullet';
           dragIndex = i;
           dragOffsetX = mouseX - bp.x;
@@ -305,14 +337,11 @@
         }
       }
 
-      // Проверяем бейдж
       if (mouseX >= textPositions.badge.x && mouseX <= textPositions.badge.x + 200 && mouseY >= textPositions.badge.y && mouseY <= textPositions.badge.y + 54) {
         draggingItem = 'badge';
         dragOffsetX = mouseX - textPositions.badge.x;
         dragOffsetY = mouseY - textPositions.badge.y;
-      } 
-      // Проверяем заголовок
-      else if (mouseX >= textPositions.title.x && mouseX <= textPositions.title.x + 800 && mouseY >= textPositions.title.y && mouseY <= textPositions.title.y + 110) {
+      } else if (mouseX >= textPositions.title.x && mouseX <= textPositions.title.x + 800 && mouseY >= textPositions.title.y && mouseY <= textPositions.title.y + 110) {
         draggingItem = 'title';
         dragOffsetX = mouseX - textPositions.title.x;
         dragOffsetY = mouseY - textPositions.title.y;
@@ -411,6 +440,11 @@
       const badgeColor = document.getElementById('customBadge').value;
       const pillBg = document.getElementById('pillBgColor').value;
       
+      const pWidth = parseInt(document.getElementById('pillWidth').value) || 700;
+      const pHeight = parseInt(document.getElementById('pillHeight').value) || 66;
+      document.getElementById('pillWVal').innerText = pWidth;
+      document.getElementById('pillHVal').innerText = pHeight;
+
       const title = document.getElementById('titleText').value.toUpperCase();
       const sub = document.getElementById('subText').value;
       const badge = document.getElementById('badgeText').value.toUpperCase();
@@ -497,20 +531,19 @@
         ctx.fillText(sub, textPositions.title.x, subY + 12);
       }
 
-      // 5. Плашки с преимуществами (каждая теперь имеет свои независимые координаты x, y и двигается мышкой)
+      // 5. Плашки с преимуществами
       bulletsList.forEach((b, idx) => {
         if (!textPositions.bullets[idx]) {
           textPositions.bullets[idx] = { x: 50, y: 960 + idx * 85 };
         }
         const bp = textPositions.bullets[idx];
-        ctx.font = '700 26px Montserrat, sans-serif';
-        const tw = Math.min(ctx.measureText(b).width + 70, cw - 100);
+        ctx.font = '700 24px Montserrat, sans-serif';
 
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.4)';
         ctx.shadowBlur = 16;
         ctx.fillStyle = pillBg;
-        drawBox(ctx, bp.x, bp.y, tw, 66, 16);
+        drawBox(ctx, bp.x, bp.y, pWidth, pHeight, 16);
         ctx.fill();
 
         ctx.lineWidth = 3;
@@ -519,7 +552,8 @@
         ctx.restore();
 
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(b, bp.x + 28, bp.y + 42);
+        // Автоматическое вертикальное выравнивание текста по центру плашки
+        ctx.fillText(b, bp.x + 28, bp.y + (pHeight / 2) + 8);
       });
     }
 
@@ -576,7 +610,7 @@
       const prompt = document.getElementById('aiPrompt').value.trim();
       if (!prompt) return alert('Опишите товар в поле для ИИ!');
       const btn = document.getElementById('aiBtn');
-      btn.innerText = '⏳ Генерация...';
+      btn.innerText = '⏳ ИИ думает и расставляет элементы...';
       btn.disabled = true;
 
       try {
@@ -600,11 +634,13 @@
           document.getElementById('seoBox').classList.remove('hidden');
           document.getElementById('seoResult').value = data.seo;
         }
-        drawCard();
+
+        // Автоматически вызываем ИИ-расстановку координат
+        autoArrangeByAI();
       } catch (e) {
         alert('Ошибка ИИ: ' + e.message);
       } finally {
-        btn.innerText = '✨ Придумать тексты и плашки';
+        btn.innerText = '🤖 Сделать всё через ИИ (Тексты + Дизайн)';
         btn.disabled = false;
       }
     }
