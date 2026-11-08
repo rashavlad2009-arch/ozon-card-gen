@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const apiKey = (process.env.GROQ_API_KEY || '').trim();
 
     if (!apiKey) {
-      return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel' });
+      return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
     }
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: 'Ты арт-директор и эксперт по карточкам Ozon. Верни строго JSON: "title" (заголовок 2-3 слова КАПСОМ), "subtitle" (подзаголовок до 5 слов), "badge" (триггер 1-2 слова, напр. ХИТ ПРОДАЖ), "bullets" (массив из 3-4 преимуществ до 4 слов без галочек), "bg_prompt" (детальный промпт на АНГЛИЙСКОМ для генерации красивого фона студии без товара, напр. "minimalist product podium with soft neon studio lighting, 8k"), "seo" (продающее SEO-описание для Ozon на 400-500 символов).'
+            content: 'Ты топ-маркетолог и арт-директор маркетплейсов Ozon и Wildberries. Верни строго JSON: "title" (цепляющий заголовок 2-3 слова КАПСОМ), "subtitle" (выгода или УТП до 5 слов), "badge" (короткий триггер 1-2 слова КАПСОМ, напр. ХИТ ПРОДАЖ), "bullets" (массив ровно из 3-4 ключевых преимуществ товара, каждое по 2-4 слова без маркеров в начале), "sticker" (короткий текст для круглого стикера 2 слова, напр. "ГАРАНТИЯ 1 ГОД" или "100% ОРИГИНАЛ"), "bg_prompt" (детальный промпт на АНГЛИЙСКОМ языке для нейросети Flux/SDXL, описывающий красивый коммерческий студийный фон и подиум для этого товара без самого товара в кадре, напр. "luxury minimalist podium in modern studio, soft cinematic lighting, depth of field, 8k photorealistic"), "seo" (богатое ключевыми словами продающее SEO-описание для карточки Ozon на 500-700 символов с абзацами).'
           },
           { role: 'user', content: `Товар: ${product}` }
         ],
