@@ -707,39 +707,50 @@
       input.click();
     }
 
-    async function generateWithAI() {
-  const prompt = document.getElementById('aiPrompt').value.trim();
-  if (!prompt) return alert('Опишите товар!');
+   async function generateWithAI() {
+      const prompt = document.getElementById('aiPrompt').value.trim();
+      if (!prompt) return alert('Опишите товар!');
 
-  const btn = document.getElementById('aiBtn');
-  btn.innerText = '⏳ ИИ думает...'; 
-  btn.disabled = true;
+      const btn = document.getElementById('aiBtn');
+      btn.innerText = '⏳ ИИ думает...';
+      btn.disabled = true;
 
-  try {
-    // Запрос идет на ваш защищенный серверный шлюз, а не в открытый API
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product: prompt })
-    });
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product: prompt })
+        });
 
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          throw new Error('Сервер вернул неверный формат ответа. Подождите 15 секунд после обновления Vercel.');
+        }
 
-    if (data.title) document.getElementById('titleText').value = data.title;
-    if (data.subtitle) document.getElementById('subText').value = data.subtitle;
-    if (data.badge) document.getElementById('badgeText').value = data.badge;
-    if (data.bg_prompt) document.getElementById('bgPromptInput').value = data.bg_prompt;
-    
-    if (data.bullets && Array.isArray(data.bullets)) {
-      bulletsData = data.bullets.map(b => ({ text: '✓ ' + b, x: 50, y: 950, w: 550, h: 64 }));
+        if (data.error) throw new Error(data.error);
+
+        if (data.title) document.getElementById('titleText').value = data.title;
+        if (data.subtitle) document.getElementById('subText').value = data.subtitle;
+        if (data.badge) document.getElementById('badgeText').value = data.badge;
+        if (data.bg_prompt) document.getElementById('bgPromptInput').value = data.bg_prompt;
+
+        if (data.bullets && Array.isArray(data.bullets)) {
+          bulletsData = data.bullets.map(b => ({ text: '✓ ' + b, x: 50, y: 950, w: 550, h: 64 }));
+        }
+
+        if (data.seo && document.getElementById('seoBox')) {
+          document.getElementById('seoBox').classList.remove('hidden');
+          document.getElementById('seoResult').value = data.seo;
+        }
+
+        autoArrangeByAI();
+      } catch (e) {
+        alert('Ошибка ИИ: ' + e.message);
+      } finally {
+        btn.innerText = '🤖 Сделать всё через ИИ (Тексты + Промпт + Макет)';
+        btn.disabled = false;
+      }
     }
-
-    autoArrangeByAI();
-  } catch (e) {
-    alert('Ошибка ИИ: ' + e.message);
-  } finally {
-    btn.innerText = '🤖 Сделать всё через ИИ (Тексты + Промпт + Макет)'; 
-    btn.disabled = false;
-  }
-}
