@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>KARD-PRO — AI-студия товарных карточек для Ozon, WB, Яндекс Маркета и Авито</title>
-  <!-- Фирменная векторная иконка (Favicon) в стиле 2026 -->
+  <title>KARD-PRO — AI-студия воронки карточек для Ozon, WB, Яндекс Маркета и Авито</title>
+
+  <!-- Фирменная векторная иконка (Favicon) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='50%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M32 25h12v22l20-22h15L55 50l25 25H65L44 53v22H32V25z' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%236366f1'/%3E%3Cpath d='M32 25h12v22l20-22h15L55 50l25 25H65L44 53v22H32V25z' fill='%23fff'/%3E%3C/svg%3E">
   <meta name="theme-color" content="#06080f">
 
-  <!-- SEO и OpenGraph превью для Telegram, WhatsApp и ВК -->
-  <meta name="description" content="Создавайте продающую инфографику для Ozon, Wildberries, Яндекс Маркета и Авито за 10 секунд с помощью ИИ. Удаление фона, генерация студийных подиумов, УТП и SEO-описаний.">
+  <!-- OpenGraph превью для Telegram, WhatsApp и ВК -->
+  <meta name="description" content="Создавайте воронку слайдов инфографики для Ozon, Wildberries, Яндекс Маркета и Авито за 10 секунд с помощью ИИ. Главный слайд, Характеристики, Комплектация и SEO.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kard-pro.ru/">
   <meta property="og:site_name" content="KARD-PRO AI Studio">
-  <meta property="og:title" content="KARD-PRO — ИИ-генератор продающих карточек для маркетплейсов">
-  <meta property="og:description" content="⚡ Упаковка товара в 1 клик: заголовки, плашки УТП, 3D-подиум, студийный ИИ-фон и готовое SEO-описание. 5 генераций бесплатно!">
+  <meta property="og:title" content="KARD-PRO — ИИ-генератор воронки карточек для маркетплейсов">
+  <meta property="og:description" content="⚡ 3 слайда за 1 клик: Обложка + Характеристики + Комплектация, студийный ИИ-фон и SEO-описание. 5 генераций бесплатно!">
   <meta property="og:image" content="https://kard-pro.ru/api/og">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-
-  <!-- Крупная карточка для Telegram и X/Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="KARD-PRO — ИИ-генератор карточек для Ozon, WB и Авито">
-  <meta name="twitter:description" content="Создайте продающую карточку товара с ИИ-фоном и инфографикой за 10 секунд. 5 генераций бесплатно!">
+  <meta name="twitter:description" content="Соберите воронку из 3 слайдов с ИИ-фоном и инфографикой за 10 секунд. 5 генераций бесплатно!">
   <meta name="twitter:image" content="https://kard-pro.ru/api/og">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@700&family=Rubik:wght@600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
@@ -36,20 +36,18 @@
       background-size: 20px 20px;
     }
     canvas {
-      max-height: 76vh;
+      max-height: 70vh;
       width: auto;
       max-width: 100%;
       box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       cursor: grab;
       touch-action: none;
-      transition: transform 0.15s ease;
     }
     canvas:active { cursor: grabbing; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 99px; }
-    ::-webkit-scrollbar-thumb:hover { background: #334155; }
     input[type="range"] { accent-color: #6366f1; }
   </style>
 </head>
@@ -65,55 +63,49 @@
           ⚡ Мгновенное пополнение KARD-PRO AI
         </div>
         <h2 class="text-2xl font-extrabold text-white tracking-tight">Выберите пакет генераций</h2>
-        <p class="text-xs text-slate-400">Оплата банковской картой РФ или через ЮMoney. Генерации зачисляются автоматически сразу после оплаты!</p>
+        <p class="text-xs text-slate-400">Каждая генерация сразу создает полную воронку из 3 слайдов (Обложка + Характеристики + Комплектация) и SEO-текст!</p>
       </div>
 
-      <!-- Сетка из 3 тарифов -->
       <div class="grid grid-cols-3 gap-3">
-        <!-- Тариф 1: 5 шт за 50 руб -->
         <div id="planCard5" onclick="selectPlan(5, 50)" class="cursor-pointer rounded-2xl p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
           <div>
             <div class="text-[11px] font-semibold text-slate-400">Старт</div>
             <div class="text-xl font-black text-white mt-1">5 шт</div>
-            <div class="text-[10px] text-slate-400">10 ₽ / карточка</div>
+            <div class="text-[10px] text-slate-400">15 слайдов</div>
           </div>
           <div class="mt-4 pt-2 border-t border-white/10 text-lg font-extrabold text-indigo-400">50 ₽</div>
         </div>
 
-        <!-- Тариф 2: 10 шт за 80 руб (ХИТ) -->
         <div id="planCard10" onclick="selectPlan(10, 80)" class="cursor-pointer rounded-2xl p-3.5 border-2 border-indigo-500 bg-indigo-500/10 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10">
-          <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Выгодно -20%</span>
+          <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Хит -20%</span>
           <div>
             <div class="text-[11px] font-semibold text-indigo-300">Селлер</div>
             <div class="text-xl font-black text-white mt-1">10 шт</div>
-            <div class="text-[10px] text-indigo-200/70">8 ₽ / карточка</div>
+            <div class="text-[10px] text-indigo-200/70">30 слайдов</div>
           </div>
           <div class="mt-4 pt-2 border-t border-indigo-500/30 text-lg font-extrabold text-emerald-400">80 ₽</div>
         </div>
 
-        <!-- Тариф 3: 20 шт за 150 руб -->
         <div id="planCard20" onclick="selectPlan(20, 150)" class="cursor-pointer rounded-2xl p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
           <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">PRO -25%</span>
           <div>
             <div class="text-[11px] font-semibold text-slate-400">Магазин</div>
             <div class="text-xl font-black text-white mt-1">20 шт</div>
-            <div class="text-[10px] text-slate-400">7.5 ₽ / карточка</div>
+            <div class="text-[10px] text-slate-400">60 слайдов</div>
           </div>
           <div class="mt-4 pt-2 border-t border-white/10 text-lg font-extrabold text-indigo-400">150 ₽</div>
         </div>
       </div>
 
-      <!-- Кнопка оплаты выбранного пакета -->
       <button id="payLinkBtn" onclick="payWithYooMoney()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/20 transition cursor-pointer">
         💳 Оплатить 80 ₽ и получить +10 генераций
       </button>
 
-      <div id="payWaitBox" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center space-y-2">
+      <div id="payWaitBox" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center space-y-1">
         <p class="text-xs text-amber-300 font-semibold animate-pulse">⏳ Ожидаем подтверждение оплаты от ЮMoney...</p>
-        <p class="text-[11px] text-slate-400">Как только платеж пройдет, генерации начислятся автоматически.</p>
+        <p class="text-[11px] text-slate-400">Генерации зачислятся автоматически сразу после проведения платежа.</p>
       </div>
 
-      <!-- Ввод промокода -->
       <div class="border-t border-white/10 pt-3 flex items-center gap-2">
         <input id="promoCodeInput" type="text" placeholder="Есть промокод? Введите здесь..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs uppercase outline-none focus:border-indigo-500 text-white">
         <button onclick="activatePromoCode()" class="bg-white/10 hover:bg-white/15 text-white font-bold px-4 py-2 rounded-xl text-xs transition shrink-0">Применить</button>
@@ -121,36 +113,37 @@
     </div>
   </div>
 
-  <!-- Верхний Glassmorphism Навбар (Стиль 2026) -->
+  <!-- Верхний Навбар -->
   <header class="h-14 border-b border-white/10 bg-[#0b0f19]/90 backdrop-blur-xl px-4 lg:px-6 flex items-center justify-between sticky top-0 z-30">
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-indigo-500/25">K</div>
       <div>
         <div class="flex items-center gap-2">
           <span id="appTitle" class="font-extrabold text-sm tracking-tight text-white">KARD-PRO</span>
-          <span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">AI Studio 2026</span>
+          <span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">Воронка 3 в 1</span>
         </div>
-        <p class="text-[10px] text-slate-400 hidden sm:block">Генератор инфографики для Ozon • Wildberries • Яндекс Маркет • Авито</p>
+        <p class="text-[10px] text-slate-400 hidden sm:block">Генератор карточек для Ozon • Wildberries • Яндекс Маркет • Авито</p>
       </div>
     </div>
 
-    <!-- Быстрый выбор маркетплейса и формата -->
-    <div class="hidden md:flex items-center gap-2 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
+    <div class="hidden md:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
       <button onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-blue-300 font-semibold transition">🔵 Ozon</button>
       <button onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition">🟣 Wildberries</button>
       <button onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold transition">🟡 Яндекс</button>
       <button onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition">🟢 Авито</button>
     </div>
 
-    <!-- Баланс и Кнопка скачивания -->
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-center gap-2">
       <button onclick="openPayModal()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2 transition">
-        <span class="text-xs font-semibold text-slate-300">⚡ Генераций: <b id="creditsCount" class="text-white">5</b></span>
+        <span class="text-xs font-semibold text-slate-300">⚡ Лимит: <b id="creditsCount" class="text-white">5</b></span>
         <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg">+ Пополнить</span>
       </button>
 
-      <button onclick="downloadCard()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-4 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-1.5">
-        <span>⬇ Скачать PNG</span>
+      <button onclick="downloadCard()" class="bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition hidden sm:flex items-center gap-1">
+        <span>⬇ Текущий</span>
+      </button>
+      <button onclick="downloadAllSlides()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-3.5 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-1.5 cursor-pointer">
+        <span>📦 Скачать все 3 слайда</span>
       </button>
     </div>
   </header>
@@ -158,13 +151,12 @@
   <!-- Основная рабочая область -->
   <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
-    <!-- Левая панель с современными вкладками (Табами) -->
+    <!-- Левая панель инспектора -->
     <aside class="w-full lg:w-[460px] bg-[#0b0f19] border-r border-white/10 flex flex-col lg:h-[calc(100vh-3.5rem)]">
       
-      <!-- Переключатель вкладок (4 раздела вместо длинного скролла) -->
       <div class="grid grid-cols-4 gap-1 p-2 bg-[#070a12] border-b border-white/10 text-[11px] font-bold">
         <button id="tabBtn_ai" onclick="switchTab('ai')" class="py-2 rounded-xl bg-indigo-600 text-white transition flex flex-col items-center gap-0.5">
-          <span>✨ ИИ-Старт</span>
+          <span>✨ ИИ-Воронка</span>
         </button>
         <button id="tabBtn_media" onclick="switchTab('media')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
           <span>📸 Товар/Фон</span>
@@ -173,78 +165,73 @@
           <span>🎨 Дизайн</span>
         </button>
         <button id="tabBtn_text" onclick="switchTab('text')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
-          <span>📝 Текст/УТП</span>
+          <span>📝 Текст слайда</span>
         </button>
       </div>
 
-      <!-- Контент вкладок -->
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
 
-        <!-- ВКЛАДКА 1: ИИ-УПАКОВКА И МАРКЕТПЛЕЙС -->
+        <!-- ВКЛАДКА 1: ИИ-УПАКОВКА ВСЕХ 3 СЛАЙДОВ -->
         <div id="tab_ai" class="space-y-4">
           <div class="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-4 rounded-2xl border border-indigo-500/30 space-y-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-300">✨ 1. ИИ-Генератор карточки</span>
-              <span class="text-[10px] text-slate-400 bg-white/5 px-2 py-0.5 rounded-md">Groq Llama 3.3 + Flux</span>
+              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-300">✨ 1. ИИ-Генератор 3 слайдов</span>
+              <span class="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">3 слайда за 1 клик</span>
             </div>
-            <textarea id="aiPrompt" rows="3" placeholder="Напишите название товара и его фишки (например: Органайзер для косметики вращающийся, 360 градусов, акрил)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition"></textarea>
+            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар и его особенности (например: Автомобильный пылесос беспроводной мощный, 2 насадки в комплекте, фильтр HEPA)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition"></textarea>
             
-            <!-- Быстрые примеры для теста в 1 клик -->
             <div class="flex flex-wrap gap-1.5">
               <span class="text-[10px] text-slate-500 self-center mr-1">Примеры:</span>
-              <button onclick="fillSamplePrompt('Беспроводные наушники с активным шумоподавлением, 40 часов работы, Bluetooth 5.4')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🎧 Наушники</button>
-              <button onclick="fillSamplePrompt('Термокружка автомобильная 500 мл из нержавеющей стали, держит тепло 12 часов')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">☕ Термокружка</button>
-              <button onclick="fillSamplePrompt('Увлажнитель воздуха ультразвуковой с подсветкой и аромадиффузором 3л')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">💧 Увлажнитель</button>
+              <button onclick="fillSamplePrompt('Беспроводные наушники с активным шумоподавлением ANC, 40 часов работы, чехол и кабель Type-C в комплекте')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🎧 Наушники</button>
+              <button onclick="fillSamplePrompt('Термокружка автомобильная 500 мл из нержавеющей стали, держит тепло 12 часов, ситечко и подарочная коробка')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">☕ Термокружка</button>
+              <button onclick="fillSamplePrompt('Увлажнитель воздуха ультразвуковой 3л с верхней заливкой, аромакапсулой и ночной подсветкой')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">💧 Увлажнитель</button>
             </div>
 
             <button id="aiBtn" onclick="generateWithAI()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
-              <span>🤖 Создать продающую карточку через ИИ</span>
+              <span>🤖 Сгенерировать воронку из 3 слайдов + SEO</span>
             </button>
           </div>
 
-          <!-- Выбор площадки и пропорций -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3">
-            <label class="block text-xs font-bold text-slate-300">📐 Формат под любой маркетплейс</label>
+            <label class="block text-xs font-bold text-slate-300">📐 Формат и пропорции холста</label>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <select id="canvasFormat" onchange="changeCanvasFormat()" class="bg-[#070a12] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold outline-none">
                 <option value="ozon">Ozon / WB (900×1200 • 3:4)</option>
                 <option value="square">Яндекс / Авито / Kaspi (1000×1000 • 1:1)</option>
                 <option value="avito_h">Авито Горизонт (1200×900 • 4:3)</option>
-                <option value="story">Reels / Stories / Видеообложка (1080×1920)</option>
+                <option value="story">Reels / Stories (1080×1920 • 9:16)</option>
               </select>
-              <button onclick="autoArrangeByAI()" class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2 font-bold text-indigo-300 transition">
-                🪄 Авто-композиция
+              <button onclick="autoArrangeCurrentSlide()" class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2 font-bold text-indigo-300 transition">
+                🪄 Выровнять слайд
               </button>
             </div>
             <div class="flex items-center justify-between pt-1">
               <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300 font-medium">
                 <input id="safeZoneToggle" type="checkbox" onchange="drawCard()" class="accent-amber-400 rounded">
-                🛡️ Показать слепые зоны скидок МП
+                🛡️ Слепые зоны скидок МП
               </label>
               <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
                 <input id="snapGridToggle" type="checkbox" checked class="accent-indigo-500 rounded">
-                🧲 Умное прилипание
+                🧲 Прилипание к сетке
               </label>
             </div>
           </div>
 
-          <!-- Готовое SEO описание -->
           <div id="seoBox" class="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 space-y-2">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-emerald-400">📋 SEO-описание для карточки товара</span>
+              <span class="text-xs font-bold text-emerald-400">📋 Готовое SEO-описание карточки</span>
               <button onclick="copySeoText()" class="text-[11px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg font-bold transition">Скопировать</button>
             </div>
-            <textarea id="seoResult" rows="4" placeholder="Здесь появится готовое SEO-описание после нажатия на кнопку ИИ..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none"></textarea>
+            <textarea id="seoResult" rows="4" placeholder="Здесь появится продающее SEO-описание после нажатия на кнопку ИИ..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none"></textarea>
           </div>
         </div>
 
-        <!-- ВКЛАДКА 2: ФОТО ТОВАРА И ГЕНЕРАТОР ИИ-ФОНА -->
+        <!-- ВКЛАДКА 2: ФОТО ТОВАРА И ИИ-ФОН -->
         <div id="tab_media" class="hidden space-y-4">
-          <!-- Загрузка товара и ИИ-вырезка фона -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-blue-300">📦 1. Фотография вашего товара</span>
-              <span class="text-[10px] text-slate-400">Двигайте мышкой по холсту</span>
+              <span class="text-[10px] text-slate-400">Отображается на всех слайдах</span>
             </div>
             <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
             
@@ -263,22 +250,21 @@
                 <input id="imgScale" type="range" min="15" max="220" value="85" class="w-full" oninput="drawCard()">
               </div>
               <div>
-                <div class="flex justify-between text-[11px] text-slate-400 mb-1"><span>Наклон / Поворот (°)</span></div>
+                <div class="flex justify-between text-[11px] text-slate-400 mb-1"><span>Поворот (°)</span></div>
                 <input id="imgRotate" type="range" min="-45" max="45" value="0" class="w-full" oninput="drawCard()">
               </div>
             </div>
 
             <div class="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
               <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
-                <input id="showPodium" type="checkbox" checked onchange="drawCard()"> 🛸 3D-подиум под товаром
+                <input id="showPodium" type="checkbox" checked onchange="drawCard()"> 🛸 3D-подиум
               </label>
               <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
-                <input id="showReflection" type="checkbox" onchange="drawCard()"> 🪞 Зеркальное отражение
+                <input id="showReflection" type="checkbox" onchange="drawCard()"> 🪞 Отражение
               </label>
             </div>
           </div>
 
-          <!-- ИИ Генератор студийного фона -->
           <div class="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/25 space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-emerald-400">🌄 2. ИИ-Генератор студийного фона</span>
@@ -287,7 +273,7 @@
 
             <div id="comfySettingsBox" class="hidden bg-[#070a12] p-3 rounded-xl border border-white/10 space-y-2 text-xs">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400 text-[11px]">Движок рендера:</span>
+                <span class="text-slate-400 text-[11px]">Движок:</span>
                 <select id="bgEngineMode" class="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-emerald-300">
                   <option value="cloud">☁️ Облачный Flux (24/7 на телефонах и ПК)</option>
                   <option value="comfy">🖥️ Локальный ComfyUI (Домашний ПК)</option>
@@ -296,7 +282,6 @@
               <input id="comfyUrl" type="text" placeholder="Адрес ComfyUI (http://127.0.0.1:8188)" oninput="saveComfyUrl()" class="w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-emerald-300 outline-none">
             </div>
 
-            <!-- Готовые пресеты локаций для фона -->
             <div class="flex flex-wrap gap-1.5">
               <button onclick="setBgPreset('Luxury dark marble podium with warm golden bokeh lights, studio product lighting, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">✨ Мрамор и золото</button>
               <button onclick="setBgPreset('Minimalist wooden podium surrounded by green tropical leaves and morning sunlight, eco style, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">🌿 Эко-дерево</button>
@@ -304,7 +289,7 @@
               <button onclick="setBgPreset('Clean white Apple style studio podium with soft natural window shadows, minimalist, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">🤍 Светлый минимализм</button>
             </div>
 
-            <textarea id="bgPromptInput" rows="2" placeholder="Описание фона (генерируется автоматически или выберите пресет выше)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500"></textarea>
+            <textarea id="bgPromptInput" rows="2" placeholder="Описание фона..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500"></textarea>
 
             <div class="grid grid-cols-3 gap-2">
               <button id="comfyGenBtn" onclick="generateAIBackground()" class="col-span-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold py-2.5 px-3 rounded-xl transition shadow-lg shadow-emerald-500/20 cursor-pointer">
@@ -317,10 +302,9 @@
             <p id="bgStatus" class="text-[11px] text-amber-300 hidden"></p>
           </div>
 
-          <!-- Логотип бренда -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2.5 text-xs">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-purple-300">🛡️ 3. Логотип бренда / Водяной знак</span>
+              <span class="font-bold text-purple-300">🛡️ 3. Логотип бренда</span>
               <button onclick="removeLogo()" class="text-[11px] text-rose-400 hover:underline">Удалить лого</button>
             </div>
             <input id="logoUpload" type="file" accept="image/*" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
@@ -344,8 +328,8 @@
                 <select id="themeSelect" onchange="applyThemePreset()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-2.5 py-2 text-xs outline-none">
                   <option value="ozon">🔵 Ozon (Синий неон)</option>
                   <option value="wb">🟣 Wildberries (Фуксия)</option>
-                  <option value="ym">🟡 Яндекс Маркет (Желтый/Черный)</option>
-                  <option value="avito">🟢 Авито (Изумруд/Синий)</option>
+                  <option value="ym">🟡 Яндекс Маркет (Желтый)</option>
+                  <option value="avito">🟢 Авито (Изумруд)</option>
                   <option value="dark">👑 Dark Luxury (Золото)</option>
                   <option value="sunset">🔥 Hot Sale (Рубин)</option>
                   <option value="minimal">🤍 Clean Light (Светлый)</option>
@@ -394,10 +378,9 @@
             </div>
           </div>
 
-          <!-- Круглая печать / стикер И Плашка старой/новой цены -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-amber-400">🏷️ Круглый стикер-триггер</span>
+              <span class="font-bold text-amber-400">🏷️ Круглый стикер текущего слайда</span>
               <label class="flex items-center gap-1.5 cursor-pointer">
                 <input id="showSticker" type="checkbox" checked onchange="drawCard()"> Показать
               </label>
@@ -406,18 +389,17 @@
               <button onclick="setStickerPreset('ГАРАНТИЯ 1 ГОД')" class="bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-[10px] border border-white/10">🛡️ Гарантия 1 год</button>
               <button onclick="setStickerPreset('100% ОРИГИНАЛ')" class="bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-[10px] border border-white/10">💎 100% Оригинал</button>
               <button onclick="setStickerPreset('ПОДАРОК ВНУТРИ')" class="bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-[10px] border border-white/10">🎁 Подарок внутри</button>
-              <button onclick="setStickerPreset('СДЕЛАНО В РФ')" class="bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-[10px] border border-white/10">🇷🇺 Сделано в РФ</button>
+              <button onclick="setStickerPreset('ПРОВЕРЕНО ОТК')" class="bg-white/5 hover:bg-white/10 px-2 py-1 rounded-lg text-[10px] border border-white/10">✅ Проверено ОТК</button>
             </div>
             <div class="grid grid-cols-4 gap-2">
-              <input id="stickerText" type="text" value="ГАРАНТИЯ 1 ГОД" oninput="drawCard()" class="col-span-3 bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs">
+              <input id="stickerText" type="text" value="ГАРАНТИЯ 1 ГОД" oninput="syncCurrentSlideFromUI(); drawCard()" class="col-span-3 bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs">
               <input id="stickerColor" type="color" value="#f59e0b" oninput="drawCard()" class="w-full h-8 rounded-lg bg-transparent cursor-pointer">
             </div>
           </div>
 
-          <!-- Виджет Рейтинга 5.0 ★ (Хит для CTR) -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-yellow-300">⭐ Плашка «Выбор покупателей 5.0 ★»</span>
+              <span class="font-bold text-yellow-300">⭐ Плашка «Выбор покупателей 4.9 ★»</span>
               <label class="flex items-center gap-1.5 cursor-pointer">
                 <input id="showRating" type="checkbox" checked onchange="drawCard()"> Показать
               </label>
@@ -426,23 +408,23 @@
           </div>
         </div>
 
-        <!-- ВКЛАДКА 4: ТЕКСТЫ, ШРИФТЫ И ПЛАШКИ УТП -->
+        <!-- ВКЛАДКА 4: ТЕКСТЫ АКТИВНОГО СЛАЙДА -->
         <div id="tab_text" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-slate-200">🔤 Заголовки и Шрифт</span>
+              <span id="activeSlideLabel" class="font-bold text-indigo-300">🔤 Слайд 1: Главная обложка</span>
               <select id="fontFamilySelect" onchange="drawCard()" class="bg-[#070a12] border border-white/10 rounded-xl px-2.5 py-1 text-[11px] text-indigo-300 font-semibold">
-                <option value="Montserrat">Montserrat (Универсальный)</option>
+                <option value="Montserrat">Montserrat</option>
                 <option value="Unbounded">Unbounded (Тренд 2026)</option>
-                <option value="Rubik">Rubik (Мягкий)</option>
-                <option value="Oswald">Oswald (Крупный узкий)</option>
+                <option value="Rubik">Rubik</option>
+                <option value="Oswald">Oswald</option>
               </select>
             </div>
 
             <div class="grid grid-cols-3 gap-2">
               <div class="col-span-2">
-                <span class="text-[11px] text-slate-400">Верхний бейдж-триггер</span>
-                <input id="badgeText" type="text" value="ХИТ ПРОДАЖ" oninput="drawCard()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs mt-0.5">
+                <span class="text-[11px] text-slate-400">Верхний бейдж слайда</span>
+                <input id="badgeText" type="text" value="ХИТ ПРОДАЖ" oninput="syncCurrentSlideFromUI(); drawCard()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs mt-0.5">
               </div>
               <div>
                 <span class="text-[11px] text-slate-400">Цвет бейджа</span>
@@ -452,32 +434,31 @@
 
             <div>
               <div class="flex justify-between text-[11px] text-slate-400">
-                <span>Главный заголовок</span>
+                <span>Заголовок слайда</span>
                 <span>Размер шрифта</span>
               </div>
               <div class="grid grid-cols-3 gap-2 mt-0.5 items-center">
-                <input id="titleText" type="text" value="БЕСПРОВОДНЫЕ НАУШНИКИ" oninput="drawCard()" class="col-span-2 bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold">
+                <input id="titleText" type="text" value="БЕСПРОВОДНЫЕ НАУШНИКИ" oninput="syncCurrentSlideFromUI(); drawCard()" class="col-span-2 bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold">
                 <input id="titleSize" type="range" min="26" max="76" value="44" oninput="drawCard()" class="w-full">
               </div>
             </div>
 
             <div>
-              <span class="text-[11px] text-slate-400">Подзаголовок (УТП)</span>
-              <input id="subText" type="text" value="Чистый звук • Активное шумоподавление" oninput="drawCard()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs mt-0.5">
+              <span class="text-[11px] text-slate-400">Подзаголовок слайда</span>
+              <input id="subText" type="text" value="Чистый звук • Активное шумоподавление" oninput="syncCurrentSlideFromUI(); drawCard()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs mt-0.5">
             </div>
           </div>
 
-          <!-- Список плашек с индивидуальными размерами -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-1">
-                <span class="text-slate-400 mr-1">Иконки:</span>
+                <span class="text-slate-400 mr-1">Маркеры:</span>
                 <button onclick="replaceBulletIcons('✓')" class="bg-white/5 hover:bg-white/15 px-2 py-0.5 rounded">✓</button>
                 <button onclick="replaceBulletIcons('🔥')" class="bg-white/5 hover:bg-white/15 px-2 py-0.5 rounded">🔥</button>
                 <button onclick="replaceBulletIcons('⚡')" class="bg-white/5 hover:bg-white/15 px-2 py-0.5 rounded">⚡</button>
                 <button onclick="replaceBulletIcons('💎')" class="bg-white/5 hover:bg-white/15 px-2 py-0.5 rounded">💎</button>
               </div>
-              <button onclick="addBullet()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold">+ Добавить</button>
+              <button onclick="addBullet()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold">+ Добавить пункт</button>
             </div>
             <div id="bulletsContainer" class="space-y-2"></div>
           </div>
@@ -485,18 +466,41 @@
 
       </div>
 
-      <!-- Нижний бар сохранения шаблона -->
+      <!-- Нижний бар сохранения всего проекта -->
       <div class="p-3 border-t border-white/10 bg-[#070a12] grid grid-cols-2 gap-2 text-xs">
-        <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить проект</button>
-        <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">📂 Открыть проект</button>
+        <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить воронку</button>
+        <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">📂 Загрузить воронку</button>
       </div>
     </aside>
 
-    <!-- Правая часть: Холст с подсказками -->
-    <main class="flex-1 canvas-bg flex flex-col items-center justify-center p-4 lg:p-6 relative">
-      <canvas id="cardCanvas" width="900" height="1200"></canvas>
-      <div class="mt-3 flex items-center gap-4 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md">
-        <span>🖐️ <b>Совет:</b> Зажмите любой текст, плашку, стикер или товар прямо на картинке, чтобы передвинуть</span>
+    <!-- Правая часть: Переключатель 3 слайдов карусели + Холст -->
+    <main class="flex-1 canvas-bg flex flex-col items-center justify-between p-3 lg:p-5 relative">
+      
+      <!-- Панель переключения слайдов воронки (Слайд 1, Слайд 2, Слайд 3) -->
+      <div class="flex flex-wrap items-center justify-center gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10">
+        <button id="slideTab_0" onclick="switchSlide(0)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer">
+          <span>1. Главная обложка (УТП)</span>
+        </button>
+        <button id="slideTab_1" onclick="switchSlide(1)" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+          <span>2. Характеристики</span>
+        </button>
+        <button id="slideTab_2" onclick="switchSlide(2)" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+          <span>3. Комплектация</span>
+        </button>
+      </div>
+
+      <!-- Холст карточки -->
+      <div class="my-auto flex items-center justify-center py-2">
+        <canvas id="cardCanvas" width="900" height="1200"></canvas>
+      </div>
+
+      <!-- Нижняя подсказка и быстрые кнопки выгрузки -->
+      <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md">
+        <span>🖐️ Перетаскивайте любые элементы прямо на карточке</span>
+        <span class="text-white/20">•</span>
+        <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">Скачать этот слайд</button>
+        <span class="text-white/20">•</span>
+        <button onclick="downloadAllSlides()" class="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer">Скачать все 3 слайда сразу</button>
       </div>
     </main>
 
@@ -534,7 +538,7 @@
     function getCredits() {
       let c = localStorage.getItem('kardpro_credits');
       if (c === null) {
-        c = 5; // 5 бесплатных генераций каждому новому пользователю
+        c = 5;
         localStorage.setItem('kardpro_credits', c);
       }
       return parseInt(c, 10);
@@ -562,14 +566,13 @@
       const payUrl = new URL('https://yoomoney.ru/quickpay/confirm.xml');
       payUrl.searchParams.append('receiver', YOOMONEY_RECEIVER);
       payUrl.searchParams.append('quickpay-form', 'button');
-      payUrl.searchParams.append('paymentType', 'AC'); // Банковская карта РФ / ЮMoney
+      payUrl.searchParams.append('paymentType', 'AC');
       payUrl.searchParams.append('sum', price.toFixed(2));
       payUrl.searchParams.append('label', orderId);
       payUrl.searchParams.append('targets', `Пакет +${credits} ИИ-генераций на KARD-PRO.RU`);
       payUrl.searchParams.append('successURL', `${window.location.origin}/?paid_order=${orderId}&add_credits=${credits}`);
 
       window.open(payUrl.toString(), '_blank');
-
       document.getElementById('payWaitBox').classList.remove('hidden');
 
       if (pollInterval) clearInterval(pollInterval);
@@ -600,7 +603,6 @@
       alert(`🎉 Оплата прошла успешно! Начислено +${addCount} ИИ-генераций.`);
     }
 
-    // Проверка возврата клиента по successURL после оплаты
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
@@ -635,7 +637,6 @@
 
     setCredits(getCredits());
 
-    // Инициализация Telegram Mini App
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
@@ -645,7 +646,6 @@
       }
     }
 
-    // Переключение табов
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text'].forEach(id => {
         document.getElementById('tab_' + id).classList.toggle('hidden', id !== tabId);
@@ -667,7 +667,7 @@
     }
 
     // =========================================================================
-    // ХОЛСТ И ГРАФИЧЕСКИЙ ДВИЖОК
+    // СИСТЕМА КАРУСЕЛИ ИЗ 3 СЛАЙДОВ (1. Обложка, 2. Характеристики, 3. Комплектация)
     // =========================================================================
     const canvas = document.getElementById('cardCanvas');
     const ctx = canvas.getContext('2d');
@@ -676,20 +676,110 @@
     let customBgImg = null;
     let currentFileBlob = null;
 
-    let positions = {
-      product: { x: 450, y: 580 },
-      logo: { x: 760, y: 110 },
-      sticker: { x: 745, y: 770 },
-      rating: { x: 50, y: 840 },
-      badge: { x: 50, y: 45 },
-      title: { x: 50, y: 155 }
-    };
-
-    let bulletsData = [
-      { text: "✓ До 40 часов без подзарядки", x: 50, y: 920, w: 560, h: 64 },
-      { text: "✓ Активное шумоподавление ANC", x: 50, y: 1000, w: 560, h: 64 },
-      { text: "✓ Официальная гарантия 1 год", x: 50, y: 1080, w: 540, h: 64 }
+    let currentSlideIndex = 0;
+    const SLIDE_NAMES = [
+      '🔤 Слайд 1: Главная обложка (УТП)',
+      '📐 Слайд 2: Характеристики и габариты',
+      '📦 Слайд 3: Комплектация набора'
     ];
+
+    let slidesState = [
+      {
+        title: "БЕСПРОВОДНЫЕ НАУШНИКИ",
+        subtitle: "Чистый звук • Активное шумоподавление",
+        badge: "ХИТ ПРОДАЖ",
+        sticker: "ГАРАНТИЯ 1 ГОД",
+        positions: {
+          product: { x: 450, y: 580 },
+          logo: { x: 760, y: 110 },
+          sticker: { x: 745, y: 770 },
+          rating: { x: 50, y: 840 },
+          badge: { x: 50, y: 45 },
+          title: { x: 50, y: 155 }
+        },
+        bullets: [
+          { text: "✓ До 40 часов без подзарядки", x: 50, y: 920, w: 560, h: 64 },
+          { text: "✓ Активное шумоподавление ANC", x: 50, y: 1000, w: 560, h: 64 },
+          { text: "✓ Официальная гарантия 1 год", x: 50, y: 1080, w: 540, h: 64 }
+        ]
+      },
+      {
+        title: "ХАРАКТЕРИСТИКИ",
+        subtitle: "Передовые технологии и надежность",
+        badge: "ПАРАМЕТРЫ",
+        sticker: "100% ОРИГИНАЛ",
+        positions: {
+          product: { x: 450, y: 560 },
+          logo: { x: 760, y: 110 },
+          sticker: { x: 745, y: 750 },
+          rating: { x: 50, y: 760 },
+          badge: { x: 50, y: 45 },
+          title: { x: 50, y: 155 }
+        },
+        bullets: [
+          { text: "⚡ Версия Bluetooth: 5.4 (без задержек)", x: 50, y: 840, w: 620, h: 62 },
+          { text: "⚡ Емкость аккумулятора: 600 мАч", x: 50, y: 918, w: 580, h: 62 },
+          { text: "⚡ Защита от влаги и пота: IPX5", x: 50, y: 996, w: 560, h: 62 },
+          { text: "⚡ Вес наушников: всего 4.2 г", x: 50, y: 1074, w: 540, h: 62 }
+        ]
+      },
+      {
+        title: "КОМПЛЕКТАЦИЯ",
+        subtitle: "Всё необходимое уже в коробке",
+        badge: "ЧТО В НАБОРЕ",
+        sticker: "ПОДАРОК ВНУТРИ",
+        positions: {
+          product: { x: 450, y: 560 },
+          logo: { x: 760, y: 110 },
+          sticker: { x: 745, y: 750 },
+          rating: { x: 50, y: 760 },
+          badge: { x: 50, y: 45 },
+          title: { x: 50, y: 155 }
+        },
+        bullets: [
+          { text: "💎 1. Наушники и зарядный кейс", x: 50, y: 840, w: 580, h: 62 },
+          { text: "💎 2. Кабель быстрой зарядки Type-C", x: 50, y: 918, w: 600, h: 62 },
+          { text: "💎 3. Набор сменных амбушюр (S/M/L)", x: 50, y: 996, w: 620, h: 62 },
+          { text: "💎 4. Инструкция на русском языке", x: 50, y: 1074, w: 580, h: 62 }
+        ]
+      }
+    ];
+
+    function getActiveSlide() {
+      return slidesState[currentSlideIndex];
+    }
+
+    function syncUIFromCurrentSlide() {
+      const s = getActiveSlide();
+      document.getElementById('titleText').value = s.title;
+      document.getElementById('subText').value = s.subtitle;
+      document.getElementById('badgeText').value = s.badge;
+      document.getElementById('stickerText').value = s.sticker;
+      document.getElementById('activeSlideLabel').innerText = SLIDE_NAMES[currentSlideIndex];
+      renderBulletsInputs();
+    }
+
+    function syncCurrentSlideFromUI() {
+      const s = getActiveSlide();
+      s.title = document.getElementById('titleText').value;
+      s.subtitle = document.getElementById('subText').value;
+      s.badge = document.getElementById('badgeText').value;
+      s.sticker = document.getElementById('stickerText').value;
+    }
+
+    function switchSlide(idx) {
+      syncCurrentSlideFromUI();
+      currentSlideIndex = idx;
+      [0, 1, 2].forEach(i => {
+        const btn = document.getElementById('slideTab_' + i);
+        if (i === idx) {
+          btn.className = 'px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-500/25';
+        } else {
+          btn.className = 'px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer';
+        }
+      });
+      syncUIFromCurrentSlide();
+    }
 
     let draggingItem = null;
     let dragIndex = null;
@@ -715,10 +805,12 @@
     function setStickerPreset(txt) {
       document.getElementById('showSticker').checked = true;
       document.getElementById('stickerText').value = txt;
+      syncCurrentSlideFromUI();
       drawCard();
     }
     function replaceBulletIcons(icon) {
-      bulletsData.forEach(b => {
+      const s = getActiveSlide();
+      s.bullets.forEach(b => {
         b.text = b.text.replace(/^([✓🔥⚡💎★•]\s*)?/, icon + ' ');
       });
       renderBulletsInputs();
@@ -764,36 +856,45 @@
       else if (val === 'square') { canvas.width = 1000; canvas.height = 1000; }
       else if (val === 'avito_h') { canvas.width = 1200; canvas.height = 900; }
       else if (val === 'story') { canvas.width = 1080; canvas.height = 1920; }
-      autoArrangeByAI();
+      autoArrangeAllSlides();
     }
 
-    function autoArrangeByAI() {
+    function autoArrangeSlideObj(slideObj) {
       const cw = canvas.width;
       const ch = canvas.height;
       const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
 
-      positions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
-      positions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
-      positions.product = { x: Math.round(cw * 0.52), y: Math.round(ch * 0.50) };
-      positions.logo = { x: Math.round(cw * 0.85), y: Math.round(ch * 0.09) };
-      positions.sticker = { x: Math.round(cw * 0.82), y: Math.round(ch * 0.65) };
+      slideObj.positions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
+      slideObj.positions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
+      slideObj.positions.product = { x: Math.round(cw * 0.52), y: Math.round(ch * 0.50) };
+      slideObj.positions.logo = { x: Math.round(cw * 0.85), y: Math.round(ch * 0.09) };
+      slideObj.positions.sticker = { x: Math.round(cw * 0.82), y: Math.round(ch * 0.65) };
 
       const pH = Math.round(Math.max(54, ch * 0.052));
       const gap = Math.round(ch * 0.013);
-      const totalH = bulletsData.length * (pH + gap);
+      const totalH = slideObj.bullets.length * (pH + gap);
       let startY = ch - totalH - Math.round(ch * 0.04);
 
-      positions.rating = { x: Math.round(cw * 0.06), y: startY - 58 };
+      slideObj.positions.rating = { x: Math.round(cw * 0.06), y: startY - 58 };
 
       ctx.font = `700 24px ${fontName}, sans-serif`;
-      bulletsData.forEach((b, idx) => {
+      slideObj.bullets.forEach((b, idx) => {
         const textW = ctx.measureText(b.text).width;
         b.w = Math.min(Math.max(Math.round(textW + 76), 340), cw - 100);
         b.h = pH;
         b.x = Math.round(cw * 0.06);
         b.y = startY + idx * (pH + gap);
       });
+    }
+
+    function autoArrangeCurrentSlide() {
+      autoArrangeSlideObj(getActiveSlide());
       renderBulletsInputs();
+    }
+
+    function autoArrangeAllSlides() {
+      slidesState.forEach(s => autoArrangeSlideObj(s));
+      syncUIFromCurrentSlide();
     }
 
     async function generateWithAI() {
@@ -807,7 +908,7 @@
       if (!prompt) return alert('Опишите ваш товар в текстовом поле!');
 
       const btn = document.getElementById('aiBtn');
-      btn.innerText = '⏳ ИИ анализирует товар и создает макет...';
+      btn.innerText = '⏳ ИИ строит воронку из 3 слайдов...';
       btn.disabled = true;
 
       try {
@@ -829,25 +930,40 @@
 
         setCredits(credits - 1);
 
-        if (data.title) document.getElementById('titleText').value = data.title;
-        if (data.subtitle) document.getElementById('subText').value = data.subtitle;
-        if (data.badge) document.getElementById('badgeText').value = data.badge;
-        if (data.sticker) document.getElementById('stickerText').value = data.sticker;
+        if (data.slides && Array.isArray(data.slides)) {
+          const icons = ['✓ ', '⚡ ', '💎 '];
+          data.slides.slice(0, 3).forEach((sl, idx) => {
+            if (!slidesState[idx]) return;
+            slidesState[idx].title = sl.title || slidesState[idx].title;
+            slidesState[idx].subtitle = sl.subtitle || slidesState[idx].subtitle;
+            slidesState[idx].badge = sl.badge || slidesState[idx].badge;
+            slidesState[idx].sticker = sl.sticker || slidesState[idx].sticker;
+            if (Array.isArray(sl.bullets) && sl.bullets.length > 0) {
+              slidesState[idx].bullets = sl.bullets.map(b => ({
+                text: icons[idx] + b.replace(/^([✓🔥⚡💎★•]\s*)/, ''),
+                x: 50, y: 950, w: 560, h: 62
+              }));
+            }
+          });
+        } else if (data.title) {
+          // Поддержка ответа для одиночного слайда
+          slidesState[0].title = data.title;
+          slidesState[0].subtitle = data.subtitle || '';
+          slidesState[0].badge = data.badge || 'ХИТ ПРОДАЖ';
+          if (Array.isArray(data.bullets)) {
+            slidesState[0].bullets = data.bullets.map(b => ({ text: '✓ ' + b, x: 50, y: 950, w: 560, h: 62 }));
+          }
+        }
+
         if (data.bg_prompt) document.getElementById('bgPromptInput').value = data.bg_prompt;
+        if (data.seo) document.getElementById('seoResult').value = data.seo;
 
-        if (data.bullets && Array.isArray(data.bullets)) {
-          bulletsData = data.bullets.map(b => ({ text: '✓ ' + b, x: 50, y: 950, w: 550, h: 64 }));
-        }
-
-        if (data.seo) {
-          document.getElementById('seoResult').value = data.seo;
-        }
-
-        autoArrangeByAI();
+        autoArrangeAllSlides();
+        switchSlide(0);
       } catch (e) {
         alert('Ошибка ИИ: ' + e.message);
       } finally {
-        btn.innerText = '🤖 Создать продающую карточку через ИИ';
+        btn.innerText = '🤖 Сгенерировать воронку из 3 слайдов + SEO';
         btn.disabled = false;
       }
     }
@@ -872,7 +988,7 @@
           bgImg.onload = () => {
             customBgImg = bgImg;
             drawCard();
-            status.innerText = '✅ Студийный ИИ-фон установлен!';
+            status.innerText = '✅ Студийный ИИ-фон установлен на все слайды!';
             btn.disabled = false;
           };
           bgImg.onerror = () => {
@@ -955,6 +1071,7 @@
     function renderBulletsInputs() {
       const container = document.getElementById('bulletsContainer');
       container.innerHTML = '';
+      const bulletsData = getActiveSlide().bullets;
       bulletsData.forEach((item, idx) => {
         const div = document.createElement('div');
         div.className = 'bg-[#070a12] border border-white/10 p-2.5 rounded-xl space-y-2 text-xs';
@@ -976,19 +1093,21 @@
     function addBullet() {
       const cw = canvas.width;
       const ch = canvas.height;
+      const bulletsData = getActiveSlide().bullets;
       const lastY = bulletsData.length > 0 ? bulletsData[bulletsData.length - 1].y + 74 : ch - 200;
-      bulletsData.push({ text: "✓ Новое преимущество", x: Math.round(cw * 0.06), y: lastY, w: 520, h: 64 });
+      bulletsData.push({ text: "✓ Новый пункт", x: Math.round(cw * 0.06), y: lastY, w: 520, h: 64 });
       renderBulletsInputs();
     }
 
     function removeBullet(idx) {
+      const bulletsData = getActiveSlide().bullets;
       if (bulletsData.length <= 1) return alert('Оставьте хотя бы одну плашку!');
       bulletsData.splice(idx, 1);
       renderBulletsInputs();
     }
 
-    function updateBulletText(idx, val) { bulletsData[idx].text = val; drawCard(); }
-    function updateBulletSize(idx, prop, val) { bulletsData[idx][prop] = parseInt(val); drawCard(); }
+    function updateBulletText(idx, val) { getActiveSlide().bullets[idx].text = val; drawCard(); }
+    function updateBulletSize(idx, prop, val) { getActiveSlide().bullets[idx][prop] = parseInt(val); drawCard(); }
 
     function applyThemePreset() {
       const key = document.getElementById('themeSelect').value;
@@ -1039,6 +1158,9 @@
 
     function handleStart(e) {
       const { x: mouseX, y: mouseY } = getPointerPos(e);
+      const s = getActiveSlide();
+      const positions = s.positions;
+      const bulletsData = s.bullets;
 
       if (document.getElementById('showSticker').checked) {
         if (Math.hypot(mouseX - positions.sticker.x, mouseY - positions.sticker.y) <= 85) {
@@ -1049,7 +1171,7 @@
         }
       }
 
-      if (document.getElementById('showRating').checked) {
+      if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
         if (mouseX >= positions.rating.x && mouseX <= positions.rating.x + 340 && mouseY >= positions.rating.y && mouseY <= positions.rating.y + 44) {
           draggingItem = 'rating';
           dragOffsetX = mouseX - positions.rating.x;
@@ -1104,7 +1226,10 @@
       let nextX = mouseX - dragOffsetX;
       let nextY = mouseY - dragOffsetY;
 
-      // Умное прилипание к центру и направляющим
+      const s = getActiveSlide();
+      const positions = s.positions;
+      const bulletsData = s.bullets;
+
       if (document.getElementById('snapGridToggle').checked) {
         const cw = canvas.width;
         const marginLeft = Math.round(cw * 0.06);
@@ -1189,6 +1314,10 @@
     }
 
     function drawCard() {
+      const s = getActiveSlide();
+      const positions = s.positions;
+      const bulletsData = s.bullets;
+
       const cw = canvas.width; const ch = canvas.height;
       const bg1 = document.getElementById('customBg1').value;
       const bg2 = document.getElementById('customBg2').value;
@@ -1200,9 +1329,9 @@
       const titleFontSize = parseInt(document.getElementById('titleSize').value) || 44;
       const dimmer = parseInt(document.getElementById('bgDimmer').value) || 0;
       
-      const title = document.getElementById('titleText').value.toUpperCase();
-      const sub = document.getElementById('subText').value;
-      const badge = document.getElementById('badgeText').value.toUpperCase();
+      const title = (s.title || '').toUpperCase();
+      const sub = s.subtitle || '';
+      const badge = (s.badge || '').toUpperCase();
 
       // 1. Фон
       if (customBgImg) {
@@ -1244,7 +1373,7 @@
         ctx.restore();
       }
 
-      // 3. Товар + Опция зеркального отражения
+      // 3. Товар
       if (productImg) {
         const scale = document.getElementById('imgScale').value / 100;
         const rot = (parseInt(document.getElementById('imgRotate').value) || 0) * Math.PI / 180;
@@ -1325,8 +1454,8 @@
         ctx.fillText(sub, positions.title.x, subY + 10);
       }
 
-      // 7. Плашка Рейтинга 4.9 ★
-      if (document.getElementById('showRating').checked) {
+      // 7. Плашка Рейтинга (показывается на Главном слайде)
+      if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
         const rTxt = document.getElementById('ratingText').value;
         ctx.font = `800 20px ${fontName}, sans-serif`;
         const rw = ctx.measureText(rTxt).width + 38;
@@ -1340,7 +1469,7 @@
         ctx.restore();
       }
 
-      // 8. Плашки преимуществ
+      // 8. Плашки преимуществ / характеристик / комплектации
       bulletsData.forEach((bp) => {
         ctx.font = `700 24px ${fontName}, sans-serif`;
         ctx.save();
@@ -1377,7 +1506,7 @@
 
       // 9. Круглый стикер
       if (document.getElementById('showSticker').checked) {
-        const sTxt = document.getElementById('stickerText').value.toUpperCase();
+        const sTxt = (s.sticker || '').toUpperCase();
         const sCol = document.getElementById('stickerColor').value;
         const sx = positions.sticker.x;
         const sy = positions.sticker.y;
@@ -1438,7 +1567,7 @@
         drawCard();
       }
       const link = document.createElement('a');
-      link.download = 'kard-pro-card.png';
+      link.download = `kard-pro-slide-${currentSlideIndex + 1}.png`;
       link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
       if (wasSafeZone) {
@@ -1447,17 +1576,36 @@
       }
     }
 
+    // Пакетная выгрузка сразу всех 3 слайдов воронки в 1 клик
+    async function downloadAllSlides() {
+      const prevSlide = currentSlideIndex;
+      const wasSafeZone = document.getElementById('safeZoneToggle').checked;
+      document.getElementById('safeZoneToggle').checked = false;
+
+      const fileLabels = ['1-main-utp', '2-specs', '3-package'];
+      for (let i = 0; i < 3; i++) {
+        switchSlide(i);
+        drawCard();
+        await new Promise(r => setTimeout(r, 250));
+        const link = document.createElement('a');
+        link.download = `kard-pro-${fileLabels[i]}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+        await new Promise(r => setTimeout(r, 350));
+      }
+
+      document.getElementById('safeZoneToggle').checked = wasSafeZone;
+      switchSlide(prevSlide);
+    }
+
     function saveProjectJSON() {
+      syncCurrentSlideFromUI();
       const state = {
-        title: document.getElementById('titleText').value,
-        subtitle: document.getElementById('subText').value,
-        badge: document.getElementById('badgeText').value,
-        sticker: document.getElementById('stickerText').value,
-        bullets: bulletsData,
-        positions: positions
+        slidesState: slidesState,
+        seo: document.getElementById('seoResult').value
       };
       const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kard-pro-project.json'; a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kard-pro-funnel.json'; a.click();
     }
 
     function loadProjectJSON() {
@@ -1466,20 +1614,18 @@
         const file = e.target.files[0]; const reader = new FileReader();
         reader.onload = event => {
           const data = JSON.parse(event.target.result);
-          if (data.title) document.getElementById('titleText').value = data.title;
-          if (data.subtitle) document.getElementById('subText').value = data.subtitle;
-          if (data.badge) document.getElementById('badgeText').value = data.badge;
-          if (data.sticker) document.getElementById('stickerText').value = data.sticker;
-          if (data.bullets) { bulletsData = data.bullets; renderBulletsInputs(); }
-          if (data.positions) { positions = data.positions; }
-          drawCard();
+          if (data.slidesState && Array.isArray(data.slidesState)) {
+            slidesState = data.slidesState;
+            if (data.seo) document.getElementById('seoResult').value = data.seo;
+            switchSlide(0);
+          }
         };
         reader.readAsText(file);
       };
       input.click();
     }
 
-    renderBulletsInputs();
+    syncUIFromCurrentSlide();
   </script>
 </body>
 </html>
