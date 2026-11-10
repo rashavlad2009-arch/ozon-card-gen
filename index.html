@@ -58,7 +58,7 @@
           🎁 +5 генераций бесплатно после входа
         </div>
         <h2 class="text-xl font-extrabold text-white">Вход в KARD-PRO</h2>
-        <p class="text-[11px] text-slate-400">Авторизуйтесь через Яндекс, Google или Почту — вам сразу начислится 5 бесплатных генераций, которые не сбрасываются при очистке кэша</p>
+        <p class="text-[11px] text-slate-400">Войдите через Яндекс ID или по Email — вам сразу начислится 5 бесплатных генераций, привязанных к вашему аккаунту</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2.5">
@@ -75,7 +75,7 @@
 
       <div class="flex items-center gap-3 text-[11px] text-slate-500">
         <div class="flex-1 h-px bg-white/10"></div>
-        <span>или по Email</span>
+        <span>или мгновенный вход по Email</span>
         <div class="flex-1 h-px bg-white/10"></div>
       </div>
 
@@ -93,14 +93,10 @@
           <button onclick="handleEmailAuth('login')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">
             Войти
           </button>
-          <button onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs transition cursor-pointer">
+          <button onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer">
             Создать аккаунт
           </button>
         </div>
-
-        <button onclick="handleMagicLink()" class="w-full py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-indigo-300 text-[11px] font-semibold transition cursor-pointer">
-          ✨ Отправить ссылку для входа без пароля на почту
-        </button>
       </div>
 
       <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
@@ -325,7 +321,6 @@
               </button>
             </div>
 
-            <!-- Ластик объектов 60 FPS -->
             <div class="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl space-y-2 text-xs">
               <div class="flex items-center justify-between">
                 <span class="font-bold text-indigo-300">🧽 Ластик лишних деталей на фото</span>
@@ -716,7 +711,7 @@
 
   <script>
     // =========================================================================
-    // ПЕРЕХВАТ ТОКЕНА ЯНДЕКС ID В ПЕРВУЮ МИЛЛИСЕКУНДУ ДО ЗАПУСКА SUPABASE
+    // ПЕРЕХВАТ ТОКЕНА ЯНДЕКС ID ДО ИНИЦИАЛИЗАЦИИ SUPABASE
     // =========================================================================
     let pendingYandexToken = null;
     if (window.location.hash && window.location.hash.includes('access_token=') && !window.location.hash.includes('refresh_token=')) {
@@ -744,14 +739,15 @@
     }
 
     // =========================================================================
-    // СТРОГАЯ АВТОРИЗАЦИЯ (БЕЗ ГОСТЕВЫХ ЛИМИТОВ) + СИНХРОНИЗАЦИЯ С SUPABASE
+    // СИСТЕМА АВТОРИЗАЦИИ И СЕРВЕРНОГО БАЛАНСА (БЕЗ СБОЕВ SUPABASE)
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
+    const DEFAULT_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
     let supabaseClient = null;
     let currentUser = null;
     let currentSessionToken = null;
-    let userCredits = 0; // До авторизации всегда 0 генераций
-    let oauthConfig = { yandexClientId: '' };
+    let userCredits = 0;
+    let oauthConfig = { yandexClientId: DEFAULT_YANDEX_CLIENT_ID };
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
@@ -762,116 +758,130 @@
     }
     updateCreditsUI(0);
 
-    function applyYandexUserSession(yaUser) {
-      currentUser = { id: yaUser.id, email: yaUser.email, name: yaUser.name };
-      currentSessionToken = yaUser.session_token;
-      document.getElementById('authNavText').innerText = `🔴 ${yaUser.name}`;
+    function applyServerUserSession(userObj) {
+      if (!userObj || !userObj.session_token) return;
+      currentUser = { id: userObj.id, email: userObj.email, name: userObj.name };
+      currentSessionToken = userObj.session_token;
+      const displayLabel = userObj.name || (userObj.email ? userObj.email.split('@')[0] : 'Профиль');
+      document.getElementById('authNavText').innerText = `🟢 ${displayLabel}`;
       document.getElementById('logoutBtn').classList.remove('hidden');
-      if (typeof yaUser.credits === 'number') {
-        updateCreditsUI(yaUser.credits);
+      if (typeof userObj.credits === 'number') {
+        updateCreditsUI(userObj.credits);
       }
+      localStorage.setItem('kardpro_auth_user', JSON.stringify(userObj));
       closeAuthModal();
     }
 
     async function processYandexToken(accessToken) {
       try {
-        showToast('⏳ Завершаем вход через Яндекс ID...', 'info');
+        showToast('⏳ Подключаем ваш аккаунт Яндекс ID...', 'info');
+        let clientProfile = null;
+
+        // Резервная проверка напрямую в Яндексе на случай задержек сети
+        try {
+          const directRes = await fetch(`https://login.yandex.ru/info?format=json&oauth_token=${encodeURIComponent(accessToken)}`);
+          if (directRes.ok) {
+            const yaInfo = await directRes.json();
+            const email = yaInfo.default_email || (Array.isArray(yaInfo.emails) && yaInfo.emails[0]) || `${yaInfo.login || yaInfo.id}@yandex.ru`;
+            clientProfile = {
+              email,
+              name: yaInfo.display_name || yaInfo.real_name || yaInfo.login || email.split('@')[0]
+            };
+          }
+        } catch (e) {}
+
         const res = await fetch('/api/payment-webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'social_auth', provider: 'yandex', accessToken })
+          body: JSON.stringify({ action: 'social_auth', provider: 'yandex', accessToken, clientProfile })
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка входа через Яндекс');
 
-        const yaUser = {
+        applyServerUserSession({
           id: data.id,
           email: data.email,
           name: data.name || data.email.split('@')[0],
           credits: typeof data.credits === 'number' ? data.credits : 5,
           session_token: data.session_token
-        };
-        localStorage.setItem('kardpro_yandex_user', JSON.stringify(yaUser));
-        applyYandexUserSession(yaUser);
+        });
 
-        if (data.token_hash && supabaseClient) {
-          try {
-            await supabaseClient.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' });
-          } catch (e) {}
-        }
-        showToast(`🎉 Вы вошли через Яндекс ID как ${yaUser.name}! Доступно генераций: ${yaUser.credits}`, 'success');
+        showToast(`🎉 Вы успешно вошли как ${data.name}! Доступно генераций: ${data.credits}`, 'success');
       } catch (e) {
         showToast('Ошибка Яндекс ID: ' + e.message, 'error');
       }
     }
 
-    async function initSupabase() {
+    async function initAuthSystem() {
       try {
-        const res = await fetch('/api/payment-webhook?action=config');
-        const cfg = await res.json();
-        oauthConfig.yandexClientId = cfg.yandexClientId || '';
-
-        if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
-          supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-        }
-
-        const savedYaUser = localStorage.getItem('kardpro_yandex_user');
-        if (savedYaUser) {
-          const parsedYa = JSON.parse(savedYaUser);
-          if (parsedYa && parsedYa.session_token) {
-            applyYandexUserSession(parsedYa);
-            await fetchUserCreditsFromDB();
+        // 1. Восстанавливаем сохраненную сессию сразу при открытии страницы
+        const savedUser = localStorage.getItem('kardpro_auth_user');
+        if (savedUser) {
+          const parsed = JSON.parse(savedUser);
+          if (parsed && parsed.session_token) {
+            applyServerUserSession(parsed);
           }
         }
 
+        // 2. Если только что вернулись из Яндекс OAuth — обрабатываем токен
         if (pendingYandexToken) {
           await processYandexToken(pendingYandexToken);
         }
 
-        if (supabaseClient) {
+        // 3. Получаем конфигурацию с сервера
+        const res = await fetch('/api/payment-webhook?action=config');
+        const cfg = await res.json();
+        if (cfg.yandexClientId) oauthConfig.yandexClientId = cfg.yandexClientId;
+
+        if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+          supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
           const { data: { session } } = await supabaseClient.auth.getSession();
           if (session && session.user) {
-            await handleAuthSession(session);
+            await handleSupabaseSession(session);
           }
 
           supabaseClient.auth.onAuthStateChange(async (_event, session) => {
             if (session && session.user) {
-              await handleAuthSession(session);
+              await handleSupabaseSession(session);
             }
           });
         }
+
+        // 4. Актуализируем точный баланс с сервера
+        if (currentSessionToken) {
+          await fetchUserCreditsFromDB();
+          await checkReturnedPayment();
+        }
       } catch (e) {
-        console.warn('Ошибка инициализации:', e);
+        console.warn('Инициализация:', e);
       }
     }
 
     function loginWithYandex() {
-      if (oauthConfig.yandexClientId) {
-        const redirectUri = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${oauthConfig.yandexClientId}&redirect_uri=${redirectUri}&state=yandex`;
-      } else {
-        const emailInput = document.getElementById('authEmail');
-        if (!emailInput.value) emailInput.value = '@yandex.ru';
-        emailInput.focus();
-        showAuthStatus('Введите вашу почту @yandex.ru ниже и нажмите «Отправить ссылку для входа без пароля»!', false);
-      }
+      const clientId = oauthConfig.yandexClientId || DEFAULT_YANDEX_CLIENT_ID;
+      const redirectUri = encodeURIComponent(window.location.origin + '/');
+      window.location.href = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
     }
 
     async function loginWithOAuth(provider) {
-      if (!supabaseClient) return showToast('Проверьте подключение Supabase в настройках Vercel', 'error');
+      if (!supabaseClient) {
+        showAuthStatus('Для входа через Google добавьте SUPABASE_ANON_KEY в Vercel — либо войдите за 1 секунду через Яндекс ID или Email ниже!', true);
+        return;
+      }
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: provider,
         options: { redirectTo: window.location.origin }
       });
-      if (error) showAuthStatus(error.message, true);
+      if (error) showAuthStatus('Включите Google в панели Supabase или используйте вход через Яндекс ID / Email ниже', true);
     }
 
-    async function handleAuthSession(session) {
+    async function handleSupabaseSession(session) {
       if (session && session.user) {
         currentUser = session.user;
         currentSessionToken = session.access_token;
         const label = currentUser.email ? currentUser.email.split('@')[0] : 'Профиль';
-        document.getElementById('authNavText').innerText = `👤 ${label}`;
+        document.getElementById('authNavText').innerText = `🟢 ${label}`;
         document.getElementById('logoutBtn').classList.remove('hidden');
         closeAuthModal();
         await fetchUserCreditsFromDB();
@@ -879,7 +889,6 @@
       }
     }
 
-    // Запрашиваем точный серверный баланс из базы данных
     async function fetchUserCreditsFromDB() {
       if (!currentSessionToken) return;
       try {
@@ -890,11 +899,11 @@
           const data = await res.json();
           if (typeof data.credits === 'number') {
             updateCreditsUI(data.credits);
-            const savedYa = localStorage.getItem('kardpro_yandex_user');
-            if (savedYa) {
-              const parsed = JSON.parse(savedYa);
+            const saved = localStorage.getItem('kardpro_auth_user');
+            if (saved) {
+              const parsed = JSON.parse(saved);
               parsed.credits = data.credits;
-              localStorage.setItem('kardpro_yandex_user', JSON.stringify(parsed));
+              localStorage.setItem('kardpro_auth_user', JSON.stringify(parsed));
             }
           }
         }
@@ -914,46 +923,42 @@
       el.innerText = msg;
     }
 
+    // Безотказная регистрация и вход по Email через сервер (не требует ключей в браузере!)
     async function handleEmailAuth(mode) {
-      if (!supabaseClient) return showToast('Проверьте ключи Supabase в Vercel', 'error');
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value.trim();
-      if (!email || password.length < 6) {
+      if (!email || !email.includes('@') || password.length < 6) {
         return showAuthStatus('Введите корректный Email и пароль (не менее 6 символов)', true);
       }
 
-      showAuthStatus('⏳ Подождите...');
-      if (mode === 'signup') {
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) return showAuthStatus(error.message, true);
-        if (data.session) {
-          showToast('🎉 Аккаунт создан! Начислено 5 бесплатных генераций.', 'success');
-        } else {
-          showAuthStatus('📩 Проверьте почту и перейдите по ссылке для подтверждения!');
+      showAuthStatus('⏳ Выполняем вход...');
+      try {
+        const res = await fetch('/api/payment-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'email_auth', mode, email, password })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          return showAuthStatus(data.error || 'Ошибка авторизации', true);
         }
-      } else {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) return showAuthStatus('Неверный Email или пароль', true);
-        showToast('✅ Вы успешно вошли!', 'success');
-      }
-    }
 
-    async function handleMagicLink() {
-      if (!supabaseClient) return showToast('Проверьте ключи Supabase в Vercel', 'error');
-      const email = document.getElementById('authEmail').value.trim();
-      if (!email || !email.includes('@') || email.startsWith('@')) {
-        return showAuthStatus('Введите ваш полный Email в поле выше!', true);
+        applyServerUserSession({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          credits: data.credits,
+          session_token: data.session_token
+        });
+
+        showToast(`🎉 Добро пожаловать, ${data.name}! Доступно генераций: ${data.credits}`, 'success');
+      } catch (e) {
+        showAuthStatus('Ошибка соединения с сервером: ' + e.message, true);
       }
-      showAuthStatus('⏳ Отправляем ссылку для входа на почту...');
-      const { error } = await supabaseClient.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: window.location.origin }
-      });
-      if (error) return showAuthStatus(error.message, true);
-      showAuthStatus('✨ Ссылка отправлена на вашу почту!');
     }
 
     async function logoutUser() {
+      localStorage.removeItem('kardpro_auth_user');
       localStorage.removeItem('kardpro_yandex_user');
       if (supabaseClient) await supabaseClient.auth.signOut();
       currentUser = null;
@@ -1084,7 +1089,7 @@
       }
     }
 
-    initSupabase();
+    initAuthSystem();
 
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text', 'layers'].forEach(id => {
@@ -1291,7 +1296,6 @@
       syncUIFromCurrentSlide();
     }
 
-    // Инициализация буферного холста для мгновенной работы ластика 60 FPS
     function initProductEditCanvas(imgSource) {
       productEditCanvas = document.createElement('canvas');
       productEditCanvas.width = imgSource.width;
@@ -1561,10 +1565,9 @@
       syncUIFromCurrentSlide();
     }
 
-    // Генерация воронки ИИ (строго после авторизации)
     async function generateWithAI() {
       if (!currentUser || !currentSessionToken) {
-        showToast('🎁 Войдите через Яндекс, Google или Почту, чтобы получить 5 бесплатных генераций!', 'info');
+        showToast('🎁 Войдите через Яндекс или Email, чтобы получить 5 бесплатных генераций!', 'info');
         openAuthModal();
         return;
       }
@@ -1608,11 +1611,11 @@
 
         if (typeof data.remaining_credits === 'number') {
           updateCreditsUI(data.remaining_credits);
-          const savedYa = localStorage.getItem('kardpro_yandex_user');
-          if (savedYa) {
-            const parsed = JSON.parse(savedYa);
+          const saved = localStorage.getItem('kardpro_auth_user');
+          if (saved) {
+            const parsed = JSON.parse(saved);
             parsed.credits = data.remaining_credits;
-            localStorage.setItem('kardpro_yandex_user', JSON.stringify(parsed));
+            localStorage.setItem('kardpro_auth_user', JSON.stringify(parsed));
           }
         }
 
@@ -1669,7 +1672,6 @@
           const encoded = encodeURIComponent(bgPrompt + ', commercial product background, empty center podium, no text, 8k photorealistic');
           const cloudUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${canvas.width}&height=${canvas.height}&seed=${seed}&nologo=true&model=flux`;
 
-          // Загружаем как Blob для защиты от блокировки CORS при скачивании Ultra HD
           const imgRes = await fetch(cloudUrl);
           const blob = await imgRes.blob();
           const localUrl = URL.createObjectURL(blob);
