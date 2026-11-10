@@ -27,7 +27,7 @@
       background-size: 20px 20px;
     }
     canvas {
-      max-height: 70vh;
+      max-height: 68vh;
       width: auto;
       max-width: 100%;
       box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -44,7 +44,10 @@
 </head>
 <body class="min-h-screen flex flex-col select-none" translate="no">
 
-  <!-- МОДАЛЬНОЕ ОКНО МУЛЬТИ-АВТОРИЗАЦИИ (Яндекс, Mail.ru, Google, Почта, Телефон) -->
+  <!-- СОВРЕМЕННЫЕ TOAST-УВЕДОМЛЕНИЯ (вместо устаревших alert) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ (Яндекс ID, Google, Email) -->
   <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
       <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
@@ -53,45 +56,33 @@
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
           🎁 +5 генераций бесплатно при входе
         </div>
-        <h2 class="text-xl font-extrabold text-white">Быстрый вход в KARD-PRO</h2>
-        <p class="text-[11px] text-slate-400">Выберите удобный способ — баланс надежно привяжется к вашему профилю</p>
+        <h2 class="text-xl font-extrabold text-white">Вход в KARD-PRO</h2>
+        <p class="text-[11px] text-slate-400">Войдите через Яндекс, Google или Почту — ваш баланс сохранится на всех устройствах и не пропадет после очистки кэша</p>
       </div>
 
-      <!-- Кнопки быстрого входа в 1 клик: Яндекс, Mail.ru, Google -->
-      <div class="grid grid-cols-3 gap-2">
-        <!-- Яндекс ID -->
-        <button onclick="loginWithYandex()" class="py-2.5 px-3 rounded-xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer">
+      <!-- Кнопки быстрого входа в 1 клик: Яндекс ID и Google -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <button onclick="loginWithYandex()" class="py-3 px-4 rounded-xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer">
           <span class="w-5 h-5 rounded-full bg-white text-[#FC3F1D] font-black flex items-center justify-center text-xs">Я</span>
-          <span>Яндекс</span>
+          <span>Войти с Яндекс ID</span>
         </button>
 
-        <!-- Mail.ru -->
-        <button onclick="loginWithMailRu()" class="py-2.5 px-3 rounded-xl bg-[#005FF9] hover:bg-[#0052d6] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer">
-          <span class="w-5 h-5 rounded-full bg-white text-[#005FF9] font-black flex items-center justify-center text-xs">@</span>
-          <span>Mail.ru</span>
-        </button>
-
-        <!-- Google -->
-        <button onclick="loginWithOAuth('google')" class="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer">
+        <button onclick="loginWithOAuth('google')" class="py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer">
           <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"/></svg>
-          <span>Google</span>
+          <span>Войти через Google</span>
         </button>
       </div>
 
-      <!-- Переключатель режима: По почте ИЛИ По номеру телефона -->
-      <div class="grid grid-cols-2 gap-1 p-1 bg-[#070a12] rounded-xl border border-white/10 text-xs font-bold">
-        <button id="authTabEmailBtn" onclick="switchAuthMethodTab('email')" class="py-1.5 rounded-lg bg-indigo-600 text-white transition">
-          📧 По почте (Любой)
-        </button>
-        <button id="authTabPhoneBtn" onclick="switchAuthMethodTab('phone')" class="py-1.5 rounded-lg text-slate-400 hover:text-white transition">
-          📱 По телефону (СМС)
-        </button>
+      <div class="flex items-center gap-3 text-[11px] text-slate-500">
+        <div class="flex-1 h-px bg-white/10"></div>
+        <span>или по Email</span>
+        <div class="flex-1 h-px bg-white/10"></div>
       </div>
 
-      <!-- Форма 1: Вход по Email (Яндекс, Mail, Gmail и др.) -->
-      <div id="authEmailSection" class="space-y-3">
+      <!-- Вход по Email -->
+      <div class="space-y-3">
         <div>
-          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Ваша почта (@yandex.ru, @mail.ru, @gmail.com)</label>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Ваша электронная почта</label>
           <input id="authEmail" type="email" placeholder="name@yandex.ru" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
         </div>
         <div>
@@ -104,35 +95,13 @@
             Войти
           </button>
           <button onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs transition cursor-pointer">
-            Регистрация
+            Создать аккаунт
           </button>
         </div>
 
         <button onclick="handleMagicLink()" class="w-full py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-indigo-300 text-[11px] font-semibold transition cursor-pointer">
-          ✨ Войти без пароля по ссылке на почту (Magic Link)
+          ✨ Отправить ссылку для входа без пароля на почту
         </button>
-      </div>
-
-      <!-- Форма 2: Вход по номеру телефона (СМС-код) -->
-      <div id="authPhoneSection" class="hidden space-y-3">
-        <div>
-          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Номер телефона</label>
-          <input id="authPhoneInput" type="tel" placeholder="+79991234567" value="+7" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500 font-bold tracking-wide">
-        </div>
-
-        <button onclick="sendPhoneSmsCode()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">
-          📲 Получить СМС-код
-        </button>
-
-        <div id="phoneOtpBox" class="hidden space-y-2 pt-2 border-t border-white/10">
-          <label class="text-[11px] text-emerald-400 font-semibold block">Введите 6-значный код из СМС:</label>
-          <div class="flex gap-2">
-            <input id="authPhoneOtp" type="text" maxlength="6" placeholder="123456" class="w-full bg-[#070a12] border border-emerald-500/40 rounded-xl px-3.5 py-2 text-center text-sm font-black tracking-widest text-white outline-none">
-            <button onclick="verifyPhoneSmsCode()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition shrink-0 cursor-pointer">
-              Подтвердить
-            </button>
-          </div>
-        </div>
       </div>
 
       <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
@@ -206,9 +175,9 @@
       <div>
         <div class="flex items-center gap-2">
           <span id="appTitle" class="font-extrabold text-sm tracking-tight text-white">KARD-PRO</span>
-          <span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">Воронка 3 в 1</span>
+          <span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">AI Studio 2026</span>
         </div>
-        <p class="text-[10px] text-slate-400 hidden sm:block">Генератор карточек для Ozon • Wildberries • Яндекс Маркет • Авито</p>
+        <p class="text-[10px] text-slate-400 hidden sm:block">Воронка инфографики: Ozon • Wildberries • Яндекс Маркет • Авито</p>
       </div>
     </div>
 
@@ -221,7 +190,7 @@
 
     <div class="flex items-center gap-2">
       <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-        <span id="authNavText">👤 Войти (5 бесплатно)</span>
+        <span id="authNavText">👤 Войти</span>
       </button>
 
       <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Выйти из аккаунта">
@@ -243,33 +212,33 @@
   <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
     <!-- Левая панель инспектора -->
-    <aside class="w-full lg:w-[460px] bg-[#0b0f19] border-r border-white/10 flex flex-col lg:h-[calc(100vh-3.5rem)]">
+    <aside class="w-full lg:w-[470px] bg-[#0b0f19] border-r border-white/10 flex flex-col lg:h-[calc(100vh-3.5rem)]">
       
       <div class="grid grid-cols-4 gap-1 p-2 bg-[#070a12] border-b border-white/10 text-[11px] font-bold">
-        <button id="tabBtn_ai" onclick="switchTab('ai')" class="py-2 rounded-xl bg-indigo-600 text-white transition flex flex-col items-center gap-0.5">
-          <span>✨ ИИ-Воронка</span>
+        <button id="tabBtn_ai" onclick="switchTab('ai')" class="py-2 rounded-xl bg-indigo-600 text-white transition flex flex-col items-center gap-0.5 shadow">
+          <span>✨ 1. Воронка</span>
         </button>
         <button id="tabBtn_media" onclick="switchTab('media')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
-          <span>📸 Товар/Фон</span>
+          <span>📸 2. Товар/Фон</span>
         </button>
         <button id="tabBtn_style" onclick="switchTab('style')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
-          <span>🎨 Дизайн</span>
+          <span>🎨 3. Дизайн</span>
         </button>
         <button id="tabBtn_text" onclick="switchTab('text')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
-          <span>📝 Текст слайда</span>
+          <span>📝 4. Тексты</span>
         </button>
       </div>
 
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
 
-        <!-- ВКЛАДКА 1: ИИ-УПАКОВКА ВСЕХ 3 СЛАЙДОВ -->
+        <!-- ВКЛАДКА 1: ИИ-УПАКОВКА И СЕТКА КОМПОЗИЦИИ -->
         <div id="tab_ai" class="space-y-4">
           <div class="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-4 rounded-2xl border border-indigo-500/30 space-y-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-300">✨ 1. ИИ-Генератор 3 слайдов</span>
-              <span class="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">3 слайда за 1 клик</span>
+              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-300">✨ ИИ-Генератор воронки (3 слайда)</span>
+              <span class="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">УТП + Размеры + Набор</span>
             </div>
-            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар и его особенности (например: Автомобильный пылесос беспроводной мощный, 2 насадки в комплекте, фильтр HEPA)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition"></textarea>
+            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар и его фишки (например: Автомобильный пылесос беспроводной мощный, 2 насадки в комплекте, фильтр HEPA)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition"></textarea>
             
             <div class="flex flex-wrap gap-1.5">
               <span class="text-[10px] text-slate-500 self-center mr-1">Примеры:</span>
@@ -283,27 +252,41 @@
             </button>
           </div>
 
-          <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3">
-            <label class="block text-xs font-bold text-slate-300">📐 Формат и пропорции холста</label>
-            <div class="grid grid-cols-2 gap-2 text-xs">
-              <select id="canvasFormat" onchange="changeCanvasFormat()" class="bg-[#070a12] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold outline-none">
-                <option value="ozon">Ozon / WB (900×1200 • 3:4)</option>
-                <option value="square">Яндекс / Авито / Kaspi (1000×1000 • 1:1)</option>
-                <option value="avito_h">Авито Горизонт (1200×900 • 4:3)</option>
-                <option value="story">Reels / Stories (1080×1920 • 9:16)</option>
+          <!-- Быстрый выбор раскладки (композиции плашек) -->
+          <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
+            <div class="flex justify-between items-center">
+              <label class="font-bold text-slate-200">🧩 Композиция элементов на слайде</label>
+              <select id="canvasFormat" onchange="changeCanvasFormat()" class="bg-[#070a12] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-indigo-300 font-semibold outline-none">
+                <option value="ozon">Ozon / WB (3:4)</option>
+                <option value="square">Квадрат (1:1)</option>
+                <option value="avito_h">Авито (4:3)</option>
+                <option value="story">Сторис (9:16)</option>
               </select>
-              <button onclick="autoArrangeCurrentSlide()" class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-2 font-bold text-indigo-300 transition">
-                🪄 Выровнять слайд
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="applyLayoutPreset('left')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">
+                Align Left • Колонка слева
+              </button>
+              <button onclick="applyLayoutPreset('right')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">
+                Align Right • Товар слева
+              </button>
+              <button onclick="applyLayoutPreset('grid')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">
+                Grid 2×2 • Плитка внизу
+              </button>
+              <button onclick="applyLayoutPreset('split')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">
+                Split • По бокам товара
               </button>
             </div>
-            <div class="flex items-center justify-between pt-1">
-              <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300 font-medium">
+
+            <div class="flex items-center justify-between pt-1 border-t border-white/10">
+              <label class="flex items-center gap-2 cursor-pointer text-[11px] text-amber-300 font-medium">
                 <input id="safeZoneToggle" type="checkbox" onchange="drawCard()" class="accent-amber-400 rounded">
-                🛡️ Слепые зоны скидок МП
+                🛡️ Слепые зоны МП
               </label>
-              <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300 font-medium">
+              <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300 font-medium">
                 <input id="snapGridToggle" type="checkbox" checked class="accent-indigo-500 rounded">
-                🧲 Прилипание к сетке
+                🧲 Умное прилипание
               </label>
             </div>
           </div>
@@ -317,32 +300,41 @@
           </div>
         </div>
 
-        <!-- ВКЛАДКА 2: ФОТО ТОВАРА И ИИ-ФОН -->
+        <!-- ВКЛАДКА 2: ФОТО ТОВАРА (CTRL+V / DRAG&DROP), ЦВЕТОКОРРЕКЦИЯ И ИИ-ФОН -->
         <div id="tab_media" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-blue-300">📦 1. Фотография вашего товара</span>
-              <span class="text-[10px] text-slate-400">Отображается на всех слайдах</span>
+              <span class="text-xs font-bold text-blue-300">📦 1. Фото товара (или нажмите Ctrl + V)</span>
+              <button onclick="syncProductPosAllSlides()" class="text-[10px] text-indigo-300 hover:underline">Применить позицию ко всем слайдам</button>
             </div>
             <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
             
             <div class="grid grid-cols-2 gap-2">
               <button id="aiBgRemoveBtn" onclick="removeProductBgAI()" class="bg-purple-600 hover:bg-purple-500 text-xs font-bold py-2 px-3 rounded-xl text-white transition shadow">
-                🧠 Удалить фон (Нейросеть)
+                🧠 Вырезать фон (ИИ)
               </button>
               <button onclick="removeWhiteBg('product')" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2 px-3 rounded-xl text-slate-200 transition">
-                🪄 Убрать белый фон (1 сек)
+                🪄 Убрать белый фон (1с)
               </button>
             </div>
 
+            <!-- Масштаб, Поворот, Яркость, Контраст и Тень товара -->
             <div class="grid grid-cols-2 gap-3 pt-1 text-xs">
               <div>
-                <div class="flex justify-between text-[11px] text-slate-400 mb-1"><span>Масштаб товара</span></div>
+                <span class="text-[11px] text-slate-400">Масштаб товара</span>
                 <input id="imgScale" type="range" min="15" max="220" value="85" class="w-full" oninput="drawCard()">
               </div>
               <div>
-                <div class="flex justify-between text-[11px] text-slate-400 mb-1"><span>Поворот (°)</span></div>
+                <span class="text-[11px] text-slate-400">Поворот (°)</span>
                 <input id="imgRotate" type="range" min="-45" max="45" value="0" class="w-full" oninput="drawCard()">
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400">Яркость фото (%)</span>
+                <input id="imgBrightness" type="range" min="60" max="150" value="100" class="w-full" oninput="drawCard()">
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400">Контрастность (%)</span>
+                <input id="imgContrast" type="range" min="60" max="160" value="105" class="w-full" oninput="drawCard()">
               </div>
             </div>
 
@@ -353,9 +345,14 @@
               <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
                 <input id="showReflection" type="checkbox" onchange="drawCard()"> 🪞 Отражение
               </label>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] text-slate-400">Тень:</span>
+                <input id="imgShadowBlur" type="range" min="0" max="80" value="45" class="w-16" oninput="drawCard()">
+              </div>
             </div>
           </div>
 
+          <!-- ИИ-фон -->
           <div class="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/25 space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-emerald-400">🌄 2. ИИ-Генератор студийного фона</span>
@@ -366,7 +363,7 @@
               <div class="flex items-center justify-between">
                 <span class="text-slate-400 text-[11px]">Движок:</span>
                 <select id="bgEngineMode" class="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-emerald-300">
-                  <option value="cloud">☁️ Облачный Flux (24/7 на телефонах и ПК)</option>
+                  <option value="cloud">☁️ Облачный Flux (24/7 на смартфонах и ПК)</option>
                   <option value="comfy">🖥️ Локальный ComfyUI (Домашний ПК)</option>
                 </select>
               </div>
@@ -393,6 +390,7 @@
             <p id="bgStatus" class="text-[11px] text-amber-300 hidden"></p>
           </div>
 
+          <!-- Логотип -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2.5 text-xs">
             <div class="flex justify-between items-center">
               <span class="font-bold text-purple-300">🛡️ 3. Логотип бренда</span>
@@ -409,7 +407,7 @@
           </div>
         </div>
 
-        <!-- ВКЛАДКА 3: СТИЛИ, ПЛАШКИ, СТИКЕРЫ И ЦВЕТА -->
+        <!-- ВКЛАДКА 3: ДИЗАЙН, РАЗМЕРНЫЕ СТРЕЛКИ (ДЛЯ СЛАЙДА 2) И СТИКЕРЫ -->
         <div id="tab_style" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <label class="block font-bold text-slate-200">🎨 Цветовая схема и Стиль плашек</label>
@@ -437,13 +435,13 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-4 gap-2 pt-1">
+            <div class="grid grid-cols-5 gap-2 pt-1">
               <div>
-                <span class="text-[10px] text-slate-400 block mb-1">Верх фона</span>
+                <span class="text-[10px] text-slate-400 block mb-1">Фон 1</span>
                 <input id="customBg1" type="color" value="#003399" oninput="drawCard()" class="w-full h-8 rounded-lg bg-transparent cursor-pointer">
               </div>
               <div>
-                <span class="text-[10px] text-slate-400 block mb-1">Низ фона</span>
+                <span class="text-[10px] text-slate-400 block mb-1">Фон 2</span>
                 <input id="customBg2" type="color" value="#090d16" oninput="drawCard()" class="w-full h-8 rounded-lg bg-transparent cursor-pointer">
               </div>
               <div>
@@ -453,6 +451,10 @@
               <div>
                 <span class="text-[10px] text-slate-400 block mb-1">Плашки</span>
                 <input id="pillBgColor" type="color" value="#0f172a" oninput="drawCard()" class="w-full h-8 rounded-lg bg-transparent cursor-pointer">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block mb-1">Текст</span>
+                <input id="customTextColor" type="color" value="#ffffff" oninput="drawCard()" class="w-full h-8 rounded-lg bg-transparent cursor-pointer">
               </div>
             </div>
 
@@ -469,9 +471,30 @@
             </div>
           </div>
 
+          <!-- ГАБАРИТНЫЕ СТРЕЛКИ (Ширина / Высота товара) -->
+          <div class="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/30 space-y-2.5 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-indigo-300">📏 Габаритные стрелки товара (Размеры)</span>
+              <label class="flex items-center gap-1.5 cursor-pointer font-bold text-emerald-300">
+                <input id="showDimensions" type="checkbox" onchange="toggleDimensionsCurrentSlide()" class="accent-emerald-500"> Включить на слайде
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <span class="text-[10px] text-slate-400 block mb-1">⟷ Ширина (снизу товара)</span>
+                <input id="dimWidthInput" type="text" value="18 см" oninput="updateDimensionsText()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white">
+              </div>
+              <div>
+                <span class="text-[10px] text-slate-400 block mb-1">↕ Высота (сбоку товара)</span>
+                <input id="dimHeightInput" type="text" value="24 см" oninput="updateDimensionsText()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white">
+              </div>
+            </div>
+          </div>
+
+          <!-- Круглый стикер -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-amber-400">🏷️ Круглый стикер текущего слайда</span>
+              <span class="font-bold text-amber-400">🏷️ Круглый стикер-триггер</span>
               <label class="flex items-center gap-1.5 cursor-pointer">
                 <input id="showSticker" type="checkbox" checked onchange="drawCard()"> Показать
               </label>
@@ -488,6 +511,7 @@
             </div>
           </div>
 
+          <!-- Рейтинг -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
             <div class="flex justify-between items-center">
               <span class="font-bold text-yellow-300">⭐ Плашка «Выбор покупателей 4.9 ★»</span>
@@ -549,7 +573,7 @@
                 <button onclick="replaceBulletIcons('⚡')" class="bg-white/5 hover:bg-white/15 px-2 py-0.5 rounded">⚡</button>
                 <button onclick="replaceBulletIcons('💎')" class="bg-white/5 hover:bg-white/15 px-2 py-0.5 rounded">💎</button>
               </div>
-              <button onclick="addBullet()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold">+ Добавить пункт</button>
+              <button onclick="addBullet()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg font-bold">+ Пункт</button>
             </div>
             <div id="bulletsContainer" class="space-y-2"></div>
           </div>
@@ -558,36 +582,48 @@
       </div>
 
       <div class="p-3 border-t border-white/10 bg-[#070a12] grid grid-cols-2 gap-2 text-xs">
-        <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить воронку</button>
-        <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">📂 Загрузить воронку</button>
+        <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить проект</button>
+        <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">📂 Открыть проект</button>
       </div>
     </aside>
 
-    <!-- Правая часть: Переключатель 3 слайдов карусели + Холст -->
-    <main class="flex-1 canvas-bg flex flex-col items-center justify-between p-3 lg:p-5 relative">
+    <!-- Правая часть: Тулбар слайдов + Undo/Redo + Интерактивный Холст -->
+    <main id="dropZoneMain" class="flex-1 canvas-bg flex flex-col items-center justify-between p-3 lg:p-5 relative">
       
+      <!-- Верхний бар над холстом: Переключатель 3 слайдов + Кнопки Отменить / Повторить -->
       <div class="flex flex-wrap items-center justify-center gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10">
         <button id="slideTab_0" onclick="switchSlide(0)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer">
-          <span>1. Главная обложка (УТП)</span>
+          <span>1. Обложка (УТП)</span>
         </button>
         <button id="slideTab_1" onclick="switchSlide(1)" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-          <span>2. Характеристики</span>
+          <span>2. Характеристики 📏</span>
         </button>
         <button id="slideTab_2" onclick="switchSlide(2)" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-          <span>3. Комплектация</span>
+          <span>3. Комплектация 📦</span>
+        </button>
+
+        <div class="h-5 w-px bg-white/10 mx-1"></div>
+
+        <button onclick="undoAction()" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition" title="Отменить действие (Ctrl+Z)">
+          ↶ Отменить
+        </button>
+        <button onclick="redoAction()" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition" title="Повторить действие (Ctrl+Y)">
+          ↷
         </button>
       </div>
 
+      <!-- Холст карточки -->
       <div class="my-auto flex items-center justify-center py-2">
         <canvas id="cardCanvas" width="900" height="1200"></canvas>
       </div>
 
+      <!-- Нижняя панель подсказок -->
       <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md">
-        <span>🖐️ Перетаскивайте любые элементы прямо на карточке</span>
+        <span>📋 Вставьте фото по <b>Ctrl+V</b> или перетащите файл на холст</span>
         <span class="text-white/20">•</span>
-        <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">Скачать этот слайд</button>
+        <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">Скачать текущий слайд</button>
         <span class="text-white/20">•</span>
-        <button onclick="downloadAllSlides()" class="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer">Скачать все 3 слайда сразу</button>
+        <button onclick="downloadAllSlides()" class="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer">Скачать все 3 слайда</button>
       </div>
     </main>
 
@@ -595,41 +631,57 @@
 
   <script>
     // =========================================================================
-    // МУЛЬТИ-АВТОРИЗАЦИЯ SUPABASE (Яндекс, Mail.ru, Google, Почта, Телефон СМС)
+    // TOAST-УВЕДОМЛЕНИЯ (Вместо системного alert)
+    // =========================================================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const colors = {
+        info: 'bg-[#131b2e] border-indigo-500/50 text-indigo-100',
+        success: 'bg-[#0f2922] border-emerald-500/50 text-emerald-100',
+        error: 'bg-[#2c1219] border-rose-500/50 text-rose-100'
+      };
+      toast.className = `pointer-events-auto border px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold flex items-center gap-2 transition-all duration-300 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3800);
+    }
+
+    // =========================================================================
+    // ГИБРИДНАЯ АВТОРИЗАЦИЯ SUPABASE (Яндекс ID, Google, Почта) + ЛОКАЛЬНЫЙ РЕЗЕРВ
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
     let supabaseClient = null;
+    let isSupabaseConfigured = false;
     let currentUser = null;
     let currentSessionToken = null;
-    let userCredits = 5;
-    let oauthConfig = { yandexClientId: '', mailruClientId: '' };
+    let userCredits = parseInt(localStorage.getItem('kardpro_credits') || '5', 10);
+    let oauthConfig = { yandexClientId: '' };
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
 
-    function switchAuthMethodTab(mode) {
-      const isEmail = mode === 'email';
-      document.getElementById('authEmailSection').classList.toggle('hidden', !isEmail);
-      document.getElementById('authPhoneSection').classList.toggle('hidden', isEmail);
-      document.getElementById('authTabEmailBtn').className = isEmail
-        ? 'py-1.5 rounded-lg bg-indigo-600 text-white transition'
-        : 'py-1.5 rounded-lg text-slate-400 hover:text-white transition';
-      document.getElementById('authTabPhoneBtn').className = !isEmail
-        ? 'py-1.5 rounded-lg bg-indigo-600 text-white transition'
-        : 'py-1.5 rounded-lg text-slate-400 hover:text-white transition';
+    function updateCreditsUI(val) {
+      userCredits = val;
+      localStorage.setItem('kardpro_credits', val);
+      document.getElementById('creditsCount').innerText = val;
     }
+    updateCreditsUI(userCredits);
 
     async function initSupabase() {
       try {
         const res = await fetch('/api/payment-webhook?action=config');
         const cfg = await res.json();
         oauthConfig.yandexClientId = cfg.yandexClientId || '';
-        oauthConfig.mailruClientId = cfg.mailruClientId || '';
 
         if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+          isSupabaseConfigured = true;
           supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
-          // Проверяем, вернулся ли пользователь от Яндекс ID или Mail.ru OAuth
           await checkSocialOAuthRedirect();
 
           const { data: { session } } = await supabaseClient.auth.getSession();
@@ -638,22 +690,20 @@
           supabaseClient.auth.onAuthStateChange(async (_event, session) => {
             await handleAuthSession(session);
           });
+        } else {
+          document.getElementById('authNavText').innerText = '⚡ Гостевой режим';
         }
       } catch (e) {
-        console.error('Ошибка инициализации Supabase:', e);
+        console.warn('Работаем в автономном режиме:', e);
       }
     }
 
-    // Обработка возврата токена от Яндекс ID и Mail.ru
     async function checkSocialOAuthRedirect() {
       if (!window.location.hash || !window.location.hash.includes('access_token=')) return;
-      // Если в хэше есть refresh_token, это нативный токен Supabase (например, от Google)
       if (window.location.hash.includes('refresh_token=')) return;
 
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
-      const state = hashParams.get('state') || localStorage.getItem('kp_oauth_provider') || 'yandex';
-
       if (!accessToken) return;
       window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -661,53 +711,30 @@
         const res = await fetch('/api/payment-webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'social_auth', provider: state, accessToken })
+          body: JSON.stringify({ action: 'social_auth', provider: 'yandex', accessToken })
         });
         const data = await res.json();
         if (data.ok && data.token_hash && supabaseClient) {
-          await supabaseClient.auth.verifyOtp({
-            token_hash: data.token_hash,
-            type: 'magiclink'
-          });
+          await supabaseClient.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' });
+          showToast('✅ Вы успешно вошли через Яндекс ID!', 'success');
         }
-      } catch (e) {
-        console.error('Ошибка социального входа:', e);
-      }
+      } catch (e) {}
     }
 
-    // 1. Вход через Яндекс ID
     function loginWithYandex() {
       if (oauthConfig.yandexClientId) {
-        localStorage.setItem('kp_oauth_provider', 'yandex');
         const redirectUri = encodeURIComponent(window.location.origin + '/');
         window.location.href = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${oauthConfig.yandexClientId}&redirect_uri=${redirectUri}&state=yandex`;
       } else {
-        switchAuthMethodTab('email');
         const emailInput = document.getElementById('authEmail');
         if (!emailInput.value) emailInput.value = '@yandex.ru';
         emailInput.focus();
-        showAuthStatus('Введите вашу почту @yandex.ru ниже и нажмите «Войти без пароля по ссылке»!', false);
+        showAuthStatus('Введите вашу почту @yandex.ru ниже и нажмите «Отправить ссылку для входа без пароля»!', false);
       }
     }
 
-    // 2. Вход через Mail.ru
-    function loginWithMailRu() {
-      if (oauthConfig.mailruClientId) {
-        localStorage.setItem('kp_oauth_provider', 'mailru');
-        const redirectUri = encodeURIComponent(window.location.origin + '/');
-        window.location.href = `https://oauth.mail.ru/login?client_id=${oauthConfig.mailruClientId}&response_type=token&scope=userinfo&redirect_uri=${redirectUri}&state=mailru`;
-      } else {
-        switchAuthMethodTab('email');
-        const emailInput = document.getElementById('authEmail');
-        if (!emailInput.value) emailInput.value = '@mail.ru';
-        emailInput.focus();
-        showAuthStatus('Введите вашу почту @mail.ru ниже и нажмите «Войти без пароля по ссылке»!', false);
-      }
-    }
-
-    // 3. Вход через Google (OAuth Supabase)
     async function loginWithOAuth(provider) {
-      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      if (!supabaseClient) return showToast('Supabase еще не подключен в настройках Vercel', 'error');
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: provider,
         options: { redirectTo: window.location.origin }
@@ -715,43 +742,11 @@
       if (error) showAuthStatus(error.message, true);
     }
 
-    // 4. Вход по номеру телефона (СМС-код через Supabase)
-    async function sendPhoneSmsCode() {
-      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
-      const phone = document.getElementById('authPhoneInput').value.trim();
-      if (phone.length < 10) return showAuthStatus('Введите корректный номер телефона с +7', true);
-
-      showAuthStatus('⏳ Отправляем СМС с кодом...');
-      const { error } = await supabaseClient.auth.signInWithOtp({ phone });
-      if (error) {
-        return showAuthStatus('Для отправки СМС включите Phone Provider в панели Supabase (или войдите бесплатно через Почту / Google / Яндекс выше).', true);
-      }
-      document.getElementById('phoneOtpBox').classList.remove('hidden');
-      showAuthStatus('📲 Код отправлен! Введите 6 цифр из СМС ниже.');
-    }
-
-    async function verifyPhoneSmsCode() {
-      const phone = document.getElementById('authPhoneInput').value.trim();
-      const token = document.getElementById('authPhoneOtp').value.trim();
-      if (!token) return showAuthStatus('Введите код из СМС!', true);
-
-      showAuthStatus('⏳ Проверяем код...');
-      const { error } = await supabaseClient.auth.verifyOtp({
-        phone,
-        token,
-        type: 'sms'
-      });
-      if (error) return showAuthStatus('Неверный или просроченный СМС-код', true);
-      showAuthStatus('✅ Номер подтвержден! Вы вошли.');
-    }
-
     async function handleAuthSession(session) {
       if (session && session.user) {
         currentUser = session.user;
         currentSessionToken = session.access_token;
-        const label = currentUser.email
-          ? currentUser.email.split('@')[0]
-          : (currentUser.phone || 'Профиль');
+        const label = currentUser.email ? currentUser.email.split('@')[0] : 'Профиль';
         document.getElementById('authNavText').innerText = `👤 ${label}`;
         document.getElementById('logoutBtn').classList.remove('hidden');
         closeAuthModal();
@@ -762,7 +757,6 @@
         currentSessionToken = null;
         document.getElementById('authNavText').innerText = '👤 Войти (5 бесплатно)';
         document.getElementById('logoutBtn').classList.add('hidden');
-        document.getElementById('creditsCount').innerText = '5';
       }
     }
 
@@ -775,8 +769,7 @@
         .single();
 
       if (data && typeof data.credits === 'number') {
-        userCredits = data.credits;
-        document.getElementById('creditsCount').innerText = userCredits;
+        updateCreditsUI(data.credits);
       }
     }
 
@@ -797,7 +790,7 @@
     }
 
     async function handleEmailAuth(mode) {
-      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      if (!supabaseClient) return showToast('Добавьте SUPABASE_URL в Vercel или используйте гостевой режим', 'error');
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value.trim();
       if (!email || password.length < 6) {
@@ -809,19 +802,19 @@
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) return showAuthStatus(error.message, true);
         if (data.session) {
-          showAuthStatus('🎉 Аккаунт создан! Начислено 5 бесплатных генераций.');
+          showToast('🎉 Аккаунт создан! Начислено 5 бесплатных генераций.', 'success');
         } else {
-          showAuthStatus('📩 Проверьте вашу почту и перейдите по ссылке для подтверждения!');
+          showAuthStatus('📩 Проверьте почту и перейдите по ссылке для подтверждения!');
         }
       } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) return showAuthStatus('Неверный Email или пароль', true);
-        showAuthStatus('✅ Вы успешно вошли!');
+        showToast('✅ Вы успешно вошли!', 'success');
       }
     }
 
     async function handleMagicLink() {
-      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      if (!supabaseClient) return showToast('Supabase еще не настроен в Vercel', 'error');
       const email = document.getElementById('authEmail').value.trim();
       if (!email || !email.includes('@') || email.startsWith('@')) {
         return showAuthStatus('Введите ваш полный Email в поле выше!', true);
@@ -838,10 +831,11 @@
 
     async function logoutUser() {
       if (supabaseClient) await supabaseClient.auth.signOut();
+      showToast('Вы вышли из аккаунта', 'info');
     }
 
     function handleTopUpClick() {
-      if (!currentUser) {
+      if (isSupabaseConfigured && !currentUser) {
         openAuthModal();
         return;
       }
@@ -861,24 +855,20 @@
       document.getElementById('payLinkBtn').innerText = `💳 Оплатить ${price} ₽ и получить +${credits} генераций`;
     }
 
-    function openPayModal() {
-      document.getElementById('payModal').classList.remove('hidden');
-    }
-
-    function closePayModal() {
-      document.getElementById('payModal').classList.add('hidden');
-    }
+    function openPayModal() { document.getElementById('payModal').classList.remove('hidden'); }
+    function closePayModal() { document.getElementById('payModal').classList.add('hidden'); }
 
     function payWithYooMoney() {
-      if (!currentUser) {
+      if (isSupabaseConfigured && !currentUser) {
         closePayModal();
         openAuthModal();
         return;
       }
 
       const { credits, price } = selectedPlan;
+      const uid = currentUser ? currentUser.id : 'guest';
       const shortRand = Math.random().toString(36).substring(2, 6);
-      const orderId = `kp_${credits}_${currentUser.id}_${shortRand}`;
+      const orderId = `kp_${credits}_${uid}_${shortRand}`;
 
       const payUrl = new URL('https://yoomoney.ru/quickpay/confirm.xml');
       payUrl.searchParams.append('receiver', YOOMONEY_RECEIVER);
@@ -899,10 +889,14 @@
           const data = await res.json();
           if (data.paid) {
             clearInterval(pollInterval);
-            await fetchUserCreditsFromDB();
+            if (isSupabaseConfigured && currentUser) {
+              await fetchUserCreditsFromDB();
+            } else {
+              updateCreditsUI(userCredits + (data.credits || credits));
+            }
             document.getElementById('payWaitBox').classList.add('hidden');
             closePayModal();
-            alert(`🎉 Оплата подтверждена! Начислено +${data.credits || credits} ИИ-генераций.`);
+            showToast(`🎉 Оплата подтверждена! Начислено +${data.credits || credits} генераций.`, 'success');
           }
         } catch (e) {}
       }, 3000);
@@ -912,57 +906,60 @@
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
       const addCredits = parseInt(params.get('add_credits') || '0', 10);
-      if (paidOrder && [5, 10, 20].includes(addCredits) && currentSessionToken) {
+      if (paidOrder && [5, 10, 20].includes(addCredits)) {
         window.history.replaceState({}, document.title, window.location.pathname);
         try {
+          const headers = { 'Content-Type': 'application/json' };
+          if (currentSessionToken) headers['Authorization'] = `Bearer ${currentSessionToken}`;
           const res = await fetch('/api/payment-webhook', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${currentSessionToken}`
-            },
+            headers,
             body: JSON.stringify({ action: 'confirm_return', orderId: paidOrder, credits: addCredits })
           });
           const data = await res.json();
           if (data.ok) {
-            await fetchUserCreditsFromDB();
-            alert(`🎉 Оплата прошла успешно! Ваш баланс пополнен на +${addCredits} генераций.`);
+            if (isSupabaseConfigured && currentUser) await fetchUserCreditsFromDB();
+            else updateCreditsUI(userCredits + addCredits);
+            showToast(`🎉 Баланс пополнен на +${addCredits} генераций!`, 'success');
           }
         } catch (e) {}
       }
     }
 
     async function activatePromoCode() {
-      if (!currentUser || !currentSessionToken) {
+      if (isSupabaseConfigured && !currentUser) {
         closePayModal();
         openAuthModal();
         return;
       }
       const code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
-      if (!code) return alert('Введите промокод!');
+      if (!code) return showToast('Введите промокод!', 'error');
 
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (currentSessionToken) headers['Authorization'] = `Bearer ${currentSessionToken}`;
         const res = await fetch('/api/payment-webhook', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentSessionToken}`
-          },
+          headers,
           body: JSON.stringify({ action: 'promo', code })
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка промокода');
 
         document.getElementById('promoCodeInput').value = '';
-        await fetchUserCreditsFromDB();
+        if (isSupabaseConfigured && currentUser) await fetchUserCreditsFromDB();
+        else updateCreditsUI(userCredits + (data.added || 5));
         closePayModal();
-        alert(`🎉 Промокод активирован! Начислено +${data.added} генераций.`);
+        showToast(`🎉 Промокод активирован! Начислено +${data.added} генераций.`, 'success');
       } catch (e) {
-        alert(e.message);
+        showToast(e.message, 'error');
       }
     }
 
     initSupabase();
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!isSupabaseConfigured) checkReturnedPayment();
+    });
 
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text'].forEach(id => {
@@ -976,16 +973,11 @@
       });
     }
 
-    function fillSamplePrompt(txt) {
-      document.getElementById('aiPrompt').value = txt;
-    }
-
-    function setBgPreset(promptTxt) {
-      document.getElementById('bgPromptInput').value = promptTxt;
-    }
+    function fillSamplePrompt(txt) { document.getElementById('aiPrompt').value = txt; }
+    function setBgPreset(promptTxt) { document.getElementById('bgPromptInput').value = promptTxt; }
 
     // =========================================================================
-    // СИСТЕМА КАРУСЕЛИ ИЗ 3 СЛАЙДОВ (1. Обложка, 2. Характеристики, 3. Комплектация)
+    // СИСТЕМА КАРУСЕЛИ ИЗ 3 СЛАЙДОВ + UNDO/REDO + ГАБАРИТНЫЕ СТРЕЛКИ
     // =========================================================================
     const canvas = document.getElementById('cardCanvas');
     const ctx = canvas.getContext('2d');
@@ -1007,6 +999,9 @@
         subtitle: "Чистый звук • Активное шумоподавление",
         badge: "ХИТ ПРОДАЖ",
         sticker: "ГАРАНТИЯ 1 ГОД",
+        showDimensions: false,
+        dimWidth: "18 см",
+        dimHeight: "24 см",
         positions: {
           product: { x: 450, y: 580 },
           logo: { x: 760, y: 110 },
@@ -1023,13 +1018,16 @@
       },
       {
         title: "ХАРАКТЕРИСТИКИ",
-        subtitle: "Передовые технологии и надежность",
+        subtitle: "Передовые технологии и компактность",
         badge: "ПАРАМЕТРЫ",
         sticker: "100% ОРИГИНАЛ",
+        showDimensions: true,
+        dimWidth: "6.2 см",
+        dimHeight: "4.8 см",
         positions: {
-          product: { x: 450, y: 560 },
+          product: { x: 450, y: 520 },
           logo: { x: 760, y: 110 },
-          sticker: { x: 745, y: 750 },
+          sticker: { x: 745, y: 730 },
           rating: { x: 50, y: 760 },
           badge: { x: 50, y: 45 },
           title: { x: 50, y: 155 }
@@ -1046,6 +1044,9 @@
         subtitle: "Всё необходимое уже в коробке",
         badge: "ЧТО В НАБОРЕ",
         sticker: "ПОДАРОК ВНУТРИ",
+        showDimensions: false,
+        dimWidth: "18 см",
+        dimHeight: "24 см",
         positions: {
           product: { x: 450, y: 560 },
           logo: { x: 760, y: 110 },
@@ -1063,6 +1064,44 @@
       }
     ];
 
+    // Стек истории для Undo / Redo (Ctrl+Z / Ctrl+Y)
+    let historyStack = [];
+    let redoStack = [];
+
+    function pushHistoryState() {
+      historyStack.push(JSON.stringify(slidesState));
+      if (historyStack.length > 25) historyStack.shift();
+      redoStack = [];
+    }
+
+    function undoAction() {
+      if (historyStack.length === 0) return showToast('Нет действий для отмены', 'info');
+      redoStack.push(JSON.stringify(slidesState));
+      slidesState = JSON.parse(historyStack.pop());
+      syncUIFromCurrentSlide();
+      showToast('↶ Действие отменено', 'info');
+    }
+
+    function redoAction() {
+      if (redoStack.length === 0) return;
+      historyStack.push(JSON.stringify(slidesState));
+      slidesState = JSON.parse(redoStack.pop());
+      syncUIFromCurrentSlide();
+      showToast('↷ Действие возвращено', 'info');
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        undoAction();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        redoAction();
+      }
+    });
+
     function getActiveSlide() { return slidesState[currentSlideIndex]; }
 
     function syncUIFromCurrentSlide() {
@@ -1071,6 +1110,9 @@
       document.getElementById('subText').value = s.subtitle;
       document.getElementById('badgeText').value = s.badge;
       document.getElementById('stickerText').value = s.sticker;
+      document.getElementById('showDimensions').checked = !!s.showDimensions;
+      document.getElementById('dimWidthInput').value = s.dimWidth || '18 см';
+      document.getElementById('dimHeightInput').value = s.dimHeight || '24 см';
       document.getElementById('activeSlideLabel').innerText = SLIDE_NAMES[currentSlideIndex];
       renderBulletsInputs();
     }
@@ -1081,6 +1123,28 @@
       s.subtitle = document.getElementById('subText').value;
       s.badge = document.getElementById('badgeText').value;
       s.sticker = document.getElementById('stickerText').value;
+    }
+
+    function toggleDimensionsCurrentSlide() {
+      const s = getActiveSlide();
+      s.showDimensions = document.getElementById('showDimensions').checked;
+      drawCard();
+    }
+
+    function updateDimensionsText() {
+      const s = getActiveSlide();
+      s.dimWidth = document.getElementById('dimWidthInput').value;
+      s.dimHeight = document.getElementById('dimHeightInput').value;
+      drawCard();
+    }
+
+    function syncProductPosAllSlides() {
+      pushHistoryState();
+      const pos = getActiveSlide().positions.product;
+      slidesState.forEach(s => {
+        s.positions.product = { x: pos.x, y: pos.y };
+      });
+      showToast('Позиция товара скопирована на все 3 слайда!', 'success');
     }
 
     function switchSlide(idx) {
@@ -1115,6 +1179,7 @@
       drawCard();
     }
     function replaceBulletIcons(icon) {
+      pushHistoryState();
       const s = getActiveSlide();
       s.bullets.forEach(b => { b.text = b.text.replace(/^([✓🔥⚡💎★•]\s*)?/, icon + ' '); });
       renderBulletsInputs();
@@ -1123,17 +1188,18 @@
       const el = document.getElementById('seoResult');
       el.select();
       document.execCommand('copy');
-      alert('SEO-описание скопировано!');
+      showToast('📋 SEO-описание скопировано в буфер обмена!', 'success');
     }
 
+    // Темы с автоматической адаптацией цвета текста (исправлен баг со светлой темой!)
     const themes = {
-      ozon: { bg1: '#003399', bg2: '#090d16', accent: '#3b82f6', badge: '#f91155', pillBg: '#0f172a' },
-      wb: { bg1: '#701a75', bg2: '#180628', accent: '#e879f9', badge: '#ff007f', pillBg: '#2e1065' },
-      ym: { bg1: '#422006', bg2: '#09090b', accent: '#facc15', badge: '#ef4444', pillBg: '#18181b' },
-      avito: { bg1: '#064e3b', bg2: '#090d16', accent: '#10b981', badge: '#00aaff', pillBg: '#062c22' },
-      dark: { bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', pillBg: '#18181b' },
-      sunset: { bg1: '#9f1239', bg2: '#2e0512', accent: '#fb7185', badge: '#facc15', pillBg: '#4c0519' },
-      minimal: { bg1: '#e2e8f0', bg2: '#94a3b8', accent: '#2563eb', badge: '#ef4444', pillBg: '#1e293b' }
+      ozon: { bg1: '#003399', bg2: '#090d16', accent: '#3b82f6', badge: '#f91155', pillBg: '#0f172a', text: '#ffffff' },
+      wb: { bg1: '#701a75', bg2: '#180628', accent: '#e879f9', badge: '#ff007f', pillBg: '#2e1065', text: '#ffffff' },
+      ym: { bg1: '#422006', bg2: '#09090b', accent: '#facc15', badge: '#ef4444', pillBg: '#18181b', text: '#ffffff' },
+      avito: { bg1: '#064e3b', bg2: '#090d16', accent: '#10b981', badge: '#00aaff', pillBg: '#062c22', text: '#ffffff' },
+      dark: { bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', pillBg: '#18181b', text: '#ffffff' },
+      sunset: { bg1: '#9f1239', bg2: '#2e0512', accent: '#fb7185', badge: '#facc15', pillBg: '#4c0519', text: '#ffffff' },
+      minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff', text: '#0f172a' }
     };
 
     function setMarketplacePreset(mp) {
@@ -1154,6 +1220,77 @@
       autoArrangeAllSlides();
     }
 
+    // 4 готовые раскладки композиции (Left, Right, Grid 2x2, Split)
+    function applyLayoutPreset(layoutType) {
+      pushHistoryState();
+      const s = getActiveSlide();
+      const cw = canvas.width;
+      const ch = canvas.height;
+      const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
+      ctx.font = `700 24px ${fontName}, sans-serif`;
+
+      s.positions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
+      s.positions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
+
+      if (layoutType === 'left') {
+        s.positions.product = { x: Math.round(cw * 0.56), y: Math.round(ch * 0.49) };
+        s.positions.sticker = { x: Math.round(cw * 0.83), y: Math.round(ch * 0.65) };
+        const pH = 62, gap = 14;
+        let startY = ch - s.bullets.length * (pH + gap) - 45;
+        s.positions.rating = { x: Math.round(cw * 0.06), y: startY - 56 };
+        s.bullets.forEach((b, i) => {
+          const textW = ctx.measureText(b.text).width;
+          b.w = Math.min(Math.max(Math.round(textW + 70), 340), cw - 100);
+          b.h = pH;
+          b.x = Math.round(cw * 0.06);
+          b.y = startY + i * (pH + gap);
+        });
+      } else if (layoutType === 'right') {
+        s.positions.product = { x: Math.round(cw * 0.34), y: Math.round(ch * 0.52) };
+        s.positions.sticker = { x: Math.round(cw * 0.16), y: Math.round(ch * 0.72) };
+        const pH = 62, gap = 14;
+        let startY = ch - s.bullets.length * (pH + gap) - 45;
+        s.positions.rating = { x: Math.round(cw * 0.46), y: startY - 56 };
+        s.bullets.forEach((b, i) => {
+          const textW = ctx.measureText(b.text).width;
+          b.w = Math.min(Math.max(Math.round(textW + 64), 340), Math.round(cw * 0.5));
+          b.h = pH;
+          b.x = cw - b.w - Math.round(cw * 0.05);
+          b.y = startY + i * (pH + gap);
+        });
+      } else if (layoutType === 'grid') {
+        s.positions.product = { x: Math.round(cw * 0.5), y: Math.round(ch * 0.47) };
+        s.positions.sticker = { x: Math.round(cw * 0.84), y: Math.round(ch * 0.46) };
+        const colW = Math.round((cw - cw * 0.12 - 20) / 2);
+        const pH = 64;
+        const startY = ch - 190;
+        s.positions.rating = { x: Math.round(cw * 0.06), y: startY - 56 };
+        s.bullets.forEach((b, i) => {
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          b.w = colW;
+          b.h = pH;
+          b.x = Math.round(cw * 0.06) + col * (colW + 20);
+          b.y = startY + row * (pH + 16);
+        });
+      } else if (layoutType === 'split') {
+        s.positions.product = { x: Math.round(cw * 0.5), y: Math.round(ch * 0.56) };
+        s.positions.sticker = { x: Math.round(cw * 0.84), y: Math.round(ch * 0.32) };
+        const colW = Math.round(cw * 0.42);
+        s.bullets.forEach((b, i) => {
+          const isRight = i % 2 === 1;
+          const row = Math.floor(i / 2);
+          b.w = colW;
+          b.h = 62;
+          b.x = isRight ? (cw - colW - 40) : 40;
+          b.y = Math.round(ch * 0.72) + row * 80;
+        });
+      }
+
+      renderBulletsInputs();
+      showToast('✨ Композиция применена!', 'info');
+    }
+
     function autoArrangeSlideObj(slideObj) {
       const cw = canvas.width;
       const ch = canvas.height;
@@ -1161,7 +1298,7 @@
 
       slideObj.positions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
       slideObj.positions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
-      slideObj.positions.product = { x: Math.round(cw * 0.52), y: Math.round(ch * 0.50) };
+      slideObj.positions.product = { x: Math.round(cw * 0.52), y: Math.round(ch * 0.49) };
       slideObj.positions.logo = { x: Math.round(cw * 0.85), y: Math.round(ch * 0.09) };
       slideObj.positions.sticker = { x: Math.round(cw * 0.82), y: Math.round(ch * 0.65) };
 
@@ -1182,18 +1319,13 @@
       });
     }
 
-    function autoArrangeCurrentSlide() {
-      autoArrangeSlideObj(getActiveSlide());
-      renderBulletsInputs();
-    }
-
     function autoArrangeAllSlides() {
       slidesState.forEach(s => autoArrangeSlideObj(s));
       syncUIFromCurrentSlide();
     }
 
     async function generateWithAI() {
-      if (!currentUser || !currentSessionToken) {
+      if (isSupabaseConfigured && (!currentUser || !currentSessionToken)) {
         openAuthModal();
         return;
       }
@@ -1204,19 +1336,20 @@
       }
 
       const prompt = document.getElementById('aiPrompt').value.trim();
-      if (!prompt) return alert('Опишите ваш товар в текстовом поле!');
+      if (!prompt) return showToast('Опишите ваш товар в поле 1!', 'error');
 
       const btn = document.getElementById('aiBtn');
-      btn.innerText = '⏳ ИИ строит воронку из 3 слайдов...';
+      btn.innerText = '⏳ ИИ упаковывает 3 слайда воронки...';
       btn.disabled = true;
 
       try {
+        pushHistoryState();
+        const headers = { 'Content-Type': 'application/json' };
+        if (currentSessionToken) headers['Authorization'] = `Bearer ${currentSessionToken}`;
+
         const res = await fetch('/api/generate', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentSessionToken}`
-          },
+          headers,
           body: JSON.stringify({ product: prompt })
         });
 
@@ -1224,7 +1357,7 @@
 
         if (res.status === 401 || data.error === 'AUTH_REQUIRED') {
           openAuthModal();
-          throw new Error(data.message || 'Необходимо войти в аккаунт');
+          throw new Error(data.message || 'Войдите в аккаунт для генерации');
         }
 
         if (res.status === 402 || data.error === 'NO_CREDITS') {
@@ -1235,8 +1368,9 @@
         if (data.error) throw new Error(data.error);
 
         if (typeof data.remaining_credits === 'number') {
-          userCredits = data.remaining_credits;
-          document.getElementById('creditsCount').innerText = userCredits;
+          updateCreditsUI(data.remaining_credits);
+        } else {
+          updateCreditsUI(Math.max(0, userCredits - 1));
         }
 
         if (data.slides && Array.isArray(data.slides)) {
@@ -1256,13 +1390,20 @@
           });
         }
 
+        if (data.dimensions) {
+          slidesState[1].dimWidth = data.dimensions.width || '18 см';
+          slidesState[1].dimHeight = data.dimensions.height || '24 см';
+          slidesState[1].showDimensions = true;
+        }
+
         if (data.bg_prompt) document.getElementById('bgPromptInput').value = data.bg_prompt;
         if (data.seo) document.getElementById('seoResult').value = data.seo;
 
         autoArrangeAllSlides();
         switchSlide(0);
+        showToast('🎉 Воронка из 3 слайдов и SEO готовы!', 'success');
       } catch (e) {
-        alert(e.message);
+        showToast(e.message, 'error');
       } finally {
         btn.innerText = '🤖 Сгенерировать воронку из 3 слайдов + SEO';
         btn.disabled = false;
@@ -1290,6 +1431,7 @@
             customBgImg = bgImg;
             drawCard();
             status.innerText = '✅ Студийный ИИ-фон установлен на все слайды!';
+            showToast('🌄 Новый студийный ИИ-фон установлен!', 'success');
             btn.disabled = false;
           };
           bgImg.onerror = () => {
@@ -1362,7 +1504,7 @@
         };
         bgImg.src = imgUrl;
       } catch (err) {
-        alert('Не удалось связаться с локальным ComfyUI. Переключите движок на «☁️ Облачный Flux» в настройках.');
+        showToast('Не удалось связаться с локальным ComfyUI. Переключите движок на Облачный Flux.', 'error');
         status.classList.add('hidden');
       } finally {
         btn.disabled = false;
@@ -1382,7 +1524,7 @@
             <button onclick="removeBullet(${idx})" class="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white px-2 py-1 rounded-lg font-bold">✕</button>
           </div>
           <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-            <div>Ширина: <input type="range" min="240" max="${canvas.width - 60}" value="${item.w}" oninput="updateBulletSize(${idx}, 'w', this.value)" class="w-full"></div>
+            <div>Ширина: <input type="range" min="200" max="${canvas.width - 60}" value="${item.w}" oninput="updateBulletSize(${idx}, 'w', this.value)" class="w-full"></div>
             <div>Высота: <input type="range" min="40" max="110" value="${item.h}" oninput="updateBulletSize(${idx}, 'h', this.value)" class="w-full"></div>
           </div>
         `;
@@ -1392,6 +1534,7 @@
     }
 
     function addBullet() {
+      pushHistoryState();
       const cw = canvas.width;
       const ch = canvas.height;
       const bulletsData = getActiveSlide().bullets;
@@ -1402,7 +1545,8 @@
 
     function removeBullet(idx) {
       const bulletsData = getActiveSlide().bullets;
-      if (bulletsData.length <= 1) return alert('Оставьте хотя бы одну плашку!');
+      if (bulletsData.length <= 1) return showToast('Оставьте хотя бы одну плашку!', 'error');
+      pushHistoryState();
       bulletsData.splice(idx, 1);
       renderBulletsInputs();
     }
@@ -1419,20 +1563,49 @@
       document.getElementById('customAccent').value = t.accent;
       document.getElementById('customBadge').value = t.badge;
       document.getElementById('pillBgColor').value = t.pillBg;
+      document.getElementById('customTextColor').value = t.text || '#ffffff';
       drawCard();
     }
 
-    document.getElementById('imgUpload').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    // Загрузка фото товара через кнопку, Drag & Drop или Ctrl+V из буфера обмена!
+    function loadProductFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
       currentFileBlob = file;
       const reader = new FileReader();
       reader.onload = (ev) => {
         const img = new Image();
-        img.onload = () => { productImg = img; drawCard(); };
+        img.onload = () => {
+          productImg = img;
+          drawCard();
+          showToast('📸 Фото товара загружено!', 'success');
+        };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    document.getElementById('imgUpload').addEventListener('change', (e) => loadProductFile(e.target.files[0]));
+
+    // Вставка картинки по Ctrl+V
+    window.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData)?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.indexOf('image') === 0) {
+          loadProductFile(item.getAsFile());
+          break;
+        }
+      }
+    });
+
+    // Перетаскивание файла мышкой прямо на холст (Drag & Drop)
+    const dropZone = document.getElementById('dropZoneMain');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadProductFile(e.dataTransfer.files[0]);
+      }
     });
 
     document.getElementById('logoUpload').addEventListener('change', (e) => {
@@ -1441,7 +1614,7 @@
       const reader = new FileReader();
       reader.onload = (ev) => {
         const img = new Image();
-        img.onload = () => { logoImg = img; drawCard(); };
+        img.onload = () => { logoImg = img; drawCard(); showToast('🛡️ Логотип добавлен!', 'success'); };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
@@ -1465,6 +1638,7 @@
 
       if (document.getElementById('showSticker').checked) {
         if (Math.hypot(mouseX - positions.sticker.x, mouseY - positions.sticker.y) <= 85) {
+          pushHistoryState();
           draggingItem = 'sticker';
           dragOffsetX = mouseX - positions.sticker.x;
           dragOffsetY = mouseY - positions.sticker.y;
@@ -1474,6 +1648,7 @@
 
       if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
         if (mouseX >= positions.rating.x && mouseX <= positions.rating.x + 340 && mouseY >= positions.rating.y && mouseY <= positions.rating.y + 44) {
+          pushHistoryState();
           draggingItem = 'rating';
           dragOffsetX = mouseX - positions.rating.x;
           dragOffsetY = mouseY - positions.rating.y;
@@ -1484,6 +1659,7 @@
       for (let i = bulletsData.length - 1; i >= 0; i--) {
         const bp = bulletsData[i];
         if (mouseX >= bp.x && mouseX <= bp.x + bp.w && mouseY >= bp.y && mouseY <= bp.y + bp.h) {
+          pushHistoryState();
           draggingItem = 'bullet'; dragIndex = i;
           dragOffsetX = mouseX - bp.x; dragOffsetY = mouseY - bp.y;
           return;
@@ -1493,17 +1669,20 @@
       if (logoImg) {
         const lSize = parseInt(document.getElementById('logoScale').value) || 130;
         if (Math.abs(mouseX - positions.logo.x) <= lSize / 2 && Math.abs(mouseY - positions.logo.y) <= lSize / 2) {
+          pushHistoryState();
           draggingItem = 'logo'; dragOffsetX = mouseX - positions.logo.x; dragOffsetY = mouseY - positions.logo.y;
           return;
         }
       }
 
       if (mouseX >= positions.badge.x && mouseX <= positions.badge.x + 260 && mouseY >= positions.badge.y && mouseY <= positions.badge.y + 54) {
+        pushHistoryState();
         draggingItem = 'badge'; dragOffsetX = mouseX - positions.badge.x; dragOffsetY = mouseY - positions.badge.y;
         return;
       }
 
       if (mouseX >= positions.title.x && mouseX <= positions.title.x + 760 && mouseY >= positions.title.y - 55 && mouseY <= positions.title.y + 95) {
+        pushHistoryState();
         draggingItem = 'title'; dragOffsetX = mouseX - positions.title.x; dragOffsetY = mouseY - positions.title.y;
         return;
       }
@@ -1514,6 +1693,7 @@
         const w = productImg.width * baseRatio * scale;
         const h = productImg.height * baseRatio * scale;
         if (Math.abs(mouseX - positions.product.x) <= w / 2 && Math.abs(mouseY - positions.product.y) <= h / 2) {
+          pushHistoryState();
           draggingItem = 'product'; dragOffsetX = mouseX - positions.product.x; dragOffsetY = mouseY - positions.product.y;
           return;
         }
@@ -1550,7 +1730,13 @@
       drawCard();
     }
 
-    function handleEnd() { draggingItem = null; dragIndex = null; }
+    function handleEnd() {
+      if (draggingItem) {
+        draggingItem = null;
+        dragIndex = null;
+        drawCard();
+      }
+    }
 
     canvas.addEventListener('mousedown', handleStart);
     window.addEventListener('mousemove', handleMove);
@@ -1569,9 +1755,58 @@
       ctx.closePath();
     }
 
+    function drawDimensionArrow(ctx, x1, y1, x2, y2, labelText, color) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const headLen = 12;
+
+      // Стрелка 1
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 + headLen * Math.cos(angle - Math.PI / 6), y1 + headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x1 + headLen * Math.cos(angle + Math.PI / 6), y1 + headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+
+      // Стрелка 2
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+
+      // Плашка с размером по центру линии
+      const midX = (x1 + x2) / 2;
+      const midY = (y1 + y2) / 2;
+      ctx.font = '800 18px Montserrat, sans-serif';
+      const tw = ctx.measureText(labelText).width + 24;
+      ctx.fillStyle = '#0f172a';
+      drawBox(ctx, midX - tw / 2, midY - 16, tw, 32, 8);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(labelText, midX, midY + 6);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
     function removeWhiteBg(target) {
       const imgObj = target === 'logo' ? logoImg : productImg;
-      if (!imgObj) return alert('Сначала загрузите изображение!');
+      if (!imgObj) return showToast('Сначала загрузите изображение!', 'error');
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = imgObj.width; tempCanvas.height = imgObj.height;
       const tCtx = tempCanvas.getContext('2d');
@@ -1589,12 +1824,13 @@
         if (target === 'logo') logoImg = newImg;
         else productImg = newImg;
         drawCard();
+        showToast('🪄 Белый фон удален!', 'success');
       };
       newImg.src = tempCanvas.toDataURL();
     }
 
     async function removeProductBgAI() {
-      if (!currentFileBlob) return alert('Сначала выберите фото товара!');
+      if (!currentFileBlob) return showToast('Сначала выберите фото товара!', 'error');
       const btn = document.getElementById('aiBgRemoveBtn');
       const status = document.getElementById('bgStatus');
       btn.disabled = true; btn.innerText = '⏳ Вырезаем...';
@@ -1605,12 +1841,17 @@
         const resultBlob = await removeBackground(currentFileBlob);
         const url = URL.createObjectURL(resultBlob);
         const newImg = new Image();
-        newImg.onload = () => { productImg = newImg; drawCard(); status.innerText = '✅ Фон вырезан идеально!'; };
+        newImg.onload = () => {
+          productImg = newImg;
+          drawCard();
+          status.innerText = '✅ Фон вырезан идеально!';
+          showToast('🧠 Фон товара идеально вырезан!', 'success');
+        };
         newImg.src = url;
       } catch (err) {
-        alert('Ошибка: ' + err.message);
+        showToast('Ошибка: ' + err.message, 'error');
       } finally {
-        btn.disabled = false; btn.innerText = '🧠 Удалить фон (Нейросеть)';
+        btn.disabled = false; btn.innerText = '🧠 Вырезать фон (ИИ)';
       }
     }
 
@@ -1625,6 +1866,7 @@
       const accent = document.getElementById('customAccent').value;
       const badgeColor = document.getElementById('customBadge').value;
       const pillBg = document.getElementById('pillBgColor').value;
+      const textColor = document.getElementById('customTextColor').value || '#ffffff';
       const pillStyle = document.getElementById('pillStyleSelect').value;
       const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
       const titleFontSize = parseInt(document.getElementById('titleSize').value) || 44;
@@ -1634,6 +1876,7 @@
       const sub = s.subtitle || '';
       const badge = (s.badge || '').toUpperCase();
 
+      // 1. Фон
       if (customBgImg) {
         ctx.drawImage(customBgImg, 0, 0, cw, ch);
       } else {
@@ -1655,6 +1898,7 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
+      // 2. 3D-подиум
       if (document.getElementById('showPodium').checked) {
         const podY = positions.product.y + 230;
         ctx.save();
@@ -1672,38 +1916,68 @@
         ctx.restore();
       }
 
+      // 3. Товар + Цветокоррекция + Габаритные стрелки
+      let prodW = 360, prodH = 360;
       if (productImg) {
         const scale = document.getElementById('imgScale').value / 100;
         const rot = (parseInt(document.getElementById('imgRotate').value) || 0) * Math.PI / 180;
+        const brightness = document.getElementById('imgBrightness').value || 100;
+        const contrast = document.getElementById('imgContrast').value || 105;
+        const shadowBlur = parseInt(document.getElementById('imgShadowBlur').value) || 45;
+
         const baseRatio = Math.min((cw * 0.8) / productImg.width, (ch * 0.55) / productImg.height);
-        const w = productImg.width * baseRatio * scale;
-        const h = productImg.height * baseRatio * scale;
+        prodW = productImg.width * baseRatio * scale;
+        prodH = productImg.height * baseRatio * scale;
 
         if (document.getElementById('showReflection').checked) {
           ctx.save();
-          ctx.translate(positions.product.x, positions.product.y + h * 0.85);
+          ctx.translate(positions.product.x, positions.product.y + prodH * 0.85);
           ctx.scale(1, -0.35);
           ctx.globalAlpha = 0.22;
-          ctx.drawImage(productImg, -w / 2, -h / 2, w, h);
+          ctx.drawImage(productImg, -prodW / 2, -prodH / 2, prodW, prodH);
           ctx.restore();
         }
 
         ctx.save();
         ctx.translate(positions.product.x, positions.product.y);
         ctx.rotate(rot);
-        ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 45; ctx.shadowOffsetY = 22;
-        ctx.drawImage(productImg, -w / 2, -h / 2, w, h);
+        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+        ctx.shadowColor = 'rgba(0,0,0,0.65)';
+        ctx.shadowBlur = shadowBlur;
+        ctx.shadowOffsetY = Math.round(shadowBlur * 0.45);
+        ctx.drawImage(productImg, -prodW / 2, -prodH / 2, prodW, prodH);
+        ctx.filter = 'none';
+
+        // Подсветка рамки при перетаскивании товара
+        if (draggingItem === 'product') {
+          ctx.strokeStyle = '#6366f1';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.strokeRect(-prodW / 2 - 8, -prodH / 2 - 8, prodW + 16, prodH + 16);
+        }
         ctx.restore();
       } else {
         ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.setLineDash([12, 12]);
-        drawBox(ctx, cw * 0.2, ch * 0.28, cw * 0.6, ch * 0.36, 28);
+        drawBox(ctx, cw * 0.2, ch * 0.28, cw * 0.6, ch * 0.34, 28);
         ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = '#94a3b8'; ctx.font = `700 22px ${fontName}, sans-serif`;
-        ctx.textAlign = 'center'; ctx.fillText('Перейдите во вкладку «📸 Товар/Фон»', cw/2, ch/2 - 15);
-        ctx.fillText('чтобы загрузить фото товара', cw/2, ch/2 + 18);
+        ctx.textAlign = 'center';
+        ctx.fillText('Нажмите Ctrl + V или перетащите сюда', cw/2, ch/2 - 15);
+        ctx.fillText('фотографию вашего товара', cw/2, ch/2 + 18);
         ctx.textAlign = 'left';
       }
 
+      // Габаритные стрелки (Ширина и Высота) для слайда Характеристик
+      if (s.showDimensions) {
+        const px = positions.product.x;
+        const py = positions.product.y;
+        const halfW = prodW * 0.46;
+        const halfH = prodH * 0.46;
+        drawDimensionArrow(ctx, px - halfW, py + halfH + 34, px + halfW, py + halfH + 34, s.dimWidth || '18 см', accent);
+        drawDimensionArrow(ctx, px - halfW - 38, py - halfH, px - halfW - 38, py + halfH, s.dimHeight || '24 см', accent);
+      }
+
+      // 4. Логотип
       if (logoImg) {
         const lSize = parseInt(document.getElementById('logoScale').value) || 130;
         const ratio = Math.min(lSize / logoImg.width, lSize / logoImg.height);
@@ -1715,6 +1989,7 @@
         ctx.restore();
       }
 
+      // 5. Бейдж
       if (badge) {
         ctx.font = `900 22px ${fontName}, sans-serif`;
         const bw = ctx.measureText(badge).width + 48;
@@ -1725,7 +2000,8 @@
         ctx.fillText(badge, positions.badge.x + 24, positions.badge.y + 32);
       }
 
-      ctx.fillStyle = '#ffffff';
+      // 6. Заголовок и Подзаголовок
+      ctx.fillStyle = textColor;
       ctx.font = `900 ${titleFontSize}px ${fontName}, sans-serif`;
       const words = title.split(' ');
       let line1 = '', line2 = '';
@@ -1734,7 +2010,8 @@
         else line2 += (line2 ? ' ' : '') + w;
       });
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 14;
+      ctx.shadowColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.4)';
+      ctx.shadowBlur = 14;
       ctx.fillText(line1, positions.title.x, positions.title.y);
       let subY = positions.title.y + titleFontSize + 8;
       if (line2) {
@@ -1744,17 +2021,18 @@
       ctx.restore();
 
       if (sub) {
-        ctx.fillStyle = '#93c5fd';
+        ctx.fillStyle = textColor === '#ffffff' ? '#93c5fd' : '#1e40af';
         ctx.font = `700 24px ${fontName}, sans-serif`;
         ctx.fillText(sub, positions.title.x, subY + 10);
       }
 
+      // 7. Плашка Рейтинга
       if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
         const rTxt = document.getElementById('ratingText').value;
         ctx.font = `800 20px ${fontName}, sans-serif`;
         const rw = ctx.measureText(rTxt).width + 38;
         ctx.save();
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
         drawBox(ctx, positions.rating.x, positions.rating.y, rw, 44, 12);
         ctx.fill();
         ctx.lineWidth = 2; ctx.strokeStyle = '#facc15'; ctx.stroke();
@@ -1763,7 +2041,8 @@
         ctx.restore();
       }
 
-      bulletsData.forEach((bp) => {
+      // 8. Плашки УТП
+      bulletsData.forEach((bp, idx) => {
         ctx.font = `700 24px ${fontName}, sans-serif`;
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.45)';
@@ -1775,10 +2054,10 @@
           ctx.fill();
           ctx.lineWidth = 3; ctx.strokeStyle = accent; ctx.stroke();
         } else if (pillStyle === 'glass') {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
           drawBox(ctx, bp.x, bp.y, bp.w, bp.h, 18);
           ctx.fill();
-          ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.stroke();
+          ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.stroke();
         } else if (pillStyle === 'solid') {
           ctx.fillStyle = accent;
           drawBox(ctx, bp.x, bp.y, bp.w, bp.h, 16);
@@ -1791,12 +2070,19 @@
           drawBox(ctx, bp.x, bp.y, 12, bp.h, 6);
           ctx.fill();
         }
+
+        if (draggingItem === 'bullet' && dragIndex === idx) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(bp.x - 2, bp.y - 2, bp.w + 4, bp.h + 4);
+        }
         ctx.restore();
 
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(bp.text, bp.x + 26, bp.y + (bp.h / 2) + 8);
+        ctx.fillStyle = (pillStyle === 'solid') ? '#ffffff' : textColor;
+        ctx.fillText(bp.text, bp.x + 24, bp.y + (bp.h / 2) + 8);
       });
 
+      // 9. Круглый стикер
       if (document.getElementById('showSticker').checked) {
         const sTxt = (s.sticker || '').toUpperCase();
         const sCol = document.getElementById('stickerColor').value;
@@ -1830,6 +2116,7 @@
         ctx.restore();
       }
 
+      // 10. Слепые зоны маркетплейсов
       if (document.getElementById('safeZoneToggle').checked) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
@@ -1865,6 +2152,7 @@
         document.getElementById('safeZoneToggle').checked = true;
         drawCard();
       }
+      showToast(`⬇ Слайд ${currentSlideIndex + 1} сохранен в PNG!`, 'success');
     }
 
     async function downloadAllSlides() {
@@ -1872,6 +2160,7 @@
       const wasSafeZone = document.getElementById('safeZoneToggle').checked;
       document.getElementById('safeZoneToggle').checked = false;
 
+      showToast('📦 Выгружаем все 3 слайда воронки...', 'info');
       const fileLabels = ['1-main-utp', '2-specs', '3-package'];
       for (let i = 0; i < 3; i++) {
         switchSlide(i);
@@ -1886,6 +2175,7 @@
 
       document.getElementById('safeZoneToggle').checked = wasSafeZone;
       switchSlide(prevSlide);
+      showToast('✅ Все 3 слайда успешно скачаны!', 'success');
     }
 
     function saveProjectJSON() {
@@ -1893,6 +2183,7 @@
       const state = { slidesState, seo: document.getElementById('seoResult').value };
       const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kard-pro-funnel.json'; a.click();
+      showToast('💾 Проект воронки сохранен!', 'success');
     }
 
     function loadProjectJSON() {
@@ -1902,9 +2193,11 @@
         reader.onload = event => {
           const data = JSON.parse(event.target.result);
           if (data.slidesState && Array.isArray(data.slidesState)) {
+            pushHistoryState();
             slidesState = data.slidesState;
             if (data.seo) document.getElementById('seoResult').value = data.seo;
             switchSlide(0);
+            showToast('📂 Проект успешно загружен!', 'success');
           }
         };
         reader.readAsText(file);
