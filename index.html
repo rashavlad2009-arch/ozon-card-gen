@@ -44,54 +44,95 @@
 </head>
 <body class="min-h-screen flex flex-col select-none" translate="no">
 
-  <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ SUPABASE (Email / Пароль / Magic Link / Google) -->
+  <!-- МОДАЛЬНОЕ ОКНО МУЛЬТИ-АВТОРИЗАЦИИ (Яндекс, Mail.ru, Google, Почта, Телефон) -->
   <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
       <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
 
-      <div class="text-center space-y-1.5">
+      <div class="text-center space-y-1">
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
           🎁 +5 генераций бесплатно при входе
         </div>
-        <h2 class="text-2xl font-extrabold text-white">Вход в KARD-PRO</h2>
-        <p class="text-xs text-slate-400">Авторизуйтесь удобным способом — ваш баланс генераций надежно сохранится на всех устройствах.</p>
+        <h2 class="text-xl font-extrabold text-white">Быстрый вход в KARD-PRO</h2>
+        <p class="text-[11px] text-slate-400">Выберите удобный способ — баланс надежно привяжется к вашему профилю</p>
       </div>
 
-      <!-- Кнопка входа через Google в 1 клик -->
-      <button onclick="loginWithOAuth('google')" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-lg transition cursor-pointer">
-        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"/></svg>
-        <span>Продолжить через Google</span>
-      </button>
+      <!-- Кнопки быстрого входа в 1 клик: Яндекс, Mail.ru, Google -->
+      <div class="grid grid-cols-3 gap-2">
+        <!-- Яндекс ID -->
+        <button onclick="loginWithYandex()" class="py-2.5 px-3 rounded-xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer">
+          <span class="w-5 h-5 rounded-full bg-white text-[#FC3F1D] font-black flex items-center justify-center text-xs">Я</span>
+          <span>Яндекс</span>
+        </button>
 
-      <div class="flex items-center gap-3 text-[11px] text-slate-500">
-        <div class="flex-1 h-px bg-white/10"></div>
-        <span>или по Email</span>
-        <div class="flex-1 h-px bg-white/10"></div>
+        <!-- Mail.ru -->
+        <button onclick="loginWithMailRu()" class="py-2.5 px-3 rounded-xl bg-[#005FF9] hover:bg-[#0052d6] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer">
+          <span class="w-5 h-5 rounded-full bg-white text-[#005FF9] font-black flex items-center justify-center text-xs">@</span>
+          <span>Mail.ru</span>
+        </button>
+
+        <!-- Google -->
+        <button onclick="loginWithOAuth('google')" class="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"/></svg>
+          <span>Google</span>
+        </button>
       </div>
 
-      <!-- Форма Email + Пароль -->
-      <div class="space-y-3">
+      <!-- Переключатель режима: По почте ИЛИ По номеру телефона -->
+      <div class="grid grid-cols-2 gap-1 p-1 bg-[#070a12] rounded-xl border border-white/10 text-xs font-bold">
+        <button id="authTabEmailBtn" onclick="switchAuthMethodTab('email')" class="py-1.5 rounded-lg bg-indigo-600 text-white transition">
+          📧 По почте (Любой)
+        </button>
+        <button id="authTabPhoneBtn" onclick="switchAuthMethodTab('phone')" class="py-1.5 rounded-lg text-slate-400 hover:text-white transition">
+          📱 По телефону (СМС)
+        </button>
+      </div>
+
+      <!-- Форма 1: Вход по Email (Яндекс, Mail, Gmail и др.) -->
+      <div id="authEmailSection" class="space-y-3">
         <div>
-          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Ваш Email</label>
-          <input id="authEmail" type="email" placeholder="name@example.com" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Ваша почта (@yandex.ru, @mail.ru, @gmail.com)</label>
+          <input id="authEmail" type="email" placeholder="name@yandex.ru" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
         </div>
         <div>
-          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Пароль (минимум 6 символов)</label>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Пароль (от 6 символов)</label>
           <input id="authPassword" type="password" placeholder="••••••••" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
         </div>
 
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button id="btnSignIn" onclick="handleEmailAuth('login')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="handleEmailAuth('login')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">
             Войти
           </button>
-          <button id="btnSignUp" onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs transition cursor-pointer">
-            Создать аккаунт
+          <button onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs transition cursor-pointer">
+            Регистрация
           </button>
         </div>
 
-        <button onclick="handleMagicLink()" class="w-full py-2 rounded-xl bg-transparent hover:bg-white/5 text-indigo-300 text-[11px] font-semibold transition cursor-pointer">
-          ✨ Отправить быструю ссылку для входа без пароля (Magic Link)
+        <button onclick="handleMagicLink()" class="w-full py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-indigo-300 text-[11px] font-semibold transition cursor-pointer">
+          ✨ Войти без пароля по ссылке на почту (Magic Link)
         </button>
+      </div>
+
+      <!-- Форма 2: Вход по номеру телефона (СМС-код) -->
+      <div id="authPhoneSection" class="hidden space-y-3">
+        <div>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Номер телефона</label>
+          <input id="authPhoneInput" type="tel" placeholder="+79991234567" value="+7" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500 font-bold tracking-wide">
+        </div>
+
+        <button onclick="sendPhoneSmsCode()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">
+          📲 Получить СМС-код
+        </button>
+
+        <div id="phoneOtpBox" class="hidden space-y-2 pt-2 border-t border-white/10">
+          <label class="text-[11px] text-emerald-400 font-semibold block">Введите 6-значный код из СМС:</label>
+          <div class="flex gap-2">
+            <input id="authPhoneOtp" type="text" maxlength="6" placeholder="123456" class="w-full bg-[#070a12] border border-emerald-500/40 rounded-xl px-3.5 py-2 text-center text-sm font-black tracking-widest text-white outline-none">
+            <button onclick="verifyPhoneSmsCode()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2 rounded-xl text-xs transition shrink-0 cursor-pointer">
+              Подтвердить
+            </button>
+          </div>
+        </div>
       </div>
 
       <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
@@ -178,9 +219,7 @@
       <button onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition">🟢 Авито</button>
     </div>
 
-    <!-- Профиль, Баланс и Кнопки скачивания -->
     <div class="flex items-center gap-2">
-      <!-- Кнопка входа / профиль -->
       <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
         <span id="authNavText">👤 Войти (5 бесплатно)</span>
       </button>
@@ -556,23 +595,42 @@
 
   <script>
     // =========================================================================
-    // АВТОРИЗАЦИЯ И ОБЛАЧНЫЙ БАЛАНС SUPABASE + БИЛЛИНГ ЮMONEY (4100119681467569)
+    // МУЛЬТИ-АВТОРИЗАЦИЯ SUPABASE (Яндекс, Mail.ru, Google, Почта, Телефон СМС)
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
     let supabaseClient = null;
     let currentUser = null;
     let currentSessionToken = null;
     let userCredits = 5;
+    let oauthConfig = { yandexClientId: '', mailruClientId: '' };
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
+
+    function switchAuthMethodTab(mode) {
+      const isEmail = mode === 'email';
+      document.getElementById('authEmailSection').classList.toggle('hidden', !isEmail);
+      document.getElementById('authPhoneSection').classList.toggle('hidden', isEmail);
+      document.getElementById('authTabEmailBtn').className = isEmail
+        ? 'py-1.5 rounded-lg bg-indigo-600 text-white transition'
+        : 'py-1.5 rounded-lg text-slate-400 hover:text-white transition';
+      document.getElementById('authTabPhoneBtn').className = !isEmail
+        ? 'py-1.5 rounded-lg bg-indigo-600 text-white transition'
+        : 'py-1.5 rounded-lg text-slate-400 hover:text-white transition';
+    }
 
     async function initSupabase() {
       try {
         const res = await fetch('/api/payment-webhook?action=config');
         const cfg = await res.json();
+        oauthConfig.yandexClientId = cfg.yandexClientId || '';
+        oauthConfig.mailruClientId = cfg.mailruClientId || '';
+
         if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
           supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+          // Проверяем, вернулся ли пользователь от Яндекс ID или Mail.ru OAuth
+          await checkSocialOAuthRedirect();
 
           const { data: { session } } = await supabaseClient.auth.getSession();
           await handleAuthSession(session);
@@ -586,12 +644,115 @@
       }
     }
 
+    // Обработка возврата токена от Яндекс ID и Mail.ru
+    async function checkSocialOAuthRedirect() {
+      if (!window.location.hash || !window.location.hash.includes('access_token=')) return;
+      // Если в хэше есть refresh_token, это нативный токен Supabase (например, от Google)
+      if (window.location.hash.includes('refresh_token=')) return;
+
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const state = hashParams.get('state') || localStorage.getItem('kp_oauth_provider') || 'yandex';
+
+      if (!accessToken) return;
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      try {
+        const res = await fetch('/api/payment-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'social_auth', provider: state, accessToken })
+        });
+        const data = await res.json();
+        if (data.ok && data.token_hash && supabaseClient) {
+          await supabaseClient.auth.verifyOtp({
+            token_hash: data.token_hash,
+            type: 'magiclink'
+          });
+        }
+      } catch (e) {
+        console.error('Ошибка социального входа:', e);
+      }
+    }
+
+    // 1. Вход через Яндекс ID
+    function loginWithYandex() {
+      if (oauthConfig.yandexClientId) {
+        localStorage.setItem('kp_oauth_provider', 'yandex');
+        const redirectUri = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${oauthConfig.yandexClientId}&redirect_uri=${redirectUri}&state=yandex`;
+      } else {
+        switchAuthMethodTab('email');
+        const emailInput = document.getElementById('authEmail');
+        if (!emailInput.value) emailInput.value = '@yandex.ru';
+        emailInput.focus();
+        showAuthStatus('Введите вашу почту @yandex.ru ниже и нажмите «Войти без пароля по ссылке»!', false);
+      }
+    }
+
+    // 2. Вход через Mail.ru
+    function loginWithMailRu() {
+      if (oauthConfig.mailruClientId) {
+        localStorage.setItem('kp_oauth_provider', 'mailru');
+        const redirectUri = encodeURIComponent(window.location.origin + '/');
+        window.location.href = `https://oauth.mail.ru/login?client_id=${oauthConfig.mailruClientId}&response_type=token&scope=userinfo&redirect_uri=${redirectUri}&state=mailru`;
+      } else {
+        switchAuthMethodTab('email');
+        const emailInput = document.getElementById('authEmail');
+        if (!emailInput.value) emailInput.value = '@mail.ru';
+        emailInput.focus();
+        showAuthStatus('Введите вашу почту @mail.ru ниже и нажмите «Войти без пароля по ссылке»!', false);
+      }
+    }
+
+    // 3. Вход через Google (OAuth Supabase)
+    async function loginWithOAuth(provider) {
+      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: provider,
+        options: { redirectTo: window.location.origin }
+      });
+      if (error) showAuthStatus(error.message, true);
+    }
+
+    // 4. Вход по номеру телефона (СМС-код через Supabase)
+    async function sendPhoneSmsCode() {
+      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      const phone = document.getElementById('authPhoneInput').value.trim();
+      if (phone.length < 10) return showAuthStatus('Введите корректный номер телефона с +7', true);
+
+      showAuthStatus('⏳ Отправляем СМС с кодом...');
+      const { error } = await supabaseClient.auth.signInWithOtp({ phone });
+      if (error) {
+        return showAuthStatus('Для отправки СМС включите Phone Provider в панели Supabase (или войдите бесплатно через Почту / Google / Яндекс выше).', true);
+      }
+      document.getElementById('phoneOtpBox').classList.remove('hidden');
+      showAuthStatus('📲 Код отправлен! Введите 6 цифр из СМС ниже.');
+    }
+
+    async function verifyPhoneSmsCode() {
+      const phone = document.getElementById('authPhoneInput').value.trim();
+      const token = document.getElementById('authPhoneOtp').value.trim();
+      if (!token) return showAuthStatus('Введите код из СМС!', true);
+
+      showAuthStatus('⏳ Проверяем код...');
+      const { error } = await supabaseClient.auth.verifyOtp({
+        phone,
+        token,
+        type: 'sms'
+      });
+      if (error) return showAuthStatus('Неверный или просроченный СМС-код', true);
+      showAuthStatus('✅ Номер подтвержден! Вы вошли.');
+    }
+
     async function handleAuthSession(session) {
       if (session && session.user) {
         currentUser = session.user;
         currentSessionToken = session.access_token;
-        const shortEmail = (currentUser.email || 'Аккаунт').split('@')[0];
-        document.getElementById('authNavText').innerText = `👤 ${shortEmail}`;
+        const label = currentUser.email
+          ? currentUser.email.split('@')[0]
+          : (currentUser.phone || 'Профиль');
+        document.getElementById('authNavText').innerText = `👤 ${label}`;
         document.getElementById('logoutBtn').classList.remove('hidden');
         closeAuthModal();
         await fetchUserCreditsFromDB();
@@ -607,7 +768,7 @@
 
     async function fetchUserCreditsFromDB() {
       if (!supabaseClient || !currentUser) return;
-      const { data, error } = await supabaseClient
+      const { data } = await supabaseClient
         .from('profiles')
         .select('credits')
         .eq('id', currentUser.id)
@@ -635,15 +796,6 @@
       el.innerText = msg;
     }
 
-    async function loginWithOAuth(provider) {
-      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL и SUPABASE_ANON_KEY в Vercel');
-      const { error } = await supabaseClient.auth.signInWithOAuth({
-        provider: provider,
-        options: { redirectTo: window.location.origin }
-      });
-      if (error) showAuthStatus(error.message, true);
-    }
-
     async function handleEmailAuth(mode) {
       if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
       const email = document.getElementById('authEmail').value.trim();
@@ -659,7 +811,7 @@
         if (data.session) {
           showAuthStatus('🎉 Аккаунт создан! Начислено 5 бесплатных генераций.');
         } else {
-          showAuthStatus('📩 Проверьте почту и перейдите по ссылке для подтверждения аккаунта!');
+          showAuthStatus('📩 Проверьте вашу почту и перейдите по ссылке для подтверждения!');
         }
       } else {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -671,15 +823,17 @@
     async function handleMagicLink() {
       if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
       const email = document.getElementById('authEmail').value.trim();
-      if (!email) return showAuthStatus('Сначала введите ваш Email в поле выше!', true);
+      if (!email || !email.includes('@') || email.startsWith('@')) {
+        return showAuthStatus('Введите ваш полный Email в поле выше!', true);
+      }
 
-      showAuthStatus('⏳ Отправляем ссылку на почту...');
+      showAuthStatus('⏳ Отправляем ссылку для входа на почту...');
       const { error } = await supabaseClient.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: window.location.origin }
       });
       if (error) return showAuthStatus(error.message, true);
-      showAuthStatus('✨ Ссылка для мгновенного входа отправлена на ваш Email!');
+      showAuthStatus('✨ Ссылка отправлена на вашу почту! Нажмите на неё в письме для мгновенного входа.');
     }
 
     async function logoutUser() {
