@@ -1,42 +1,127 @@
 import crypto from 'crypto';
 
-// Хранилище подтвержденных платежей в памяти сервера
-global.payments = global.payments || {};
+const VALID_PROMO_CODES = {
+  'START5': 5,
+  'PRO50': 5,
+  'SELLER10': 10,
+  'SHOP20': 20,
+  'VIP2026': 50
+};
+
+async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsToAdd) {
+  // Проверяем в payments_log, не был ли этот заказ или промокод уже зачислен
+  const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=label`, {
+    headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+  });
+  const existing = await checkRes.json();
+  if (Array.isArray(existing) && existing.length > 0) {
+    return { alreadyCredited: true };
+  }
+
+  // Записываем в лог транзакций
+  await fetch(`${sbUrl}/rest/v1/payments_log`, {
+    method: 'POST',
+    headers: {
+      'apikey': sbServiceKey,
+      'Authorization': `Bearer ${sbServiceKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ label, user_id: userId, credits: creditsToAdd })
+  });
+
+  // Получаем текущий баланс пользователя
+  const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
+    headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+  });
+  const profList = await profRes.json();
+  const currentCredits = (Array.isArray(profList) && profList[0]) ? profList[0].credits : 0;
+  const newCredits = currentCredits + creditsToAdd;
+
+  // Обновляем баланс в таблице profiles
+  await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': sbServiceKey,
+      'Authorization': `Bearer ${sbServiceKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ credits: newCredits })
+  });
+
+  return { alreadyCredited: false, newCredits };
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // 1. Запрос от фронтенда (проверка: прошла ли оплата по ID заказа label)
+  const sbUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+  const sbAnonKey = (process.env.SUPABASE_ANON_KEY || '').trim();
+  const sbServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+  // 1. Отдача публичного конфига Supabase на фронтенд и проверка статуса заказа
   if (req.method === 'GET') {
-    const { label } = req.query;
-    if (!label) {
-      return res.status(400).json({ error: 'Missing label' });
+    const { action, label } = req.query;
+
+    if (action === 'config') {
+      return res.status(200).json({ supabaseUrl: sbUrl, supabaseAnonKey: sbAnonKey });
     }
 
-    const paymentInfo = global.payments[label];
-    if (paymentInfo && paymentInfo.paid) {
-      return res.status(200).json({
-        paid: true,
-        credits: paymentInfo.credits
-      });
-    }
+    if (!label) return res.status(400).json({ error: 'Missing label' });
 
+    const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=credits`, {
+      headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+    });
+    const list = await checkRes.json();
+    if (Array.isArray(list) && list.length > 0) {
+      return res.status(200).json({ paid: true, credits: list[0].credits });
+    }
     return res.status(200).json({ paid: false });
   }
 
-  // 2. Прием HTTP-уведомления от ЮMoney после оплаты (POST)
+  // 2. Обработка промокодов, возврата с оплаты и вебхука ЮMoney (POST)
   if (req.method === 'POST') {
     try {
-      const body = typeof req.body === 'string'
-        ? Object.fromEntries(new URLSearchParams(req.body))
-        : (req.body || {});
+      const isJson = (req.headers['content-type'] || '').includes('application/json');
+      const body = isJson
+        ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
+        : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
+      // А) Активация промокода или подтверждение возврата по successURL
+      if (body?.action === 'promo' || body?.action === 'confirm_return') {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.replace('Bearer ', '').trim();
+        const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
+        });
+        if (!userRes.ok) return res.status(401).json({ error: 'Войдите в аккаунт' });
+        const userData = await userRes.json();
+
+        if (body.action === 'promo') {
+          const code = (body.code || '').trim().toUpperCase();
+          const bonus = VALID_PROMO_CODES[code];
+          if (!bonus) return res.status(400).json({ error: 'Неверный промокод' });
+
+          const promoLabel = code === 'VIP2026' ? `promo_${code}_${Date.now()}` : `promo_${code}_${userData.id}`;
+          const result = await addCreditsToSupabase(sbUrl, sbServiceKey, promoLabel, userData.id, bonus);
+          if (result.alreadyCredited) {
+            return res.status(400).json({ error: 'Вы уже активировали этот промокод ранее!' });
+          }
+          return res.status(200).json({ ok: true, added: bonus, credits: result.newCredits });
+        }
+
+        if (body.action === 'confirm_return') {
+          const { orderId, credits } = body;
+          const addCount = [5, 10, 20].includes(Number(credits)) ? Number(credits) : 5;
+          const result = await addCreditsToSupabase(sbUrl, sbServiceKey, orderId, userData.id, addCount);
+          return res.status(200).json({ ok: true, added: addCount, credits: result.newCredits });
+        }
+      }
+
+      // Б) Стандартный HTTP-вебхук от ЮMoney
       const {
         notification_type = '',
         operation_id = '',
@@ -51,47 +136,30 @@ export default async function handler(req, res) {
       } = body;
 
       const secret = (process.env.YOOMONEY_NOTIFICATION_SECRET || '').trim();
-
-      // Если секретное слово задано в Vercel, проверяем подлинность SHA-1 подписи
       if (secret) {
         const checkString = `${notification_type}&${operation_id}&${amount}&${currency}&${datetime}&${sender}&${codepro}&${secret}&${label}`;
         const calculatedHash = crypto.createHash('sha1').update(checkString, 'utf-8').digest('hex');
-
         if (calculatedHash !== sha1_hash) {
-          console.warn('Неверный хэш уведомления ЮMoney');
           return res.status(400).send('Invalid signature');
         }
       }
 
-      // Определяем выбранный тариф: 5 (50р), 10 (80р) или 20 (150р) генераций
-      // Формат нашего label из index.html: kp_10_1731185000_ab12c
-      let creditsToAdd = 5;
+      // Формат label: kp_10_UUID-ПОЛЬЗОВАТЕЛЯ_rand
       if (label && label.startsWith('kp_')) {
         const parts = label.split('_');
-        const parsed = parseInt(parts[1], 10);
-        if ([5, 10, 20].includes(parsed)) {
-          creditsToAdd = parsed;
-        }
-      } else {
-        // Резервная проверка по сумме списания
-        const paidSum = parseFloat(withdraw_amount || amount || '0');
-        if (paidSum >= 140) creditsToAdd = 20;
-        else if (paidSum >= 75) creditsToAdd = 10;
-        else creditsToAdd = 5;
-      }
+        const parsedCredits = parseInt(parts[1], 10);
+        const userId = parts[2];
+        const creditsToAdd = [5, 10, 20].includes(parsedCredits) ? parsedCredits : 5;
 
-      if (label) {
-        global.payments[label] = {
-          paid: true,
-          credits: creditsToAdd,
-          timestamp: Date.now()
-        };
+        if (userId && userId.length >= 30) {
+          await addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsToAdd);
+        }
       }
 
       return res.status(200).send('OK');
     } catch (err) {
       console.error('Webhook error:', err);
-      return res.status(500).send('Internal Server Error');
+      return res.status(500).json({ error: err.message });
     }
   }
 
