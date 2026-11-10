@@ -17,48 +17,55 @@ export default async function handler(req, res) {
     const sbUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
     const sbServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-    if (!apiKey) return res.status(500).json({ error: 'Не задан GROQ_API_KEY в Vercel' });
-    if (!sbUrl || !sbServiceKey) return res.status(500).json({ error: 'Не заданы SUPABASE_URL или SUPABASE_SERVICE_ROLE_KEY в Vercel' });
-    if (!token) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите в аккаунт для генерации' });
-
-    // 1. Проверяем пользователя по токену в Supabase Auth
-    const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
-    });
-    if (!userRes.ok) {
-      return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Сессия истекла, войдите снова' });
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
     }
-    const userData = await userRes.json();
-    const userId = userData.id;
 
-    // 2. Получаем баланс пользователя из таблицы profiles
-    const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
-      headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-    });
-    const profList = await profRes.json();
-    let currentCredits = 5;
+    let userId = null;
+    let currentCredits = null;
 
-    if (!Array.isArray(profList) || profList.length === 0) {
-      await fetch(`${sbUrl}/rest/v1/profiles`, {
-        method: 'POST',
-        headers: {
-          'apikey': sbServiceKey,
-          'Authorization': `Bearer ${sbServiceKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: userId, email: userData.email || '', credits: 5 })
+    // Если Supabase настроен на сервере — проверяем авторизацию и баланс по БД
+    if (sbUrl && sbServiceKey) {
+      if (!token) {
+        return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите в аккаунт (Google, Яндекс или Почта), чтобы использовать 5 бесплатных генераций!' });
+      }
+
+      const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
       });
-    } else {
-      currentCredits = profList[0].credits;
+      if (!userRes.ok) {
+        return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Сессия истекла, пожалуйста, войдите снова' });
+      }
+      const userData = await userRes.json();
+      userId = userData.id;
+
+      const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
+        headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+      });
+      const profList = await profRes.json();
+
+      if (!Array.isArray(profList) || profList.length === 0) {
+        currentCredits = 5;
+        await fetch(`${sbUrl}/rest/v1/profiles`, {
+          method: 'POST',
+          headers: {
+            'apikey': sbServiceKey,
+            'Authorization': `Bearer ${sbServiceKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ id: userId, email: userData.email || '', credits: 5 })
+        });
+      } else {
+        currentCredits = profList[0].credits;
+      }
+
+      if (currentCredits <= 0) {
+        return res.status(402).json({ error: 'NO_CREDITS', message: 'Бесплатные генерации закончились. Пополните баланс!' });
+      }
     }
 
-    if (currentCredits <= 0) {
-      return res.status(402).json({ error: 'NO_CREDITS', message: 'Бесплатные генерации закончились. Пополните баланс!' });
-    }
-
-    // 3. Генерируем воронку из 3 слайдов через Groq AI
     const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
-Создай воронку из 3 слайдов карточки товара и верни строго валидный JSON:
+Создай продающую воронку из 3 слайдов карточки товара и верни строго валидный JSON без markdown-обертки:
 {
   "slides": [
     {
@@ -70,19 +77,23 @@ export default async function handler(req, res) {
     },
     {
       "title": "ХАРАКТЕРИСТИКИ",
-      "subtitle": "Продуманная конструкция и материалы",
+      "subtitle": "Надежные материалы и точность",
       "badge": "ПАРАМЕТРЫ",
       "sticker": "ПРЕМИУМ КАЧЕСТВО",
-      "bullets": ["Материал: ...", "Размеры / Вес: ...", "Особенность: ...", "Ресурс / Мощность: ..."]
+      "bullets": ["Материал: ...", "Мощность / Емкость: ...", "Особенность: ...", "Вес / Ресурс: ..."]
     },
     {
       "title": "КОМПЛЕКТАЦИЯ",
-      "subtitle": "Всё необходимое уже в наборе",
+      "subtitle": "Полный набор в фирменной упаковке",
       "badge": "ЧТО В КОРОБКЕ",
-      "sticker": "ГОТОВО К ДАРЕНИЮ",
-      "bullets": ["1. Основной товар", "2. Кабель / Аксессуар", "3. Инструкция на русском", "4. Надежная упаковка"]
+      "sticker": "ПОДАРОК ВНУТРИ",
+      "bullets": ["1. Основной товар", "2. Кабель / Аксессуар", "3. Инструкция на русском", "4. Коробка для подарка"]
     }
   ],
+  "dimensions": {
+    "width": "18 см",
+    "height": "24 см"
+  },
   "bg_prompt": "Detailed English prompt for commercial product studio background with empty center podium, soft cinematic lighting, 8k photorealistic",
   "seo": "Продающее SEO-описание для карточки товара на 500-700 символов с ключевыми запросами."
 }`;
@@ -94,7 +105,9 @@ export default async function handler(req, res) {
       });
       if (mRes.ok) {
         const mData = await mRes.json();
-        const ids = (mData.data || []).map(m => m.id).filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
+        const ids = (mData.data || [])
+          .map(m => m.id)
+          .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
         candidateModels = [...new Set([...candidateModels, ...ids])];
       }
     } catch (e) {}
@@ -130,19 +143,20 @@ export default async function handler(req, res) {
     const cleanedJson = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const content = JSON.parse(cleanedJson);
 
-    // 4. Списываем 1 генерацию в базе Supabase
-    const nextCredits = Math.max(0, currentCredits - 1);
-    await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': sbServiceKey,
-        'Authorization': `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ credits: nextCredits })
-    });
+    if (sbUrl && sbServiceKey && userId !== null && currentCredits !== null) {
+      const nextCredits = Math.max(0, currentCredits - 1);
+      await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': sbServiceKey,
+          'Authorization': `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ credits: nextCredits })
+      });
+      content.remaining_credits = nextCredits;
+    }
 
-    content.remaining_credits = nextCredits;
     return res.status(200).json(content);
   } catch (err) {
     return res.status(500).json({ error: err.message });
