@@ -55,10 +55,10 @@
 
       <div class="text-center space-y-1">
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
-          🎁 +5 генераций бесплатно при входе
+          🎁 +5 генераций бесплатно после входа
         </div>
         <h2 class="text-xl font-extrabold text-white">Вход в KARD-PRO</h2>
-        <p class="text-[11px] text-slate-400">Авторизуйтесь через Яндекс, Google или Почту для сохранения баланса на всех ваших устройствах</p>
+        <p class="text-[11px] text-slate-400">Авторизуйтесь через Яндекс, Google или Почту — вам сразу начислится 5 бесплатных генераций, которые не сбрасываются при очистке кэша</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2.5">
@@ -180,7 +180,6 @@
       </div>
     </div>
 
-    <!-- Быстрые пресеты маркетплейсов -->
     <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
       <button onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-blue-300 font-semibold transition">🔵 Ozon</button>
       <button onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition">🟣 Wildberries</button>
@@ -188,10 +187,9 @@
       <button onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition">🟢 Авито</button>
     </div>
 
-    <!-- Настройки экспорта и профиль -->
     <div class="flex items-center gap-2">
       <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-        <span id="authNavText">👤 Войти</span>
+        <span id="authNavText">👤 Войти (+5 генераций)</span>
       </button>
 
       <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Выйти из аккаунта">
@@ -199,7 +197,7 @@
       </button>
 
       <button onclick="handleTopUpClick()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2 transition cursor-pointer">
-        <span class="text-xs font-semibold text-slate-300">⚡ <b id="creditsCount" class="text-white">5</b></span>
+        <span class="text-xs font-semibold text-slate-300">⚡ <b id="creditsCount" class="text-white">0</b></span>
         <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg">+ Пополнить</span>
       </button>
 
@@ -327,7 +325,7 @@
               </button>
             </div>
 
-            <!-- Инструмент Ластик объектов (Magic Eraser Brush) -->
+            <!-- Ластик объектов 60 FPS -->
             <div class="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl space-y-2 text-xs">
               <div class="flex items-center justify-between">
                 <span class="font-bold text-indigo-300">🧽 Ластик лишних деталей на фото</span>
@@ -340,14 +338,13 @@
                   <span>Проведите мышкой по товару на холсте, чтобы стереть деталь</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="text-[10px] text-slate-400 shrink-0">Размер кисти:</span>
+                  <span class="text-[10px] text-slate-400 shrink-0">Кисть:</span>
                   <input id="eraserSize" type="range" min="8" max="120" value="35" class="w-full">
                   <button onclick="restoreOriginalProductImg()" class="text-[10px] bg-white/10 px-2 py-1 rounded text-amber-300 shrink-0">Сбросить</button>
                 </div>
               </div>
             </div>
 
-            <!-- Параметры и улучшение качества фото -->
             <div class="grid grid-cols-2 gap-3 pt-1 text-xs">
               <div>
                 <span class="text-[11px] text-slate-400">Масштаб товара</span>
@@ -380,7 +377,6 @@
             </div>
           </div>
 
-          <!-- Генератор ИИ-фона -->
           <div class="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/25 space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-emerald-400">🌄 2. Студийный ИИ-фон (Или свой файл)</span>
@@ -425,7 +421,6 @@
 
         <!-- ВКЛАДКА 3: ПРОФЕССИОНАЛЬНЫЕ ШАБЛОНЫ, ГАБАРИТЫ И ЦЕНА -->
         <div id="tab_style" class="hidden space-y-4">
-          <!-- Быстрые дизайнерские шаблоны в 1 клик -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <label class="block font-bold text-indigo-300">🌟 Готовые дизайнерские шаблоны (1 клик)</label>
             <div class="grid grid-cols-2 gap-2">
@@ -497,7 +492,6 @@
             </div>
           </div>
 
-          <!-- Конструктор габаритных стрелок -->
           <div class="bg-indigo-500/10 p-4 rounded-2xl border border-indigo-500/30 space-y-2.5 text-xs">
             <div class="flex justify-between items-center">
               <span class="font-bold text-indigo-300">📏 Габаритные стрелки товара</span>
@@ -511,7 +505,6 @@
             </div>
           </div>
 
-          <!-- Виджет Цены / Скидки (Для Авито и акций) -->
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-2 text-xs">
             <div class="flex justify-between items-center">
               <span class="font-bold text-rose-400">🔥 Плашка Цены / Выгоды (Двигается)</span>
@@ -582,7 +575,7 @@
           </div>
         </div>
 
-        <!-- ВКЛАДКА 5: МЕНЕДЖЕР СЛОЕВ И БЛОКИРОВКИ (КАК В FIGMA / SUPA) -->
+        <!-- ВКЛАДКА 5: МЕНЕДЖЕР СЛОЕВ И БЛОКИРОВКИ -->
         <div id="tab_layers" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
@@ -651,7 +644,6 @@
               <input id="ratingText" type="text" value="★ 4.9 • Выбор покупателей" oninput="drawCard()" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3 py-1.5 text-xs">
             </div>
 
-            <!-- Логотип -->
             <div class="pt-2 border-t border-white/10 space-y-2">
               <div class="flex justify-between items-center">
                 <span class="font-bold text-purple-300">🛡️ Слой: Логотип бренда</span>
@@ -752,31 +744,32 @@
     }
 
     // =========================================================================
-    // АВТОРИЗАЦИЯ (ЯНДЕКС ID, GOOGLE, ПОЧТА) И БИЛЛИНГ ЮMONEY (4100119681467569)
+    // СТРОГАЯ АВТОРИЗАЦИЯ (БЕЗ ГОСТЕВЫХ ЛИМИТОВ) + СИНХРОНИЗАЦИЯ С SUPABASE
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
     let supabaseClient = null;
-    let isSupabaseConfigured = false;
     let currentUser = null;
     let currentSessionToken = null;
-    let userCredits = parseInt(localStorage.getItem('kardpro_credits') || '5', 10);
+    let userCredits = 0; // До авторизации всегда 0 генераций
     let oauthConfig = { yandexClientId: '' };
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
 
     function updateCreditsUI(val) {
-      userCredits = val;
-      localStorage.setItem('kardpro_credits', val);
-      document.getElementById('creditsCount').innerText = val;
+      userCredits = Math.max(0, parseInt(val || 0, 10));
+      document.getElementById('creditsCount').innerText = userCredits;
     }
-    updateCreditsUI(userCredits);
+    updateCreditsUI(0);
 
     function applyYandexUserSession(yaUser) {
       currentUser = { id: yaUser.id, email: yaUser.email, name: yaUser.name };
-      currentSessionToken = 'ya_' + yaUser.id;
+      currentSessionToken = yaUser.session_token;
       document.getElementById('authNavText').innerText = `🔴 ${yaUser.name}`;
       document.getElementById('logoutBtn').classList.remove('hidden');
+      if (typeof yaUser.credits === 'number') {
+        updateCreditsUI(yaUser.credits);
+      }
       closeAuthModal();
     }
 
@@ -792,17 +785,21 @@
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка входа через Яндекс');
 
         const yaUser = {
-          id: data.id || data.email,
+          id: data.id,
           email: data.email,
-          name: data.name || data.email.split('@')[0]
+          name: data.name || data.email.split('@')[0],
+          credits: typeof data.credits === 'number' ? data.credits : 5,
+          session_token: data.session_token
         };
         localStorage.setItem('kardpro_yandex_user', JSON.stringify(yaUser));
         applyYandexUserSession(yaUser);
 
         if (data.token_hash && supabaseClient) {
-          await supabaseClient.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' });
+          try {
+            await supabaseClient.auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' });
+          } catch (e) {}
         }
-        showToast(`🎉 Вы вошли через Яндекс ID как ${yaUser.name}!`, 'success');
+        showToast(`🎉 Вы вошли через Яндекс ID как ${yaUser.name}! Доступно генераций: ${yaUser.credits}`, 'success');
       } catch (e) {
         showToast('Ошибка Яндекс ID: ' + e.message, 'error');
       }
@@ -810,23 +807,28 @@
 
     async function initSupabase() {
       try {
+        const res = await fetch('/api/payment-webhook?action=config');
+        const cfg = await res.json();
+        oauthConfig.yandexClientId = cfg.yandexClientId || '';
+
+        if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+          supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+        }
+
         const savedYaUser = localStorage.getItem('kardpro_yandex_user');
         if (savedYaUser) {
-          applyYandexUserSession(JSON.parse(savedYaUser));
+          const parsedYa = JSON.parse(savedYaUser);
+          if (parsedYa && parsedYa.session_token) {
+            applyYandexUserSession(parsedYa);
+            await fetchUserCreditsFromDB();
+          }
         }
 
         if (pendingYandexToken) {
           await processYandexToken(pendingYandexToken);
         }
 
-        const res = await fetch('/api/payment-webhook?action=config');
-        const cfg = await res.json();
-        oauthConfig.yandexClientId = cfg.yandexClientId || '';
-
-        if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
-          isSupabaseConfigured = true;
-          supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-
+        if (supabaseClient) {
           const { data: { session } } = await supabaseClient.auth.getSession();
           if (session && session.user) {
             await handleAuthSession(session);
@@ -839,7 +841,7 @@
           });
         }
       } catch (e) {
-        console.warn('Автономный режим:', e);
+        console.warn('Ошибка инициализации:', e);
       }
     }
 
@@ -856,7 +858,7 @@
     }
 
     async function loginWithOAuth(provider) {
-      if (!supabaseClient) return showToast('Supabase еще не подключен в настройках Vercel', 'error');
+      if (!supabaseClient) return showToast('Проверьте подключение Supabase в настройках Vercel', 'error');
       const { error } = await supabaseClient.auth.signInWithOAuth({
         provider: provider,
         options: { redirectTo: window.location.origin }
@@ -877,17 +879,26 @@
       }
     }
 
+    // Запрашиваем точный серверный баланс из базы данных
     async function fetchUserCreditsFromDB() {
-      if (!supabaseClient || !currentUser || String(currentSessionToken).startsWith('ya_')) return;
-      const { data } = await supabaseClient
-        .from('profiles')
-        .select('credits')
-        .eq('id', currentUser.id)
-        .single();
-
-      if (data && typeof data.credits === 'number') {
-        updateCreditsUI(data.credits);
-      }
+      if (!currentSessionToken) return;
+      try {
+        const res = await fetch('/api/payment-webhook?action=profile', {
+          headers: { 'Authorization': `Bearer ${currentSessionToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.credits === 'number') {
+            updateCreditsUI(data.credits);
+            const savedYa = localStorage.getItem('kardpro_yandex_user');
+            if (savedYa) {
+              const parsed = JSON.parse(savedYa);
+              parsed.credits = data.credits;
+              localStorage.setItem('kardpro_yandex_user', JSON.stringify(parsed));
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     function openAuthModal() {
@@ -904,7 +915,7 @@
     }
 
     async function handleEmailAuth(mode) {
-      if (!supabaseClient) return showToast('Добавьте SUPABASE_URL в Vercel', 'error');
+      if (!supabaseClient) return showToast('Проверьте ключи Supabase в Vercel', 'error');
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value.trim();
       if (!email || password.length < 6) {
@@ -928,7 +939,7 @@
     }
 
     async function handleMagicLink() {
-      if (!supabaseClient) return showToast('Supabase еще не настроен в Vercel', 'error');
+      if (!supabaseClient) return showToast('Проверьте ключи Supabase в Vercel', 'error');
       const email = document.getElementById('authEmail').value.trim();
       if (!email || !email.includes('@') || email.startsWith('@')) {
         return showAuthStatus('Введите ваш полный Email в поле выше!', true);
@@ -947,12 +958,20 @@
       if (supabaseClient) await supabaseClient.auth.signOut();
       currentUser = null;
       currentSessionToken = null;
-      document.getElementById('authNavText').innerText = '👤 Войти';
+      updateCreditsUI(0);
+      document.getElementById('authNavText').innerText = '👤 Войти (+5 генераций)';
       document.getElementById('logoutBtn').classList.add('hidden');
       showToast('Вы вышли из аккаунта', 'info');
     }
 
-    function handleTopUpClick() { openPayModal(); }
+    function handleTopUpClick() {
+      if (!currentUser || !currentSessionToken) {
+        showToast('🎁 Сначала войдите в аккаунт — вам начислится 5 бесплатных генераций!', 'info');
+        openAuthModal();
+        return;
+      }
+      openPayModal();
+    }
 
     function selectPlan(credits, price) {
       selectedPlan = { credits, price };
@@ -971,10 +990,15 @@
     function closePayModal() { document.getElementById('payModal').classList.add('hidden'); }
 
     function payWithYooMoney() {
+      if (!currentUser || !currentSessionToken) {
+        closePayModal();
+        openAuthModal();
+        return;
+      }
+
       const { credits, price } = selectedPlan;
-      const uid = currentUser ? currentUser.id : 'guest';
       const shortRand = Math.random().toString(36).substring(2, 6);
-      const orderId = `kp_${credits}_${uid}_${shortRand}`;
+      const orderId = `kp_${credits}_${currentUser.id}_${shortRand}`;
 
       const payUrl = new URL('https://yoomoney.ru/quickpay/confirm.xml');
       payUrl.searchParams.append('receiver', YOOMONEY_RECEIVER);
@@ -995,11 +1019,7 @@
           const data = await res.json();
           if (data.paid) {
             clearInterval(pollInterval);
-            if (isSupabaseConfigured && currentUser && !String(currentSessionToken).startsWith('ya_')) {
-              await fetchUserCreditsFromDB();
-            } else {
-              updateCreditsUI(userCredits + (data.credits || credits));
-            }
+            await fetchUserCreditsFromDB();
             document.getElementById('payWaitBox').classList.add('hidden');
             closePayModal();
             showToast(`🎉 Оплата подтверждена! Начислено +${data.credits || credits} генераций.`, 'success');
@@ -1012,23 +1032,21 @@
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
       const addCredits = parseInt(params.get('add_credits') || '0', 10);
-      if (paidOrder && [5, 10, 20].includes(addCredits)) {
+      if (paidOrder && [5, 10, 20].includes(addCredits) && currentSessionToken) {
         window.history.replaceState({}, document.title, window.location.pathname);
         try {
-          const headers = { 'Content-Type': 'application/json' };
-          if (currentSessionToken) headers['Authorization'] = `Bearer ${currentSessionToken}`;
           const res = await fetch('/api/payment-webhook', {
             method: 'POST',
-            headers,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentSessionToken}`
+            },
             body: JSON.stringify({ action: 'confirm_return', orderId: paidOrder, credits: addCredits })
           });
           const data = await res.json();
           if (data.ok) {
-            if (isSupabaseConfigured && currentUser && !String(currentSessionToken).startsWith('ya_')) {
-              await fetchUserCreditsFromDB();
-            } else {
-              updateCreditsUI(userCredits + addCredits);
-            }
+            if (typeof data.credits === 'number') updateCreditsUI(data.credits);
+            else await fetchUserCreditsFromDB();
             showToast(`🎉 Баланс пополнен на +${addCredits} генераций!`, 'success');
           }
         } catch (e) {}
@@ -1036,26 +1054,29 @@
     }
 
     async function activatePromoCode() {
+      if (!currentUser || !currentSessionToken) {
+        closePayModal();
+        openAuthModal();
+        return;
+      }
       const code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
       if (!code) return showToast('Введите промокод!', 'error');
 
       try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (currentSessionToken) headers['Authorization'] = `Bearer ${currentSessionToken}`;
         const res = await fetch('/api/payment-webhook', {
           method: 'POST',
-          headers,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSessionToken}`
+          },
           body: JSON.stringify({ action: 'promo', code })
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка промокода');
 
         document.getElementById('promoCodeInput').value = '';
-        if (isSupabaseConfigured && currentUser && !String(currentSessionToken).startsWith('ya_')) {
-          await fetchUserCreditsFromDB();
-        } else {
-          updateCreditsUI(userCredits + (data.added || 5));
-        }
+        if (typeof data.credits === 'number') updateCreditsUI(data.credits);
+        else await fetchUserCreditsFromDB();
         closePayModal();
         showToast(`🎉 Промокод активирован! Начислено +${data.added} генераций.`, 'success');
       } catch (e) {
@@ -1064,7 +1085,6 @@
     }
 
     initSupabase();
-    window.addEventListener('DOMContentLoaded', () => checkReturnedPayment());
 
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text', 'layers'].forEach(id => {
@@ -1082,12 +1102,13 @@
     function setBgPreset(promptTxt) { document.getElementById('bgPromptInput').value = promptTxt; }
 
     // =========================================================================
-    // ГРАФИЧЕСКОЕ ЯДРО: 3 СЛАЙДА, ЛАСТИК ОБЪЕКТОВ, ФИЛЬТРЫ ЧЕТКОСТИ И СЛОИ
+    // ГРАФИЧЕСКОЕ ЯДРО: 3 СЛАЙДА, БУФЕРНЫЙ ЛАСТИК 60 FPS И СЛОИ
     // =========================================================================
     const canvas = document.getElementById('cardCanvas');
     const ctx = canvas.getContext('2d');
     let productImg = null;
     let originalProductImg = null;
+    let productEditCanvas = null;
     let logoImg = null;
     let customBgImg = null;
     let currentFileBlob = null;
@@ -1270,20 +1291,27 @@
       syncUIFromCurrentSlide();
     }
 
-    // =========================================================================
-    // ИНСТРУМЕНТ «ЛАСТИК ОБЪЕКТОВ» И ПОВЫШЕНИЕ ЧЕТКОСТИ (UNSHARP MASK)
-    // =========================================================================
+    // Инициализация буферного холста для мгновенной работы ластика 60 FPS
+    function initProductEditCanvas(imgSource) {
+      productEditCanvas = document.createElement('canvas');
+      productEditCanvas.width = imgSource.width;
+      productEditCanvas.height = imgSource.height;
+      const pCtx = productEditCanvas.getContext('2d');
+      pCtx.drawImage(imgSource, 0, 0);
+    }
+
     function toggleEraserMode() {
       if (!productImg) return showToast('Сначала загрузите фото товара!', 'error');
       isEraserActive = !isEraserActive;
       const btn = document.getElementById('eraserToggleBtn');
       const box = document.getElementById('eraserControls');
       if (isEraserActive) {
+        if (!productEditCanvas) initProductEditCanvas(productImg);
         btn.innerText = '✅ Завершить ластик';
         btn.className = 'px-3 py-1 rounded-lg bg-emerald-500 text-slate-950 font-extrabold text-[11px] transition';
         box.classList.remove('hidden');
         canvas.classList.add('eraser-cursor');
-        showToast('🧽 Режим ластика включен: зажмите мышь на товаре, чтобы стереть лишнее', 'info');
+        showToast('🧽 Ластик включен: проведите мышью по товару, чтобы стереть деталь', 'info');
       } else {
         btn.innerText = 'Включить ластик';
         btn.className = 'px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] transition';
@@ -1293,43 +1321,37 @@
     }
 
     function eraseAtPointer(mouseX, mouseY) {
-      if (!productImg) return;
+      if (!productEditCanvas) return;
       const s = getActiveSlide();
       const cw = canvas.width; const ch = canvas.height;
       const scale = document.getElementById('imgScale').value / 100;
-      const baseRatio = Math.min((cw * 0.8) / productImg.width, (ch * 0.55) / productImg.height);
-      const prodW = productImg.width * baseRatio * scale;
-      const prodH = productImg.height * baseRatio * scale;
+      const baseRatio = Math.min((cw * 0.8) / productEditCanvas.width, (ch * 0.55) / productEditCanvas.height);
+      const prodW = productEditCanvas.width * baseRatio * scale;
+      const prodH = productEditCanvas.height * baseRatio * scale;
 
       const relX = mouseX - (s.positions.product.x - prodW / 2);
       const relY = mouseY - (s.positions.product.y - prodH / 2);
       if (relX < 0 || relY < 0 || relX > prodW || relY > prodH) return;
 
-      const imgX = (relX / prodW) * productImg.width;
-      const imgY = (relY / prodH) * productImg.height;
+      const imgX = (relX / prodW) * productEditCanvas.width;
+      const imgY = (relY / prodH) * productEditCanvas.height;
       const brushRadius = (parseInt(document.getElementById('eraserSize').value) || 35) / (baseRatio * scale);
 
-      const off = document.createElement('canvas');
-      off.width = productImg.width;
-      off.height = productImg.height;
-      const oCtx = off.getContext('2d');
-      oCtx.drawImage(productImg, 0, 0);
+      const oCtx = productEditCanvas.getContext('2d');
+      oCtx.save();
       oCtx.globalCompositeOperation = 'destination-out';
       oCtx.beginPath();
       oCtx.arc(imgX, imgY, brushRadius, 0, Math.PI * 2);
       oCtx.fill();
+      oCtx.restore();
 
-      const updated = new Image();
-      updated.onload = () => {
-        productImg = updated;
-        drawCard();
-      };
-      updated.src = off.toDataURL();
+      drawCard();
     }
 
     function restoreOriginalProductImg() {
       if (!originalProductImg) return;
       productImg = originalProductImg;
+      initProductEditCanvas(originalProductImg);
       drawCard();
       showToast('Исходное фото товара восстановлено', 'info');
     }
@@ -1342,9 +1364,6 @@
       showToast('✨ Четкость и микроконтраст товара усилены!', 'success');
     }
 
-    // =========================================================================
-    // МАСТЕР-ШАБЛОНЫ ДИЗАЙНА В 1 КЛИК
-    // =========================================================================
     function applyMasterTemplate(tpl) {
       pushHistoryState();
       if (tpl === 'cyber') {
@@ -1423,7 +1442,6 @@
       else if (val === 'avito_h') { canvas.width = 1200; canvas.height = 900; }
       else if (val === 'story') { canvas.width = 1080; canvas.height = 1920; }
 
-      // Пропорциональное масштабирование координат без сброса пользовательской раскладки!
       const rx = canvas.width / oldW;
       const ry = canvas.height / oldH;
       slidesState.forEach(s => {
@@ -1543,7 +1561,14 @@
       syncUIFromCurrentSlide();
     }
 
+    // Генерация воронки ИИ (строго после авторизации)
     async function generateWithAI() {
+      if (!currentUser || !currentSessionToken) {
+        showToast('🎁 Войдите через Яндекс, Google или Почту, чтобы получить 5 бесплатных генераций!', 'info');
+        openAuthModal();
+        return;
+      }
+
       if (userCredits <= 0) {
         openPayModal();
         return;
@@ -1558,16 +1583,21 @@
 
       try {
         pushHistoryState();
-        const headers = { 'Content-Type': 'application/json' };
-        if (currentSessionToken) headers['Authorization'] = `Bearer ${currentSessionToken}`;
-
         const res = await fetch('/api/generate', {
           method: 'POST',
-          headers,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSessionToken}`
+          },
           body: JSON.stringify({ product: prompt })
         });
 
         const data = await res.json();
+
+        if (res.status === 401 || data.error === 'AUTH_REQUIRED') {
+          openAuthModal();
+          throw new Error(data.message || 'Пожалуйста, войдите в аккаунт');
+        }
 
         if (res.status === 402 || data.error === 'NO_CREDITS') {
           openPayModal();
@@ -1578,8 +1608,12 @@
 
         if (typeof data.remaining_credits === 'number') {
           updateCreditsUI(data.remaining_credits);
-        } else {
-          updateCreditsUI(Math.max(0, userCredits - 1));
+          const savedYa = localStorage.getItem('kardpro_yandex_user');
+          if (savedYa) {
+            const parsed = JSON.parse(savedYa);
+            parsed.credits = data.remaining_credits;
+            localStorage.setItem('kardpro_yandex_user', JSON.stringify(parsed));
+          }
         }
 
         if (data.slides && Array.isArray(data.slides)) {
@@ -1634,8 +1668,13 @@
           const seed = Math.floor(Math.random() * 999999);
           const encoded = encodeURIComponent(bgPrompt + ', commercial product background, empty center podium, no text, 8k photorealistic');
           const cloudUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${canvas.width}&height=${canvas.height}&seed=${seed}&nologo=true&model=flux`;
+
+          // Загружаем как Blob для защиты от блокировки CORS при скачивании Ultra HD
+          const imgRes = await fetch(cloudUrl);
+          const blob = await imgRes.blob();
+          const localUrl = URL.createObjectURL(blob);
+
           const bgImg = new Image();
-          bgImg.crossOrigin = 'anonymous';
           bgImg.onload = () => {
             customBgImg = bgImg;
             drawCard();
@@ -1643,13 +1682,9 @@
             showToast('🌄 Студийный ИИ-фон установлен!', 'success');
             btn.disabled = false;
           };
-          bgImg.onerror = () => {
-            status.innerText = '⚠️ Повторите попытку через пару секунд.';
-            btn.disabled = false;
-          };
-          bgImg.src = cloudUrl;
+          bgImg.src = localUrl;
         } catch (err) {
-          status.innerText = 'Ошибка: ' + err.message;
+          status.innerText = '⚠️ Повторите попытку через пару секунд.';
           btn.disabled = false;
         }
         return;
@@ -1785,6 +1820,7 @@
         img.onload = () => {
           productImg = img;
           originalProductImg = img;
+          initProductEditCanvas(img);
           drawCard();
           showToast('📸 Фото товара загружено!', 'success');
         };
@@ -1983,6 +2019,13 @@
     }
 
     function handleEnd() {
+      if (isErasingNow && productEditCanvas) {
+        isErasingNow = false;
+        const updated = new Image();
+        updated.onload = () => { productImg = updated; drawCard(); };
+        updated.src = productEditCanvas.toDataURL();
+        return;
+      }
       isErasingNow = false;
       if (draggingItem) {
         draggingItem = null;
@@ -2071,8 +2114,12 @@
       tCtx.putImageData(imgData, 0, 0);
       const newImg = new Image();
       newImg.onload = () => {
-        if (target === 'logo') logoImg = newImg;
-        else productImg = newImg;
+        if (target === 'logo') {
+          logoImg = newImg;
+        } else {
+          productImg = newImg;
+          initProductEditCanvas(newImg);
+        }
         drawCard();
         showToast('🪄 Белый фон удален!', 'success');
       };
@@ -2093,6 +2140,7 @@
         const newImg = new Image();
         newImg.onload = () => {
           productImg = newImg;
+          initProductEditCanvas(newImg);
           drawCard();
           status.innerText = '✅ Фон вырезан идеально!';
           showToast('🧠 Фон товара идеально вырезан!', 'success');
@@ -2107,23 +2155,25 @@
 
     function renderProductLayer(s, cw, ch, accent) {
       const positions = s.positions;
+      const activeSource = (isEraserActive && productEditCanvas) ? productEditCanvas : productImg;
       let prodW = 360, prodH = 360;
-      if (productImg) {
+
+      if (activeSource) {
         const scale = document.getElementById('imgScale').value / 100;
         const rot = (parseInt(document.getElementById('imgRotate').value) || 0) * Math.PI / 180;
         const brightness = document.getElementById('imgBrightness').value || 100;
         const contrast = document.getElementById('imgContrast').value || 106;
 
-        const baseRatio = Math.min((cw * 0.8) / productImg.width, (ch * 0.55) / productImg.height);
-        prodW = productImg.width * baseRatio * scale;
-        prodH = productImg.height * baseRatio * scale;
+        const baseRatio = Math.min((cw * 0.8) / activeSource.width, (ch * 0.55) / activeSource.height);
+        prodW = activeSource.width * baseRatio * scale;
+        prodH = activeSource.height * baseRatio * scale;
 
         if (document.getElementById('showReflection').checked) {
           ctx.save();
           ctx.translate(positions.product.x, positions.product.y + prodH * 0.85);
           ctx.scale(1, -0.35);
           ctx.globalAlpha = 0.22;
-          ctx.drawImage(productImg, -prodW / 2, -prodH / 2, prodW, prodH);
+          ctx.drawImage(activeSource, -prodW / 2, -prodH / 2, prodW, prodH);
           ctx.restore();
         }
 
@@ -2134,7 +2184,7 @@
         ctx.shadowColor = 'rgba(0,0,0,0.65)';
         ctx.shadowBlur = 45;
         ctx.shadowOffsetY = 20;
-        ctx.drawImage(productImg, -prodW / 2, -prodH / 2, prodW, prodH);
+        ctx.drawImage(activeSource, -prodW / 2, -prodH / 2, prodW, prodH);
         ctx.filter = 'none';
 
         if (draggingItem === 'product') {
@@ -2188,7 +2238,6 @@
       const sub = s.subtitle || '';
       const badge = (s.badge || '').toUpperCase();
 
-      // 1. Фон
       if (customBgImg) {
         ctx.drawImage(customBgImg, 0, 0, cw, ch);
       } else {
@@ -2210,7 +2259,6 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // 2. Подиум
       if (document.getElementById('showPodium').checked) {
         const podY = positions.product.y + 230;
         ctx.save();
@@ -2228,12 +2276,10 @@
         ctx.restore();
       }
 
-      // 3. Товар (если не поверх текста)
       if (!prodOnTop) {
         renderProductLayer(s, cw, ch, accent);
       }
 
-      // 4. Логотип
       if (logoImg) {
         const lSize = parseInt(document.getElementById('logoScale').value) || 130;
         const ratio = Math.min(lSize / logoImg.width, lSize / logoImg.height);
@@ -2245,7 +2291,6 @@
         ctx.restore();
       }
 
-      // 5. Бейдж
       if (badge) {
         ctx.font = `900 22px ${fontName}, sans-serif`;
         const bw = ctx.measureText(badge).width + 48;
@@ -2256,7 +2301,6 @@
         ctx.fillText(badge, positions.badge.x + 24, positions.badge.y + 32);
       }
 
-      // 6. Заголовок и Подзаголовок
       ctx.fillStyle = textColor;
       ctx.font = `900 ${titleFontSize}px ${fontName}, sans-serif`;
       const words = title.split(' ');
@@ -2282,7 +2326,6 @@
         ctx.fillText(sub, positions.title.x, subY + 10);
       }
 
-      // 7. Плашка Рейтинга
       if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
         const rTxt = document.getElementById('ratingText').value;
         ctx.font = `800 20px ${fontName}, sans-serif`;
@@ -2297,7 +2340,6 @@
         ctx.restore();
       }
 
-      // 8. Плашки УТП с авто-масштабированием длинного текста (Smart Fit)
       bulletsData.forEach((bp, idx) => {
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.45)';
@@ -2333,7 +2375,6 @@
         }
         ctx.restore();
 
-        // Умный подбор кегля, чтобы текст никогда не вылезал за края плашки
         let fSize = 24;
         ctx.font = `700 ${fSize}px ${fontName}, sans-serif`;
         while (ctx.measureText(bp.text).width > (bp.w - 44) && fSize > 14) {
@@ -2345,12 +2386,10 @@
         ctx.fillText(bp.text, bp.x + 24, bp.y + (bp.h / 2) + (fSize * 0.34));
       });
 
-      // Товар поверх плашек (если включен Z-Index)
       if (prodOnTop) {
         renderProductLayer(s, cw, ch, accent);
       }
 
-      // 9. Плашка Цены / Выгоды
       if (document.getElementById('showPriceTag').checked) {
         const pNew = document.getElementById('priceNewText').value;
         const pOld = document.getElementById('priceOldText').value;
@@ -2383,7 +2422,6 @@
         ctx.restore();
       }
 
-      // 10. Круглый стикер
       if (document.getElementById('showSticker').checked) {
         const sTxt = (s.sticker || '').toUpperCase();
         const sCol = document.getElementById('stickerColor').value;
@@ -2417,7 +2455,6 @@
         ctx.restore();
       }
 
-      // 11. Слепые зоны маркетплейсов
       if (document.getElementById('safeZoneToggle').checked) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
@@ -2439,7 +2476,6 @@
       }
     }
 
-    // Экспорт в выбранном качестве (Ultra HD 2x или 1x, PNG или WebP)
     function exportCanvasDataURL() {
       const mode = document.getElementById('exportQualitySelect').value || 'png_2x';
       const is2x = mode.includes('2x');
