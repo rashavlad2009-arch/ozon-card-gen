@@ -90,20 +90,7 @@ export default async function handler(req, res) {
       });
     }
 
-    let userObj = verifySessionToken(token, secretSalt);
-
-    if (!userObj && sbUrl && sbServiceKey) {
-      try {
-        const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
-        });
-        if (userRes.ok) {
-          const u = await userRes.json();
-          if (u?.id) userObj = { id: u.id, email: u.email || '', name: (u.email || 'Профиль').split('@')[0] };
-        }
-      } catch (e) {}
-    }
-
+    const userObj = verifySessionToken(token, secretSalt);
     if (!userObj) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
@@ -113,8 +100,6 @@ export default async function handler(req, res) {
 
     const cookieVault = readCookieVault(req, secretSalt);
     const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
-
-    // По умолчанию 0, если профиль не был инициализирован через честный OAuth
     let currentCredits = memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : 0;
 
     if (sbUrl && sbServiceKey) {
