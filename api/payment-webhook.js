@@ -9,6 +9,7 @@ const VALID_PROMO_CODES = {
 };
 
 global.localPayments = global.localPayments || {};
+global.yandexProfiles = global.yandexProfiles || {};
 
 async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsToAdd) {
   const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=label`, {
@@ -61,7 +62,6 @@ export default async function handler(req, res) {
   const sbServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const yandexClientId = (process.env.YANDEX_CLIENT_ID || '').trim();
 
-  // 1. GET-запросы: конфигурация авторизации и проверка статуса оплаты
   if (req.method === 'GET') {
     const { action, label } = req.query;
 
@@ -92,7 +92,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ paid: false });
   }
 
-  // 2. POST-запросы: Авторизация Яндекс ID, Промокоды и Вебхук ЮMoney
   if (req.method === 'POST') {
     try {
       const isJson = (req.headers['content-type'] || '').includes('application/json');
@@ -100,50 +99,67 @@ export default async function handler(req, res) {
         ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
         : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
-      // А) Авторизация через Яндекс ID -> Сессия Supabase
+      // А) Безотказная авторизация через Яндекс ID
       if (body?.action === 'social_auth') {
-        const { provider, accessToken } = body;
-        if (provider !== 'yandex' || !accessToken) {
-          return res.status(400).json({ error: 'Некорректный токен Яндекс ID' });
+        const { accessToken } = body;
+        if (!accessToken) {
+          return res.status(400).json({ error: 'Отсутствует токен Яндекс ID' });
         }
 
         const yaRes = await fetch('https://login.yandex.ru/info?format=json', {
           headers: { 'Authorization': `OAuth ${accessToken}` }
         });
-        if (!yaRes.ok) return res.status(401).json({ error: 'Ошибка проверки токена Яндекс ID' });
+
+        if (!yaRes.ok) {
+          return res.status(401).json({ error: 'Ошибка проверки токена в Яндексе' });
+        }
+
         const yaData = await yaRes.json();
-        const verifiedEmail = yaData.default_email || (Array.isArray(yaData.emails) ? yaData.emails[0] : null);
+        const verifiedEmail = yaData.default_email
+          || (Array.isArray(yaData.emails) && yaData.emails[0])
+          || `${yaData.login || yaData.id}@yandex.ru`;
+        const displayName = yaData.display_name || yaData.real_name || yaData.login || verifiedEmail.split('@')[0];
+        const yandexId = String(yaData.id || verifiedEmail);
 
-        if (!verifiedEmail) {
-          return res.status(400).json({ error: 'Яндекс ID не передал адрес почты' });
+        // Сохраняем профиль на сервере
+        if (!global.yandexProfiles[yandexId]) {
+          global.yandexProfiles[yandexId] = { credits: 5, email: verifiedEmail, name: displayName };
         }
 
-        const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
-          method: 'POST',
-          headers: {
-            'apikey': sbServiceKey,
-            'Authorization': `Bearer ${sbServiceKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ type: 'magiclink', email: verifiedEmail })
+        // Если Supabase полностью настроен (есть SUPABASE_SERVICE_ROLE_KEY), создаем также сессию Supabase
+        let tokenHash = null;
+        if (sbUrl && sbServiceKey) {
+          try {
+            const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
+              method: 'POST',
+              headers: {
+                'apikey': sbServiceKey,
+                'Authorization': `Bearer ${sbServiceKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ type: 'magiclink', email: verifiedEmail })
+            });
+            const linkData = await linkRes.json();
+            tokenHash = linkData?.properties?.hashed_token || null;
+          } catch (e) {}
+        }
+
+        return res.status(200).json({
+          ok: true,
+          id: yandexId,
+          email: verifiedEmail,
+          name: displayName,
+          credits: global.yandexProfiles[yandexId].credits,
+          token_hash: tokenHash
         });
-
-        const linkData = await linkRes.json();
-        const tokenHash = linkData?.properties?.hashed_token;
-        if (!linkRes.ok || !tokenHash) {
-          return res.status(500).json({ error: 'Не удалось создать сессию в Supabase' });
-        }
-
-        return res.status(200).json({ ok: true, email: verifiedEmail, token_hash: tokenHash });
       }
 
-      // Б) Активация промокодов и подтверждение возврата с ЮMoney
+      // Б) Промокоды и подтверждение возврата с оплаты
       if (body?.action === 'promo' || body?.action === 'confirm_return') {
         const authHeader = req.headers.authorization || '';
         const token = authHeader.replace('Bearer ', '').trim();
 
-        // Если Supabase еще не подключен — проверяем промокод локально
-        if (!sbUrl || !sbServiceKey || !token) {
+        if (!sbUrl || !sbServiceKey || !token || token.startsWith('ya_')) {
           if (body.action === 'promo') {
             const code = (body.code || '').trim().toUpperCase();
             const bonus = VALID_PROMO_CODES[code];
@@ -183,7 +199,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // В) Прием HTTP-уведомления от ЮMoney
+      // В) Вебхук ЮMoney
       const {
         notification_type = '',
         operation_id = '',
