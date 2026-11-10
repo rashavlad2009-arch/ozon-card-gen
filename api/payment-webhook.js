@@ -8,6 +8,8 @@ const VALID_PROMO_CODES = {
   'VIP2026': 50
 };
 
+global.localPayments = global.localPayments || {};
+
 async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsToAdd) {
   const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=label`, {
     headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
@@ -58,9 +60,8 @@ export default async function handler(req, res) {
   const sbAnonKey = (process.env.SUPABASE_ANON_KEY || '').trim();
   const sbServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const yandexClientId = (process.env.YANDEX_CLIENT_ID || '').trim();
-  const mailruClientId = (process.env.MAILRU_CLIENT_ID || '').trim();
 
-  // 1. Отдача публичной конфигурации и проверка статуса оплаты
+  // 1. GET-запросы: конфигурация авторизации и проверка статуса оплаты
   if (req.method === 'GET') {
     const { action, label } = req.query;
 
@@ -68,24 +69,30 @@ export default async function handler(req, res) {
       return res.status(200).json({
         supabaseUrl: sbUrl,
         supabaseAnonKey: sbAnonKey,
-        yandexClientId,
-        mailruClientId
+        yandexClientId
       });
     }
 
     if (!label) return res.status(400).json({ error: 'Missing label' });
 
-    const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=credits`, {
-      headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-    });
-    const list = await checkRes.json();
-    if (Array.isArray(list) && list.length > 0) {
-      return res.status(200).json({ paid: true, credits: list[0].credits });
+    if (sbUrl && sbServiceKey) {
+      const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=credits`, {
+        headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+      });
+      const list = await checkRes.json();
+      if (Array.isArray(list) && list.length > 0) {
+        return res.status(200).json({ paid: true, credits: list[0].credits });
+      }
     }
+
+    if (global.localPayments[label]) {
+      return res.status(200).json({ paid: true, credits: global.localPayments[label].credits });
+    }
+
     return res.status(200).json({ paid: false });
   }
 
-  // 2. POST-запросы: Авторизация Яндекс/Mail.ru, Промокоды и Вебхук ЮMoney
+  // 2. POST-запросы: Авторизация Яндекс ID, Промокоды и Вебхук ЮMoney
   if (req.method === 'POST') {
     try {
       const isJson = (req.headers['content-type'] || '').includes('application/json');
@@ -93,32 +100,24 @@ export default async function handler(req, res) {
         ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
         : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
-      // А) Мост авторизации через Яндекс ID и Mail.ru OAuth -> Сессия Supabase
+      // А) Авторизация через Яндекс ID -> Сессия Supabase
       if (body?.action === 'social_auth') {
         const { provider, accessToken } = body;
-        if (!accessToken) return res.status(400).json({ error: 'Отсутствует токен авторизации' });
-
-        let verifiedEmail = null;
-
-        if (provider === 'yandex') {
-          const yaRes = await fetch('https://login.yandex.ru/info?format=json', {
-            headers: { 'Authorization': `OAuth ${accessToken}` }
-          });
-          if (!yaRes.ok) return res.status(401).json({ error: 'Ошибка проверки токена Яндекс ID' });
-          const yaData = await yaRes.json();
-          verifiedEmail = yaData.default_email || (Array.isArray(yaData.emails) ? yaData.emails[0] : null);
-        } else if (provider === 'mailru') {
-          const mrRes = await fetch(`https://oauth.mail.ru/userinfo?access_token=${encodeURIComponent(accessToken)}`);
-          if (!mrRes.ok) return res.status(401).json({ error: 'Ошибка проверки токена Mail.ru' });
-          const mrData = await mrRes.json();
-          verifiedEmail = mrData.email;
+        if (provider !== 'yandex' || !accessToken) {
+          return res.status(400).json({ error: 'Некорректный токен Яндекс ID' });
         }
+
+        const yaRes = await fetch('https://login.yandex.ru/info?format=json', {
+          headers: { 'Authorization': `OAuth ${accessToken}` }
+        });
+        if (!yaRes.ok) return res.status(401).json({ error: 'Ошибка проверки токена Яндекс ID' });
+        const yaData = await yaRes.json();
+        const verifiedEmail = yaData.default_email || (Array.isArray(yaData.emails) ? yaData.emails[0] : null);
 
         if (!verifiedEmail) {
-          return res.status(400).json({ error: 'Провайдер не передал ваш Email' });
+          return res.status(400).json({ error: 'Яндекс ID не передал адрес почты' });
         }
 
-        // Создаем или находим пользователя в Supabase через Admin API и выпускаем токен входа
         const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
           method: 'POST',
           headers: {
@@ -126,10 +125,7 @@ export default async function handler(req, res) {
             'Authorization': `Bearer ${sbServiceKey}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            type: 'magiclink',
-            email: verifiedEmail
-          })
+          body: JSON.stringify({ type: 'magiclink', email: verifiedEmail })
         });
 
         const linkData = await linkRes.json();
@@ -138,17 +134,28 @@ export default async function handler(req, res) {
           return res.status(500).json({ error: 'Не удалось создать сессию в Supabase' });
         }
 
-        return res.status(200).json({
-          ok: true,
-          email: verifiedEmail,
-          token_hash: tokenHash
-        });
+        return res.status(200).json({ ok: true, email: verifiedEmail, token_hash: tokenHash });
       }
 
-      // Б) Промокоды и подтверждение возврата с оплаты
+      // Б) Активация промокодов и подтверждение возврата с ЮMoney
       if (body?.action === 'promo' || body?.action === 'confirm_return') {
         const authHeader = req.headers.authorization || '';
         const token = authHeader.replace('Bearer ', '').trim();
+
+        // Если Supabase еще не подключен — проверяем промокод локально
+        if (!sbUrl || !sbServiceKey || !token) {
+          if (body.action === 'promo') {
+            const code = (body.code || '').trim().toUpperCase();
+            const bonus = VALID_PROMO_CODES[code];
+            if (!bonus) return res.status(400).json({ error: 'Неверный промокод' });
+            return res.status(200).json({ ok: true, added: bonus });
+          }
+          if (body.action === 'confirm_return') {
+            const addCount = [5, 10, 20].includes(Number(body.credits)) ? Number(body.credits) : 5;
+            return res.status(200).json({ ok: true, added: addCount });
+          }
+        }
+
         const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
           headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
         });
@@ -163,7 +170,7 @@ export default async function handler(req, res) {
           const promoLabel = code === 'VIP2026' ? `promo_${code}_${Date.now()}` : `promo_${code}_${userData.id}`;
           const result = await addCreditsToSupabase(sbUrl, sbServiceKey, promoLabel, userData.id, bonus);
           if (result.alreadyCredited) {
-            return res.status(400).json({ error: 'Вы уже активировали этот промокод ранее!' });
+            return res.status(400).json({ error: 'Этот промокод уже был активирован на вашем аккаунте' });
           }
           return res.status(200).json({ ok: true, added: bonus, credits: result.newCredits });
         }
@@ -176,7 +183,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // В) Вебхук ЮMoney
+      // В) Прием HTTP-уведомления от ЮMoney
       const {
         notification_type = '',
         operation_id = '',
@@ -204,14 +211,15 @@ export default async function handler(req, res) {
         const userId = parts[2];
         const creditsToAdd = [5, 10, 20].includes(parsedCredits) ? parsedCredits : 5;
 
-        if (userId && userId.length >= 30) {
+        global.localPayments[label] = { paid: true, credits: creditsToAdd };
+
+        if (sbUrl && sbServiceKey && userId && userId.length >= 30) {
           await addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsToAdd);
         }
       }
 
       return res.status(200).send('OK');
     } catch (err) {
-      console.error('Webhook error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
