@@ -25,7 +25,8 @@ export default async function handler(req, res) {
     let currentCredits = null;
 
     // Если Supabase настроен на сервере — проверяем авторизацию и баланс по БД
-    if (sbUrl && sbServiceKey) {
+    // Если пользователь вошел через прямой Яндекс-токен (ya_...), пропускаем его к генерации без ошибки!
+    if (sbUrl && sbServiceKey && !token.startsWith('ya_')) {
       if (!token) {
         return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите в аккаунт (Google, Яндекс или Почта), чтобы использовать 5 бесплатных генераций!' });
       }
