@@ -1,87 +1,64 @@
 import crypto from 'crypto';
 
+const FALLBACK_SUPABASE_URL = 'https://irxszktfwtravyeqnueh.supabase.co';
+global.usersVault = global.usersVault || {};
+
+function findEnvVar(suffixes) {
+  for (const s of suffixes) {
+    if (process.env[s]) return process.env[s].trim();
+  }
+  const allKeys = Object.keys(process.env);
+  for (const s of suffixes) {
+    const match = allKeys.find(k => k.endsWith(s) && process.env[k]);
+    if (match) return process.env[match].trim();
+  }
+  return '';
+}
+
 function getEnvConfig() {
-  const apiKey = (process.env.GROQ_API_KEY || '').trim();
-  const sbUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim().replace(/\/$/, '');
-  const sbServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '').trim();
-  const secretSalt = sbServiceKey || apiKey || 'kardpro_salt_2026';
+  const apiKey = findEnvVar(['GROQ_API_KEY']);
+  const sbUrl = (findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
+  const sbServiceKey = findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']);
+  const secretSalt = sbServiceKey || apiKey || 'kardpro_master_secret_2026';
   return { apiKey, sbUrl, sbServiceKey, secretSalt };
 }
 
-function verifyYandexSession(token, salt) {
-  if (!token || !token.startsWith('ya_')) return null;
-  const parts = token.split('_');
+function verifySessionToken(token, salt) {
+  if (!token || !token.startsWith('kp.')) return null;
+  const parts = token.split('.');
   if (parts.length !== 3) return null;
-  const [, userId, sig] = parts;
-  const expected = crypto.createHmac('sha256', salt).update(String(userId)).digest('hex').substring(0, 24);
-  return sig === expected ? userId : null;
+  const [, payload, sig] = parts;
+  const expected = crypto.createHmac('sha256', salt).update(payload).digest('base64url');
+  if (sig !== expected) return null;
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
+  } catch (e) {
+    return null;
+  }
 }
 
-async function getUserCredits(sbUrl, sbServiceKey, userId, email = '') {
-  let metaCredits = null;
+function readCookieVault(req, salt) {
   try {
-    const adminUserRes = await fetch(`${sbUrl}/auth/v1/admin/users/${userId}`, {
-      headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-    });
-    if (adminUserRes.ok) {
-      const adminUser = await adminUserRes.json();
-      if (typeof adminUser?.user_metadata?.credits === 'number') {
-        metaCredits = adminUser.user_metadata.credits;
-      }
-    }
-  } catch (e) {}
-
-  try {
-    const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
-      headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-    });
-    if (profRes.ok) {
-      const profList = await profRes.json();
-      if (Array.isArray(profList) && profList.length > 0 && typeof profList[0].credits === 'number') {
-        return profList[0].credits;
-      }
-      const initial = metaCredits !== null ? metaCredits : 5;
-      await fetch(`${sbUrl}/rest/v1/profiles`, {
-        method: 'POST',
-        headers: {
-          'apikey': sbServiceKey,
-          'Authorization': `Bearer ${sbServiceKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: userId, email, credits: initial })
-      });
-      return initial;
-    }
-  } catch (e) {}
-
-  if (metaCredits !== null) return metaCredits;
-  await setUserCredits(sbUrl, sbServiceKey, userId, 5);
-  return 5;
+    const cookieHeader = req.headers.cookie || '';
+    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault='));
+    if (!match) return {};
+    const raw = decodeURIComponent(match.split('=')[1]);
+    const [b64, sig] = raw.split('.');
+    if (!b64 || !sig) return {};
+    const expected = crypto.createHmac('sha256', salt).update(b64).digest('base64url');
+    if (sig !== expected) return {};
+    return JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) || {};
+  } catch (e) {
+    return {};
+  }
 }
 
-async function setUserCredits(sbUrl, sbServiceKey, userId, newCredits) {
+function writeCookieVault(res, vaultObj, salt) {
   try {
-    await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': sbServiceKey,
-        'Authorization': `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ credits: newCredits })
-    });
-  } catch (e) {}
-
-  try {
-    await fetch(`${sbUrl}/auth/v1/admin/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'apikey': sbServiceKey,
-        'Authorization': `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ user_metadata: { credits: newCredits } })
-    });
+    const b64 = Buffer.from(JSON.stringify(vaultObj)).toString('base64url');
+    const sig = crypto.createHmac('sha256', salt).update(b64).digest('base64url');
+    const val = encodeURIComponent(`${b64}.${sig}`);
+    res.setHeader('Set-Cookie', `kp_vault=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
   } catch (e) {}
 }
 
@@ -106,7 +83,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
     }
 
-    // 1. Строгая проверка авторизации (никаких гостевых генераций без входа)
     if (!token) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
@@ -114,31 +90,46 @@ export default async function handler(req, res) {
       });
     }
 
-    let userId = null;
-    let userEmail = '';
+    let userObj = verifySessionToken(token, secretSalt);
 
-    const yaVerifiedId = verifyYandexSession(token, secretSalt);
-    if (yaVerifiedId) {
-      userId = yaVerifiedId;
-    } else if (sbUrl && sbServiceKey) {
-      const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
-      });
-      if (!userRes.ok) {
-        return res.status(401).json({
-          error: 'AUTH_REQUIRED',
-          message: 'Сессия истекла, пожалуйста, войдите в аккаунт снова'
+    if (!userObj && sbUrl && sbServiceKey) {
+      try {
+        const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
         });
-      }
-      const userData = await userRes.json();
-      userId = userData.id;
-      userEmail = userData.email || '';
-    } else {
-      return res.status(500).json({ error: 'Не настроены ключи SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY в Vercel' });
+        if (userRes.ok) {
+          const u = await userRes.json();
+          if (u?.id) userObj = { id: u.id, email: u.email || '', name: (u.email || 'Профиль').split('@')[0] };
+        }
+      } catch (e) {}
     }
 
-    // 2. Проверяем баланс в базе Supabase
-    const currentCredits = await getUserCredits(sbUrl, sbServiceKey, userId, userEmail);
+    if (!userObj) {
+      return res.status(401).json({
+        error: 'AUTH_REQUIRED',
+        message: 'Сессия устарела, пожалуйста, войдите в аккаунт снова'
+      });
+    }
+
+    // Проверяем баланс пользователя (в Cookie-сейфе, памяти и БД Supabase)
+    const cookieVault = readCookieVault(req, secretSalt);
+    const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
+    let currentCredits = memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : 5;
+
+    if (sbUrl && sbServiceKey) {
+      try {
+        const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userObj.id)}&select=credits`, {
+          headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+        });
+        if (profRes.ok) {
+          const profList = await profRes.json();
+          if (Array.isArray(profList) && profList.length > 0 && typeof profList[0].credits === 'number') {
+            currentCredits = profList[0].credits;
+          }
+        }
+      } catch (e) {}
+    }
+
     if (currentCredits <= 0) {
       return res.status(402).json({
         error: 'NO_CREDITS',
@@ -146,7 +137,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // 3. Запрос к ИИ Groq (с авто-подбором доступной модели)
     const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
 Создай продающую воронку из 3 слайдов карточки товара и верни строго валидный JSON без markdown-обертки:
 {
@@ -226,9 +216,34 @@ export default async function handler(req, res) {
     const cleanedJson = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const content = JSON.parse(cleanedJson);
 
-    // 4. Списываем 1 генерацию в базе данных
+    // Списываем 1 генерацию и сохраняем в защищенную куку и БД
     const nextCredits = Math.max(0, currentCredits - 1);
-    await setUserCredits(sbUrl, sbServiceKey, userId, nextCredits);
+    const updatedRecord = {
+      ...(memRecord || {}),
+      id: userObj.id,
+      email: userObj.email,
+      name: userObj.name,
+      credits: nextCredits,
+      usedLabels: Array.isArray(memRecord?.usedLabels) ? memRecord.usedLabels : []
+    };
+
+    global.usersVault[userObj.id] = updatedRecord;
+    cookieVault[userObj.id] = updatedRecord;
+    writeCookieVault(res, cookieVault, secretSalt);
+
+    if (sbUrl && sbServiceKey) {
+      try {
+        await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userObj.id)}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': sbServiceKey,
+            'Authorization': `Bearer ${sbServiceKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ credits: nextCredits })
+        });
+      } catch (e) {}
+    }
 
     content.remaining_credits = nextCredits;
     return res.status(200).json(content);
