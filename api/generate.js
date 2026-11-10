@@ -86,7 +86,7 @@ export default async function handler(req, res) {
     if (!token) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
-        message: 'Войдите через Яндекс, Google или Почту, чтобы получить 5 бесплатных генераций!'
+        message: 'Войдите через Яндекс ID, чтобы получить 5 бесплатных генераций!'
       });
     }
 
@@ -111,10 +111,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // Проверяем баланс пользователя (в Cookie-сейфе, памяти и БД Supabase)
     const cookieVault = readCookieVault(req, secretSalt);
     const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
-    let currentCredits = memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : 5;
+
+    // По умолчанию 0, если профиль не был инициализирован через честный OAuth
+    let currentCredits = memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : 0;
 
     if (sbUrl && sbServiceKey) {
       try {
@@ -133,7 +134,7 @@ export default async function handler(req, res) {
     if (currentCredits <= 0) {
       return res.status(402).json({
         error: 'NO_CREDITS',
-        message: 'Бесплатные генерации закончились. Пополните баланс!'
+        message: 'На вашем балансе 0 генераций. Войдите через основной аккаунт Яндекс ID или пополните баланс от 50 ₽!'
       });
     }
 
@@ -216,7 +217,6 @@ export default async function handler(req, res) {
     const cleanedJson = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const content = JSON.parse(cleanedJson);
 
-    // Списываем 1 генерацию и сохраняем в защищенную куку и БД
     const nextCredits = Math.max(0, currentCredits - 1);
     const updatedRecord = {
       ...(memRecord || {}),
