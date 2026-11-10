@@ -9,7 +9,6 @@ const VALID_PROMO_CODES = {
 };
 
 async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsToAdd) {
-  // Проверяем в payments_log, не был ли этот заказ или промокод уже зачислен
   const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(label)}&select=label`, {
     headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
   });
@@ -18,7 +17,6 @@ async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsT
     return { alreadyCredited: true };
   }
 
-  // Записываем в лог транзакций
   await fetch(`${sbUrl}/rest/v1/payments_log`, {
     method: 'POST',
     headers: {
@@ -29,7 +27,6 @@ async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsT
     body: JSON.stringify({ label, user_id: userId, credits: creditsToAdd })
   });
 
-  // Получаем текущий баланс пользователя
   const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
     headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
   });
@@ -37,7 +34,6 @@ async function addCreditsToSupabase(sbUrl, sbServiceKey, label, userId, creditsT
   const currentCredits = (Array.isArray(profList) && profList[0]) ? profList[0].credits : 0;
   const newCredits = currentCredits + creditsToAdd;
 
-  // Обновляем баланс в таблице profiles
   await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}`, {
     method: 'PATCH',
     headers: {
@@ -61,13 +57,20 @@ export default async function handler(req, res) {
   const sbUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
   const sbAnonKey = (process.env.SUPABASE_ANON_KEY || '').trim();
   const sbServiceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  const yandexClientId = (process.env.YANDEX_CLIENT_ID || '').trim();
+  const mailruClientId = (process.env.MAILRU_CLIENT_ID || '').trim();
 
-  // 1. Отдача публичного конфига Supabase на фронтенд и проверка статуса заказа
+  // 1. Отдача публичной конфигурации и проверка статуса оплаты
   if (req.method === 'GET') {
     const { action, label } = req.query;
 
     if (action === 'config') {
-      return res.status(200).json({ supabaseUrl: sbUrl, supabaseAnonKey: sbAnonKey });
+      return res.status(200).json({
+        supabaseUrl: sbUrl,
+        supabaseAnonKey: sbAnonKey,
+        yandexClientId,
+        mailruClientId
+      });
     }
 
     if (!label) return res.status(400).json({ error: 'Missing label' });
@@ -82,7 +85,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ paid: false });
   }
 
-  // 2. Обработка промокодов, возврата с оплаты и вебхука ЮMoney (POST)
+  // 2. POST-запросы: Авторизация Яндекс/Mail.ru, Промокоды и Вебхук ЮMoney
   if (req.method === 'POST') {
     try {
       const isJson = (req.headers['content-type'] || '').includes('application/json');
@@ -90,7 +93,59 @@ export default async function handler(req, res) {
         ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
         : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
-      // А) Активация промокода или подтверждение возврата по successURL
+      // А) Мост авторизации через Яндекс ID и Mail.ru OAuth -> Сессия Supabase
+      if (body?.action === 'social_auth') {
+        const { provider, accessToken } = body;
+        if (!accessToken) return res.status(400).json({ error: 'Отсутствует токен авторизации' });
+
+        let verifiedEmail = null;
+
+        if (provider === 'yandex') {
+          const yaRes = await fetch('https://login.yandex.ru/info?format=json', {
+            headers: { 'Authorization': `OAuth ${accessToken}` }
+          });
+          if (!yaRes.ok) return res.status(401).json({ error: 'Ошибка проверки токена Яндекс ID' });
+          const yaData = await yaRes.json();
+          verifiedEmail = yaData.default_email || (Array.isArray(yaData.emails) ? yaData.emails[0] : null);
+        } else if (provider === 'mailru') {
+          const mrRes = await fetch(`https://oauth.mail.ru/userinfo?access_token=${encodeURIComponent(accessToken)}`);
+          if (!mrRes.ok) return res.status(401).json({ error: 'Ошибка проверки токена Mail.ru' });
+          const mrData = await mrRes.json();
+          verifiedEmail = mrData.email;
+        }
+
+        if (!verifiedEmail) {
+          return res.status(400).json({ error: 'Провайдер не передал ваш Email' });
+        }
+
+        // Создаем или находим пользователя в Supabase через Admin API и выпускаем токен входа
+        const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
+          method: 'POST',
+          headers: {
+            'apikey': sbServiceKey,
+            'Authorization': `Bearer ${sbServiceKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            type: 'magiclink',
+            email: verifiedEmail
+          })
+        });
+
+        const linkData = await linkRes.json();
+        const tokenHash = linkData?.properties?.hashed_token;
+        if (!linkRes.ok || !tokenHash) {
+          return res.status(500).json({ error: 'Не удалось создать сессию в Supabase' });
+        }
+
+        return res.status(200).json({
+          ok: true,
+          email: verifiedEmail,
+          token_hash: tokenHash
+        });
+      }
+
+      // Б) Промокоды и подтверждение возврата с оплаты
       if (body?.action === 'promo' || body?.action === 'confirm_return') {
         const authHeader = req.headers.authorization || '';
         const token = authHeader.replace('Bearer ', '').trim();
@@ -121,12 +176,11 @@ export default async function handler(req, res) {
         }
       }
 
-      // Б) Стандартный HTTP-вебхук от ЮMoney
+      // В) Вебхук ЮMoney
       const {
         notification_type = '',
         operation_id = '',
         amount = '',
-        withdraw_amount = '',
         currency = '',
         datetime = '',
         sender = '',
@@ -144,7 +198,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Формат label: kp_10_UUID-ПОЛЬЗОВАТЕЛЯ_rand
       if (label && label.startsWith('kp_')) {
         const parts = label.split('_');
         const parsedCredits = parseInt(parts[1], 10);
