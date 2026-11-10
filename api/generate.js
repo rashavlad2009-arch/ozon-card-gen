@@ -24,44 +24,38 @@ export default async function handler(req, res) {
     let userId = null;
     let currentCredits = null;
 
-    // Если Supabase настроен на сервере — проверяем авторизацию и баланс по БД
-    // Если пользователь вошел через прямой Яндекс-токен (ya_...), пропускаем его к генерации без ошибки!
-    if (sbUrl && sbServiceKey && !token.startsWith('ya_')) {
-      if (!token) {
-        return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите в аккаунт (Google, Яндекс или Почта), чтобы использовать 5 бесплатных генераций!' });
-      }
-
+    // Проверяем баланс через Supabase только если токен является JWT Supabase (не прямым токеном ya_)
+    if (sbUrl && sbServiceKey && token && !token.startsWith('ya_')) {
       const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
         headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
       });
-      if (!userRes.ok) {
-        return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Сессия истекла, пожалуйста, войдите снова' });
-      }
-      const userData = await userRes.json();
-      userId = userData.id;
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        userId = userData.id;
 
-      const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
-        headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-      });
-      const profList = await profRes.json();
-
-      if (!Array.isArray(profList) || profList.length === 0) {
-        currentCredits = 5;
-        await fetch(`${sbUrl}/rest/v1/profiles`, {
-          method: 'POST',
-          headers: {
-            'apikey': sbServiceKey,
-            'Authorization': `Bearer ${sbServiceKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ id: userId, email: userData.email || '', credits: 5 })
+        const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${userId}&select=credits`, {
+          headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
         });
-      } else {
-        currentCredits = profList[0].credits;
-      }
+        const profList = await profRes.json();
 
-      if (currentCredits <= 0) {
-        return res.status(402).json({ error: 'NO_CREDITS', message: 'Бесплатные генерации закончились. Пополните баланс!' });
+        if (!Array.isArray(profList) || profList.length === 0) {
+          currentCredits = 5;
+          await fetch(`${sbUrl}/rest/v1/profiles`, {
+            method: 'POST',
+            headers: {
+              'apikey': sbServiceKey,
+              'Authorization': `Bearer ${sbServiceKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: userId, email: userData.email || '', credits: 5 })
+          });
+        } else {
+          currentCredits = profList[0].credits;
+        }
+
+        if (currentCredits <= 0) {
+          return res.status(402).json({ error: 'NO_CREDITS', message: 'Лимит генераций исчерпан. Пополните баланс!' });
+        }
       }
     }
 
