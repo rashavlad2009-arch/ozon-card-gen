@@ -5,27 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>KARD-PRO — AI-студия воронки карточек для Ozon, WB, Яндекс Маркета и Авито</title>
 
-  <!-- Фирменная векторная иконка (Favicon) -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='50%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M32 25h12v22l20-22h15L55 50l25 25H65L44 53v22H32V25z' fill='%23fff'/%3E%3C/svg%3E">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%236366f1'/%3E%3Cpath d='M32 25h12v22l20-22h15L55 50l25 25H65L44 53v22H32V25z' fill='%23fff'/%3E%3C/svg%3E">
   <meta name="theme-color" content="#06080f">
-
-  <!-- OpenGraph превью для Telegram, WhatsApp и ВК -->
-  <meta name="description" content="Создавайте воронку слайдов инфографики для Ozon, Wildberries, Яндекс Маркета и Авито за 10 секунд с помощью ИИ. Главный слайд, Характеристики, Комплектация и SEO.">
+  <meta name="description" content="Создавайте воронку слайдов инфографики для Ozon, Wildberries, Яндекс Маркета и Авито за 10 секунд с помощью ИИ.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kard-pro.ru/">
-  <meta property="og:site_name" content="KARD-PRO AI Studio">
   <meta property="og:title" content="KARD-PRO — ИИ-генератор воронки карточек для маркетплейсов">
   <meta property="og:description" content="⚡ 3 слайда за 1 клик: Обложка + Характеристики + Комплектация, студийный ИИ-фон и SEO-описание. 5 генераций бесплатно!">
   <meta property="og:image" content="https://kard-pro.ru/api/og">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="KARD-PRO — ИИ-генератор карточек для Ozon, WB и Авито">
-  <meta name="twitter:description" content="Соберите воронку из 3 слайдов с ИИ-фоном и инфографикой за 10 секунд. 5 генераций бесплатно!">
-  <meta name="twitter:image" content="https://kard-pro.ru/api/og">
 
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@700&family=Rubik:wght@600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
   <style>
@@ -53,7 +44,61 @@
 </head>
 <body class="min-h-screen flex flex-col select-none" translate="no">
 
-  <!-- Модальное окно выбора тарифа (50₽ / 80₽ / 150₽) -->
+  <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ SUPABASE (Email / Пароль / Magic Link / Google) -->
+  <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+      <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
+
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
+          🎁 +5 генераций бесплатно при входе
+        </div>
+        <h2 class="text-2xl font-extrabold text-white">Вход в KARD-PRO</h2>
+        <p class="text-xs text-slate-400">Авторизуйтесь удобным способом — ваш баланс генераций надежно сохранится на всех устройствах.</p>
+      </div>
+
+      <!-- Кнопка входа через Google в 1 клик -->
+      <button onclick="loginWithOAuth('google')" class="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-lg transition cursor-pointer">
+        <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"/></svg>
+        <span>Продолжить через Google</span>
+      </button>
+
+      <div class="flex items-center gap-3 text-[11px] text-slate-500">
+        <div class="flex-1 h-px bg-white/10"></div>
+        <span>или по Email</span>
+        <div class="flex-1 h-px bg-white/10"></div>
+      </div>
+
+      <!-- Форма Email + Пароль -->
+      <div class="space-y-3">
+        <div>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Ваш Email</label>
+          <input id="authEmail" type="email" placeholder="name@example.com" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Пароль (минимум 6 символов)</label>
+          <input id="authPassword" type="password" placeholder="••••••••" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="btnSignIn" onclick="handleEmailAuth('login')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">
+            Войти
+          </button>
+          <button id="btnSignUp" onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs transition cursor-pointer">
+            Создать аккаунт
+          </button>
+        </div>
+
+        <button onclick="handleMagicLink()" class="w-full py-2 rounded-xl bg-transparent hover:bg-white/5 text-indigo-300 text-[11px] font-semibold transition cursor-pointer">
+          ✨ Отправить быструю ссылку для входа без пароля (Magic Link)
+        </button>
+      </div>
+
+      <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ТАРИФА (50₽ / 80₽ / 150₽) -->
   <div id="payModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
       <button onclick="closePayModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
@@ -126,24 +171,31 @@
       </div>
     </div>
 
-    <div class="hidden md:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
+    <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
       <button onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-blue-300 font-semibold transition">🔵 Ozon</button>
       <button onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition">🟣 Wildberries</button>
       <button onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold transition">🟡 Яндекс</button>
       <button onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition">🟢 Авито</button>
     </div>
 
+    <!-- Профиль, Баланс и Кнопки скачивания -->
     <div class="flex items-center gap-2">
-      <button onclick="openPayModal()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2 transition">
-        <span class="text-xs font-semibold text-slate-300">⚡ Лимит: <b id="creditsCount" class="text-white">5</b></span>
+      <!-- Кнопка входа / профиль -->
+      <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+        <span id="authNavText">👤 Войти (5 бесплатно)</span>
+      </button>
+
+      <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Выйти из аккаунта">
+        🚪
+      </button>
+
+      <button onclick="handleTopUpClick()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2 transition cursor-pointer">
+        <span class="text-xs font-semibold text-slate-300">⚡ <b id="creditsCount" class="text-white">5</b></span>
         <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-lg">+ Пополнить</span>
       </button>
 
-      <button onclick="downloadCard()" class="bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition hidden sm:flex items-center gap-1">
-        <span>⬇ Текущий</span>
-      </button>
       <button onclick="downloadAllSlides()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-3.5 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-1.5 cursor-pointer">
-        <span>📦 Скачать все 3 слайда</span>
+        <span>📦 Скачать 3 слайда</span>
       </button>
     </div>
   </header>
@@ -466,7 +518,6 @@
 
       </div>
 
-      <!-- Нижний бар сохранения всего проекта -->
       <div class="p-3 border-t border-white/10 bg-[#070a12] grid grid-cols-2 gap-2 text-xs">
         <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить воронку</button>
         <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">📂 Загрузить воронку</button>
@@ -476,7 +527,6 @@
     <!-- Правая часть: Переключатель 3 слайдов карусели + Холст -->
     <main class="flex-1 canvas-bg flex flex-col items-center justify-between p-3 lg:p-5 relative">
       
-      <!-- Панель переключения слайдов воронки (Слайд 1, Слайд 2, Слайд 3) -->
       <div class="flex flex-wrap items-center justify-center gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10">
         <button id="slideTab_0" onclick="switchSlide(0)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer">
           <span>1. Главная обложка (УТП)</span>
@@ -489,12 +539,10 @@
         </button>
       </div>
 
-      <!-- Холст карточки -->
       <div class="my-auto flex items-center justify-center py-2">
         <canvas id="cardCanvas" width="900" height="1200"></canvas>
       </div>
 
-      <!-- Нижняя подсказка и быстрые кнопки выгрузки -->
       <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md">
         <span>🖐️ Перетаскивайте любые элементы прямо на карточке</span>
         <span class="text-white/20">•</span>
@@ -508,19 +556,143 @@
 
   <script>
     // =========================================================================
-    // БИЛЛИНГ ЮMONEY (Кошелек 4100119681467569 • Тарифы 50₽ / 80₽ / 150₽)
+    // АВТОРИЗАЦИЯ И ОБЛАЧНЫЙ БАЛАНС SUPABASE + БИЛЛИНГ ЮMONEY (4100119681467569)
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
-    const VALID_PROMO_CODES = {
-      'START5': 5,
-      'PRO50': 5,
-      'SELLER10': 10,
-      'SHOP20': 20,
-      'VIP2026': 50
-    };
+    let supabaseClient = null;
+    let currentUser = null;
+    let currentSessionToken = null;
+    let userCredits = 5;
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
+
+    async function initSupabase() {
+      try {
+        const res = await fetch('/api/payment-webhook?action=config');
+        const cfg = await res.json();
+        if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+          supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          await handleAuthSession(session);
+
+          supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+            await handleAuthSession(session);
+          });
+        }
+      } catch (e) {
+        console.error('Ошибка инициализации Supabase:', e);
+      }
+    }
+
+    async function handleAuthSession(session) {
+      if (session && session.user) {
+        currentUser = session.user;
+        currentSessionToken = session.access_token;
+        const shortEmail = (currentUser.email || 'Аккаунт').split('@')[0];
+        document.getElementById('authNavText').innerText = `👤 ${shortEmail}`;
+        document.getElementById('logoutBtn').classList.remove('hidden');
+        closeAuthModal();
+        await fetchUserCreditsFromDB();
+        await checkReturnedPayment();
+      } else {
+        currentUser = null;
+        currentSessionToken = null;
+        document.getElementById('authNavText').innerText = '👤 Войти (5 бесплатно)';
+        document.getElementById('logoutBtn').classList.add('hidden');
+        document.getElementById('creditsCount').innerText = '5';
+      }
+    }
+
+    async function fetchUserCreditsFromDB() {
+      if (!supabaseClient || !currentUser) return;
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('credits')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (data && typeof data.credits === 'number') {
+        userCredits = data.credits;
+        document.getElementById('creditsCount').innerText = userCredits;
+      }
+    }
+
+    function openAuthModal() {
+      if (currentUser) return;
+      document.getElementById('authModal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function showAuthStatus(msg, isError = false) {
+      const el = document.getElementById('authStatusMsg');
+      el.classList.remove('hidden');
+      el.className = `text-xs text-center font-semibold ${isError ? 'text-rose-400' : 'text-emerald-400'}`;
+      el.innerText = msg;
+    }
+
+    async function loginWithOAuth(provider) {
+      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL и SUPABASE_ANON_KEY в Vercel');
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: provider,
+        options: { redirectTo: window.location.origin }
+      });
+      if (error) showAuthStatus(error.message, true);
+    }
+
+    async function handleEmailAuth(mode) {
+      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value.trim();
+      if (!email || password.length < 6) {
+        return showAuthStatus('Введите корректный Email и пароль (не менее 6 символов)', true);
+      }
+
+      showAuthStatus('⏳ Подождите...');
+      if (mode === 'signup') {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) return showAuthStatus(error.message, true);
+        if (data.session) {
+          showAuthStatus('🎉 Аккаунт создан! Начислено 5 бесплатных генераций.');
+        } else {
+          showAuthStatus('📩 Проверьте почту и перейдите по ссылке для подтверждения аккаунта!');
+        }
+      } else {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) return showAuthStatus('Неверный Email или пароль', true);
+        showAuthStatus('✅ Вы успешно вошли!');
+      }
+    }
+
+    async function handleMagicLink() {
+      if (!supabaseClient) return alert('Проверьте настройки SUPABASE_URL в Vercel');
+      const email = document.getElementById('authEmail').value.trim();
+      if (!email) return showAuthStatus('Сначала введите ваш Email в поле выше!', true);
+
+      showAuthStatus('⏳ Отправляем ссылку на почту...');
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin }
+      });
+      if (error) return showAuthStatus(error.message, true);
+      showAuthStatus('✨ Ссылка для мгновенного входа отправлена на ваш Email!');
+    }
+
+    async function logoutUser() {
+      if (supabaseClient) await supabaseClient.auth.signOut();
+    }
+
+    function handleTopUpClick() {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+      openPayModal();
+    }
 
     function selectPlan(credits, price) {
       selectedPlan = { credits, price };
@@ -535,20 +707,6 @@
       document.getElementById('payLinkBtn').innerText = `💳 Оплатить ${price} ₽ и получить +${credits} генераций`;
     }
 
-    function getCredits() {
-      let c = localStorage.getItem('kardpro_credits');
-      if (c === null) {
-        c = 5;
-        localStorage.setItem('kardpro_credits', c);
-      }
-      return parseInt(c, 10);
-    }
-
-    function setCredits(val) {
-      localStorage.setItem('kardpro_credits', val);
-      document.getElementById('creditsCount').innerText = val;
-    }
-
     function openPayModal() {
       document.getElementById('payModal').classList.remove('hidden');
     }
@@ -558,10 +716,15 @@
     }
 
     function payWithYooMoney() {
-      const { credits, price } = selectedPlan;
-      const orderId = `kp_${credits}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      if (!currentUser) {
+        closePayModal();
+        openAuthModal();
+        return;
+      }
 
-      localStorage.setItem('kardpro_pending_order', JSON.stringify({ orderId, credits, price }));
+      const { credits, price } = selectedPlan;
+      const shortRand = Math.random().toString(36).substring(2, 6);
+      const orderId = `kp_${credits}_${currentUser.id}_${shortRand}`;
 
       const payUrl = new URL('https://yoomoney.ru/quickpay/confirm.xml');
       payUrl.searchParams.append('receiver', YOOMONEY_RECEIVER);
@@ -578,73 +741,74 @@
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(async () => {
         try {
-          const res = await fetch(`/api/payment-webhook?label=${orderId}`);
+          const res = await fetch(`/api/payment-webhook?label=${encodeURIComponent(orderId)}`);
           const data = await res.json();
           if (data.paid) {
             clearInterval(pollInterval);
-            creditOrderOnce(orderId, data.credits || credits);
+            await fetchUserCreditsFromDB();
+            document.getElementById('payWaitBox').classList.add('hidden');
+            closePayModal();
+            alert(`🎉 Оплата подтверждена! Начислено +${data.credits || credits} ИИ-генераций.`);
           }
         } catch (e) {}
       }, 3000);
     }
 
-    function creditOrderOnce(orderId, addCount) {
-      const creditedOrders = JSON.parse(localStorage.getItem('kardpro_credited_orders') || '[]');
-      if (creditedOrders.includes(orderId)) return;
-
-      creditedOrders.push(orderId);
-      localStorage.setItem('kardpro_credited_orders', JSON.stringify(creditedOrders));
-      localStorage.removeItem('kardpro_pending_order');
-
-      const nextCredits = getCredits() + parseInt(addCount, 10);
-      setCredits(nextCredits);
-      document.getElementById('payWaitBox').classList.add('hidden');
-      closePayModal();
-      alert(`🎉 Оплата прошла успешно! Начислено +${addCount} ИИ-генераций.`);
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
+    async function checkReturnedPayment() {
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
       const addCredits = parseInt(params.get('add_credits') || '0', 10);
-      if (paidOrder && [5, 10, 20].includes(addCredits)) {
-        creditOrderOnce(paidOrder, addCredits);
+      if (paidOrder && [5, 10, 20].includes(addCredits) && currentSessionToken) {
         window.history.replaceState({}, document.title, window.location.pathname);
+        try {
+          const res = await fetch('/api/payment-webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentSessionToken}`
+            },
+            body: JSON.stringify({ action: 'confirm_return', orderId: paidOrder, credits: addCredits })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            await fetchUserCreditsFromDB();
+            alert(`🎉 Оплата прошла успешно! Ваш баланс пополнен на +${addCredits} генераций.`);
+          }
+        } catch (e) {}
       }
-    });
+    }
 
-    function activatePromoCode() {
+    async function activatePromoCode() {
+      if (!currentUser || !currentSessionToken) {
+        closePayModal();
+        openAuthModal();
+        return;
+      }
       const code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
       if (!code) return alert('Введите промокод!');
 
-      const usedCodes = JSON.parse(localStorage.getItem('kardpro_used_codes') || '[]');
-      if (usedCodes.includes(code) && code !== 'VIP2026') {
-        return alert('Этот промокод уже был использован!');
-      }
+      try {
+        const res = await fetch('/api/payment-webhook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSessionToken}`
+          },
+          body: JSON.stringify({ action: 'promo', code })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || 'Ошибка промокода');
 
-      if (VALID_PROMO_CODES[code]) {
-        const bonus = VALID_PROMO_CODES[code];
-        setCredits(getCredits() + bonus);
-        usedCodes.push(code);
-        localStorage.setItem('kardpro_used_codes', JSON.stringify(usedCodes));
         document.getElementById('promoCodeInput').value = '';
+        await fetchUserCreditsFromDB();
         closePayModal();
-        alert(`🎉 Промокод активирован! Начислено +${bonus} генераций.`);
-      } else {
-        alert('Неверный промокод.');
+        alert(`🎉 Промокод активирован! Начислено +${data.added} генераций.`);
+      } catch (e) {
+        alert(e.message);
       }
     }
 
-    setCredits(getCredits());
-
-    if (window.Telegram && window.Telegram.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        document.getElementById('appTitle').innerText = `KARD-PRO • ${tg.initDataUnsafe.user.first_name}`;
-      }
-    }
+    initSupabase();
 
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text'].forEach(id => {
@@ -745,9 +909,7 @@
       }
     ];
 
-    function getActiveSlide() {
-      return slidesState[currentSlideIndex];
-    }
+    function getActiveSlide() { return slidesState[currentSlideIndex]; }
 
     function syncUIFromCurrentSlide() {
       const s = getActiveSlide();
@@ -788,20 +950,10 @@
     const savedComfy = localStorage.getItem('ozon_comfy_url') || 'http://127.0.0.1:8188';
     document.getElementById('comfyUrl').value = savedComfy;
 
-    function saveComfyUrl() {
-      localStorage.setItem('ozon_comfy_url', document.getElementById('comfyUrl').value.trim());
-    }
-    function toggleComfySettings() {
-      document.getElementById('comfySettingsBox').classList.toggle('hidden');
-    }
-    function clearCustomBg() {
-      customBgImg = null;
-      drawCard();
-    }
-    function removeLogo() {
-      logoImg = null;
-      drawCard();
-    }
+    function saveComfyUrl() { localStorage.setItem('ozon_comfy_url', document.getElementById('comfyUrl').value.trim()); }
+    function toggleComfySettings() { document.getElementById('comfySettingsBox').classList.toggle('hidden'); }
+    function clearCustomBg() { customBgImg = null; drawCard(); }
+    function removeLogo() { logoImg = null; drawCard(); }
     function setStickerPreset(txt) {
       document.getElementById('showSticker').checked = true;
       document.getElementById('stickerText').value = txt;
@@ -810,9 +962,7 @@
     }
     function replaceBulletIcons(icon) {
       const s = getActiveSlide();
-      s.bullets.forEach(b => {
-        b.text = b.text.replace(/^([✓🔥⚡💎★•]\s*)?/, icon + ' ');
-      });
+      s.bullets.forEach(b => { b.text = b.text.replace(/^([✓🔥⚡💎★•]\s*)?/, icon + ' '); });
       renderBulletsInputs();
     }
     function copySeoText() {
@@ -833,19 +983,10 @@
     };
 
     function setMarketplacePreset(mp) {
-      if (mp === 'ozon') {
-        document.getElementById('canvasFormat').value = 'ozon';
-        document.getElementById('themeSelect').value = 'ozon';
-      } else if (mp === 'wb') {
-        document.getElementById('canvasFormat').value = 'ozon';
-        document.getElementById('themeSelect').value = 'wb';
-      } else if (mp === 'ym') {
-        document.getElementById('canvasFormat').value = 'square';
-        document.getElementById('themeSelect').value = 'ym';
-      } else if (mp === 'avito') {
-        document.getElementById('canvasFormat').value = 'avito_h';
-        document.getElementById('themeSelect').value = 'avito';
-      }
+      if (mp === 'ozon') { document.getElementById('canvasFormat').value = 'ozon'; document.getElementById('themeSelect').value = 'ozon'; }
+      else if (mp === 'wb') { document.getElementById('canvasFormat').value = 'ozon'; document.getElementById('themeSelect').value = 'wb'; }
+      else if (mp === 'ym') { document.getElementById('canvasFormat').value = 'square'; document.getElementById('themeSelect').value = 'ym'; }
+      else if (mp === 'avito') { document.getElementById('canvasFormat').value = 'avito_h'; document.getElementById('themeSelect').value = 'avito'; }
       applyThemePreset();
       changeCanvasFormat();
     }
@@ -898,8 +1039,12 @@
     }
 
     async function generateWithAI() {
-      const credits = getCredits();
-      if (credits <= 0) {
+      if (!currentUser || !currentSessionToken) {
+        openAuthModal();
+        return;
+      }
+
+      if (userCredits <= 0) {
         openPayModal();
         return;
       }
@@ -914,21 +1059,31 @@
       try {
         const res = await fetch('/api/generate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentSessionToken}`
+          },
           body: JSON.stringify({ product: prompt })
         });
 
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (err) {
-          throw new Error('Сервер обновляется, подождите 10 секунд и нажмите снова.');
+        const data = await res.json();
+
+        if (res.status === 401 || data.error === 'AUTH_REQUIRED') {
+          openAuthModal();
+          throw new Error(data.message || 'Необходимо войти в аккаунт');
+        }
+
+        if (res.status === 402 || data.error === 'NO_CREDITS') {
+          openPayModal();
+          throw new Error(data.message || 'Лимит генераций исчерпан');
         }
 
         if (data.error) throw new Error(data.error);
 
-        setCredits(credits - 1);
+        if (typeof data.remaining_credits === 'number') {
+          userCredits = data.remaining_credits;
+          document.getElementById('creditsCount').innerText = userCredits;
+        }
 
         if (data.slides && Array.isArray(data.slides)) {
           const icons = ['✓ ', '⚡ ', '💎 '];
@@ -945,14 +1100,6 @@
               }));
             }
           });
-        } else if (data.title) {
-          // Поддержка ответа для одиночного слайда
-          slidesState[0].title = data.title;
-          slidesState[0].subtitle = data.subtitle || '';
-          slidesState[0].badge = data.badge || 'ХИТ ПРОДАЖ';
-          if (Array.isArray(data.bullets)) {
-            slidesState[0].bullets = data.bullets.map(b => ({ text: '✓ ' + b, x: 50, y: 950, w: 560, h: 62 }));
-          }
         }
 
         if (data.bg_prompt) document.getElementById('bgPromptInput').value = data.bg_prompt;
@@ -961,7 +1108,7 @@
         autoArrangeAllSlides();
         switchSlide(0);
       } catch (e) {
-        alert('Ошибка ИИ: ' + e.message);
+        alert(e.message);
       } finally {
         btn.innerText = '🤖 Сгенерировать воронку из 3 слайдов + SEO';
         btn.disabled = false;
@@ -1333,7 +1480,6 @@
       const sub = s.subtitle || '';
       const badge = (s.badge || '').toUpperCase();
 
-      // 1. Фон
       if (customBgImg) {
         ctx.drawImage(customBgImg, 0, 0, cw, ch);
       } else {
@@ -1355,7 +1501,6 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // 2. 3D-подиум
       if (document.getElementById('showPodium').checked) {
         const podY = positions.product.y + 230;
         ctx.save();
@@ -1373,7 +1518,6 @@
         ctx.restore();
       }
 
-      // 3. Товар
       if (productImg) {
         const scale = document.getElementById('imgScale').value / 100;
         const rot = (parseInt(document.getElementById('imgRotate').value) || 0) * Math.PI / 180;
@@ -1406,7 +1550,6 @@
         ctx.textAlign = 'left';
       }
 
-      // 4. Логотип
       if (logoImg) {
         const lSize = parseInt(document.getElementById('logoScale').value) || 130;
         const ratio = Math.min(lSize / logoImg.width, lSize / logoImg.height);
@@ -1418,7 +1561,6 @@
         ctx.restore();
       }
 
-      // 5. Бейдж
       if (badge) {
         ctx.font = `900 22px ${fontName}, sans-serif`;
         const bw = ctx.measureText(badge).width + 48;
@@ -1429,7 +1571,6 @@
         ctx.fillText(badge, positions.badge.x + 24, positions.badge.y + 32);
       }
 
-      // 6. Заголовок и Подзаголовок
       ctx.fillStyle = '#ffffff';
       ctx.font = `900 ${titleFontSize}px ${fontName}, sans-serif`;
       const words = title.split(' ');
@@ -1454,7 +1595,6 @@
         ctx.fillText(sub, positions.title.x, subY + 10);
       }
 
-      // 7. Плашка Рейтинга (показывается на Главном слайде)
       if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
         const rTxt = document.getElementById('ratingText').value;
         ctx.font = `800 20px ${fontName}, sans-serif`;
@@ -1469,7 +1609,6 @@
         ctx.restore();
       }
 
-      // 8. Плашки преимуществ / характеристик / комплектации
       bulletsData.forEach((bp) => {
         ctx.font = `700 24px ${fontName}, sans-serif`;
         ctx.save();
@@ -1504,7 +1643,6 @@
         ctx.fillText(bp.text, bp.x + 26, bp.y + (bp.h / 2) + 8);
       });
 
-      // 9. Круглый стикер
       if (document.getElementById('showSticker').checked) {
         const sTxt = (s.sticker || '').toUpperCase();
         const sCol = document.getElementById('stickerColor').value;
@@ -1538,7 +1676,6 @@
         ctx.restore();
       }
 
-      // 10. Слепые зоны маркетплейсов
       if (document.getElementById('safeZoneToggle').checked) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
@@ -1576,7 +1713,6 @@
       }
     }
 
-    // Пакетная выгрузка сразу всех 3 слайдов воронки в 1 клик
     async function downloadAllSlides() {
       const prevSlide = currentSlideIndex;
       const wasSafeZone = document.getElementById('safeZoneToggle').checked;
@@ -1600,10 +1736,7 @@
 
     function saveProjectJSON() {
       syncCurrentSlideFromUI();
-      const state = {
-        slidesState: slidesState,
-        seo: document.getElementById('seoResult').value
-      };
+      const state = { slidesState, seo: document.getElementById('seoResult').value };
       const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kard-pro-funnel.json'; a.click();
     }
