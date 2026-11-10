@@ -11,10 +11,9 @@ const VALID_PROMO_CODES = {
 const FALLBACK_SUPABASE_URL = 'https://irxszktfwtravyeqnueh.supabase.co';
 const FALLBACK_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
 
-// Серверные реестры защиты от мультиаккаунтов
 global.usersVault = global.usersVault || {};
-global.claimedDevices = global.claimedDevices || {}; // hwHash -> ownerUserId
-global.claimedIps = global.claimedIps || {};         // ipHash -> ownerUserId
+global.claimedDevices = global.claimedDevices || {};
+global.claimedIps = global.claimedIps || {};
 
 function findEnvVar(suffixes) {
   for (const s of suffixes) {
@@ -43,26 +42,19 @@ function getEnvConfig() {
   return { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt };
 }
 
-// Нормализация почты против мультиаккаунтов через +алиасы и зеркала доменов
 function normalizeEmail(rawEmail) {
   const clean = String(rawEmail || '').trim().toLowerCase();
   if (!clean.includes('@')) return clean;
   let [local, domain] = clean.split('@');
-
-  // Убираем +хвосты (user+2@yandex.ru -> user@yandex.ru)
   local = local.split('+')[0];
 
-  // Объединяем все зеркала Яндекса в единый домен
   const yandexDomains = ['ya.ru', 'yandex.com', 'yandex.by', 'yandex.kz', 'yandex.ua', 'narod.ru'];
   if (yandexDomains.includes(domain)) {
     domain = 'yandex.ru';
   }
-
-  // В Яндексе и Gmail точки и дефисы часто используют как алиасы одного ящика
   if (domain === 'gmail.com' || domain === 'yandex.ru') {
     local = local.replace(/\./g, '').replace(/-/g, '');
   }
-
   return `${local}@${domain}`;
 }
 
@@ -121,7 +113,6 @@ function writeCookieVault(res, vaultObj, salt) {
   } catch (e) {}
 }
 
-// Антифрод-проверка: выдавались ли уже 5 бесплатных генераций на этом устройстве / IP / браузере
 async function getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretSalt, userId, email, name, deviceFp, isVerifiedOAuth) {
   const cookieVault = readCookieVault(req, secretSalt);
   const ipHash = getClientIpHash(req, secretSalt);
@@ -144,7 +135,6 @@ async function getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretS
     } catch (e) {}
   }
 
-  // Если этот конкретный аккаунт УЖЕ существует — возвращаем его текущий остаток
   if (existingRecord !== null || dbCredits !== null) {
     const currentCredits = dbCredits !== null
       ? dbCredits
@@ -172,9 +162,6 @@ async function getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretS
     return record;
   }
 
-  // Это НОВЫЙ аккаунт. Проверяем, имеет ли он право на стартовые 5 бесплатных генераций:
-  // 1) Неверифицированная регистрация по простому Email/Паролю получает 0 (защита от выдуманных почт)
-  // 2) Если в куках браузера, по Hardware Fingerprint или по IP уже получал бонус другой аккаунт -> 0!
   const cookieOwner = cookieVault._bonus_owner_id;
   const hwOwner = hwHash ? global.claimedDevices[hwHash] : null;
   const ipOwner = global.claimedIps[ipHash];
@@ -184,7 +171,6 @@ async function getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretS
   if (hwOwner && hwOwner !== userId) alreadyClaimedOnDevice = true;
   if (ipOwner && ipOwner !== userId) alreadyClaimedOnDevice = true;
 
-  // Дополнительная проверка в логах Supabase по отпечатку устройства и IP
   if (!alreadyClaimedOnDevice && sbUrl && sbServiceKey && (hwHash || ipHash)) {
     try {
       const devLabel = `trial_hw_${hwHash || ipHash}`;
@@ -203,16 +189,10 @@ async function getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretS
   let starterCredits = 0;
   let bonusBlocked = false;
 
-  if (!isVerifiedOAuth) {
-    // Обычная почта без Яндекс ID / Google не дает бесплатных генераций (защита от генераторов почт)
-    starterCredits = 0;
-    bonusBlocked = true;
-  } else if (alreadyClaimedOnDevice) {
-    // Попытка создать 2-й аккаунт на том же устройстве или IP
+  if (!isVerifiedOAuth || alreadyClaimedOnDevice) {
     starterCredits = 0;
     bonusBlocked = true;
   } else {
-    // Первый честный вход через Яндекс ID / Google на этом устройстве
     starterCredits = 5;
     cookieVault._bonus_owner_id = userId;
     if (hwHash) global.claimedDevices[hwHash] = userId;
@@ -290,25 +270,7 @@ async function resolveUserFromRequest(req, sbUrl, sbServiceKey, secretSalt) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace('Bearer ', '').trim();
   if (!token) return null;
-
-  const verifiedKp = verifySessionToken(token, secretSalt);
-  if (verifiedKp) return verifiedKp;
-
-  if (sbUrl && sbServiceKey) {
-    try {
-      const userRes = await fetch(`${sbUrl}/auth/v1/user`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': sbServiceKey }
-      });
-      if (userRes.ok) {
-        const u = await userRes.json();
-        if (u?.id) {
-          return { id: u.id, email: normalizeEmail(u.email || ''), name: (u.email || 'Профиль').split('@')[0] };
-        }
-      }
-    } catch (e) {}
-  }
-
-  return null;
+  return verifySessionToken(token, secretSalt);
 }
 
 export default async function handler(req, res) {
@@ -360,7 +322,6 @@ export default async function handler(req, res) {
         ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
         : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
-      // А) Авторизация через Яндекс ID (с проверкой уникальности устройства и IP)
       if (body?.action === 'social_auth') {
         const { accessToken, clientProfile, deviceFp } = body;
         let rawEmail = '';
@@ -374,7 +335,7 @@ export default async function handler(req, res) {
             if (yaRes.ok) {
               const yaData = await yaRes.json();
               rawEmail = yaData.default_email || (Array.isArray(yaData.emails) && yaData.emails[0]) || `${yaData.login || yaData.id}@yandex.ru`;
-              displayName = yaData.display_name || yaInfo?.real_name || yaData.login || rawEmail.split('@')[0];
+              displayName = yaData.display_name || yaData.real_name || yaData.login || rawEmail.split('@')[0];
             }
           } catch (e) {}
         }
@@ -408,7 +369,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Б) Вход по Email + Пароль (НЕ дает бесплатных 5 генераций без верификации через Яндекс/Google)
       if (body?.action === 'email_auth') {
         const rawEmail = String(body.email || '').trim();
         const password = String(body.password || '').trim();
@@ -423,7 +383,6 @@ export default async function handler(req, res) {
         const deterministicId = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
         const passHash = crypto.createHmac('sha256', secretSalt).update(`${email}:${password}`).digest('hex');
 
-        // Передаем isVerifiedOAuth = false, чтобы регистрация фейковых почт получала 0 бесплатных генераций!
         const record = await getOrInitUserWithAntiAbuse(
           req, res, sbUrl, sbServiceKey, secretSalt,
           deterministicId, email, email.split('@')[0], deviceFp, false
@@ -448,7 +407,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // В) Промокоды и подтверждение возврата с оплаты ЮMoney
       if (body?.action === 'promo' || body?.action === 'confirm_return') {
         const userObj = await resolveUserFromRequest(req, sbUrl, sbServiceKey, secretSalt);
         if (!userObj) {
@@ -493,7 +451,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Г) Прямой HTTP-вебхук от ЮMoney
       const {
         notification_type = '',
         operation_id = '',
