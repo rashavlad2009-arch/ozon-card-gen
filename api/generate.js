@@ -21,20 +21,8 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
     }
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито. 
-Создай воронку из 3 слайдов карточки товара и верни строго JSON следующей структуры:
+    const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
+Создай воронку из 3 слайдов карточки товара и верни строго валидный JSON без лишнего текста и без markdown-обертки:
 {
   "slides": [
     {
@@ -45,7 +33,7 @@ export default async function handler(req, res) {
       "bullets": ["Выгода 1 (2-4 слова)", "Выгода 2 (2-4 слова)", "Выгода 3 (2-4 слова)"]
     },
     {
-      "title": "ХАРАКТЕРИСТИКИ",
+      "title": "ХАРАКТЕРИСТИСТИКИ",
       "subtitle": "Продуманная конструкция и материалы",
       "badge": "ПАРАМЕТРЫ",
       "sticker": "ПРЕМИУМ КАЧЕСТВО",
@@ -59,22 +47,71 @@ export default async function handler(req, res) {
       "bullets": ["1. Основной товар", "2. Кабель / Аксессуар", "3. Инструкция на русском", "4. Надежная упаковка"]
     }
   ],
-  "bg_prompt": "Детальный промпт на АНГЛИЙСКОМ для генерации студийного фона и подиума под этот товар без самого товара в кадре, 8k photorealistic",
+  "bg_prompt": "Detailed English prompt for commercial product studio background with empty center podium, soft cinematic lighting, 8k photorealistic",
   "seo": "Продающее SEO-описание для карточки товара на 500-700 символов с ключевыми запросами."
-}`
-          },
-          { role: 'user', content: `Товар: ${product}` }
-        ],
-        temperature: 0.7
-      })
-    });
+}`;
 
-    const result = await response.json();
-    if (!response.ok) {
-      return res.status(500).json({ error: result.error?.message || 'Ошибка ответа Groq API' });
+    // Список актуальных моделей Groq (с автоматическим переключением при сбое)
+    let candidateModels = [
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b'
+    ];
+
+    // Подгружаем список всех реально доступных вашему ключу моделей на случай будущих обновлений Groq
+    try {
+      const modelsRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      });
+      if (modelsRes.ok) {
+        const modelsData = await modelsRes.json();
+        const availableIds = (modelsData.data || [])
+          .map(m => m.id)
+          .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
+        candidateModels = [...new Set([...candidateModels, ...availableIds])];
+      }
+    } catch (e) {}
+
+    let lastError = 'Не удалось получить ответ от моделей Groq';
+    let rawContent = null;
+
+    for (const modelId of candidateModels) {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: modelId,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Товар: ${product}` }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.choices?.[0]?.message?.content) {
+        rawContent = result.choices[0].message.content;
+        break;
+      } else {
+        lastError = result.error?.message || `Ошибка модели ${modelId}`;
+        // Если ошибка связана с тем, что модель не существует или недоступна, пробуем следующую
+        continue;
+      }
     }
 
-    const content = JSON.parse(result.choices[0].message.content);
+    if (!rawContent) {
+      return res.status(500).json({ error: lastError });
+    }
+
+    // Очищаем ответ на случай, если модель обернула JSON в ```json ... ```
+    const cleanedJson = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    const content = JSON.parse(cleanedJson);
+
     return res.status(200).json(content);
   } catch (err) {
     return res.status(500).json({ error: err.message });
