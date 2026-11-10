@@ -16,7 +16,6 @@
   <meta name="twitter:card" content="summary_large_image">
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@700&family=Rubik:wght@600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
   <style>
@@ -48,7 +47,7 @@
   <!-- TOAST УВЕДОМЛЕНИЯ -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
- <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ С АНТИФРОД-ЗАЩИТОЙ -->
+  <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ (ЯНДЕКС ID + EMAIL) -->
   <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
       <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
@@ -58,24 +57,17 @@
           🎁 +5 бесплатных генераций через Яндекс ID
         </div>
         <h2 class="text-xl font-extrabold text-white">Вход в KARD-PRO</h2>
-        <p class="text-[11px] text-slate-400">Стартовые 5 бесплатных генераций начисляются <b>1 раз на одно устройство</b> при входе через подтвержденный аккаунт Яндекс ID или Google</p>
+        <p class="text-[11px] text-slate-400">Стартовые 5 бесплатных генераций начисляются <b>1 раз на одно устройство</b> при входе через подтвержденный аккаунт Яндекс ID</p>
       </div>
 
-      <div class="grid grid-cols-2 gap-2.5">
-        <button onclick="loginWithYandex()" class="py-3 px-4 rounded-xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer">
-          <span class="w-5 h-5 rounded-full bg-white text-[#FC3F1D] font-black flex items-center justify-center text-xs">Я</span>
-          <span>Войти с Яндекс ID</span>
-        </button>
-
-        <button onclick="loginWithOAuth('google')" class="py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg transition cursor-pointer">
-          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/><path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"/><path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"/></svg>
-          <span>Google</span>
-        </button>
-      </div>
+      <button onclick="loginWithYandex()" class="w-full py-3.5 px-4 rounded-2xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-xl shadow-[#FC3F1D]/20 transition cursor-pointer">
+        <span class="w-5 h-5 rounded-full bg-white text-[#FC3F1D] font-black flex items-center justify-center text-xs">Я</span>
+        <span>Войти через Яндекс ID (+5 генераций)</span>
+      </button>
 
       <div class="flex items-center gap-3 text-[11px] text-slate-500">
         <div class="flex-1 h-px bg-white/10"></div>
-        <span>или вход по Email (для платных тарифов)</span>
+        <span>или вход по Email (для платных пакетов)</span>
         <div class="flex-1 h-px bg-white/10"></div>
       </div>
 
@@ -98,10 +90,6 @@
           </button>
         </div>
       </div>
-
-      <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
-    </div>
-  </div>
 
       <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
     </div>
@@ -715,10 +703,10 @@
 
   <script>
     // =========================================================================
-    // ПЕРЕХВАТ ТОКЕНА ЯНДЕКС ID ДО ИНИЦИАЛИЗАЦИИ SUPABASE
+    // ПЕРЕХВАТ ТОКЕНА ЯНДЕКС ID ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
     // =========================================================================
     let pendingYandexToken = null;
-    if (window.location.hash && window.location.hash.includes('access_token=') && !window.location.hash.includes('refresh_token=')) {
+    if (window.location.hash && window.location.hash.includes('access_token=')) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       pendingYandexToken = hashParams.get('access_token');
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -743,18 +731,56 @@
     }
 
     // =========================================================================
-    // СИСТЕМА АВТОРИЗАЦИИ И СЕРВЕРНОГО БАЛАНСА (БЕЗ СБОЕВ SUPABASE)
+    // АВТОРИЗАЦИЯ (ЯНДЕКС ID + EMAIL) И АНТИФРОД-СКАНЕР ОТПЕЧАТКА УСТРОЙСТВА
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
     const DEFAULT_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
-    let supabaseClient = null;
     let currentUser = null;
     let currentSessionToken = null;
     let userCredits = 0;
+    let deviceFingerprint = '';
     let oauthConfig = { yandexClientId: DEFAULT_YANDEX_CLIENT_ID };
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
+
+    function getHardwareFingerprint() {
+      if (deviceFingerprint) return deviceFingerprint;
+      try {
+        const parts = [
+          screen.width,
+          screen.height,
+          screen.colorDepth,
+          window.devicePixelRatio || 1,
+          navigator.hardwareConcurrency || 4,
+          navigator.deviceMemory || 4,
+          Intl.DateTimeFormat().resolvedOptions().timeZone || 'RU',
+          navigator.platform || ''
+        ];
+        const glCanvas = document.createElement('canvas');
+        const gl = glCanvas.getContext('webgl') || glCanvas.getContext('experimental-webgl');
+        if (gl) {
+          const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+          if (dbg) {
+            parts.push(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '');
+            parts.push(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '');
+          }
+        }
+        const raw = parts.join('|');
+        let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+        for (let i = 0; i < raw.length; i++) {
+          const ch = raw.charCodeAt(i);
+          h1 = Math.imul(h1 ^ ch, 2654435761);
+          h2 = Math.imul(h2 ^ ch, 1597334677);
+        }
+        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+        deviceFingerprint = (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+        return deviceFingerprint;
+      } catch (e) {
+        return 'default_hw_fp';
+      }
+    }
 
     function updateCreditsUI(val) {
       userCredits = Math.max(0, parseInt(val || 0, 10));
@@ -778,10 +804,8 @@
 
     async function processYandexToken(accessToken) {
       try {
-        showToast('⏳ Подключаем ваш аккаунт Яндекс ID...', 'info');
+        showToast('⏳ Проверяем ваш аккаунт Яндекс ID...', 'info');
         let clientProfile = null;
-
-        // Резервная проверка напрямую в Яндексе на случай задержек сети
         try {
           const directRes = await fetch(`https://login.yandex.ru/info?format=json&oauth_token=${encodeURIComponent(accessToken)}`);
           if (directRes.ok) {
@@ -797,7 +821,13 @@
         const res = await fetch('/api/payment-webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'social_auth', provider: 'yandex', accessToken, clientProfile })
+          body: JSON.stringify({
+            action: 'social_auth',
+            provider: 'yandex',
+            accessToken,
+            clientProfile,
+            deviceFp: getHardwareFingerprint()
+          })
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка входа через Яндекс');
@@ -806,19 +836,23 @@
           id: data.id,
           email: data.email,
           name: data.name || data.email.split('@')[0],
-          credits: typeof data.credits === 'number' ? data.credits : 5,
+          credits: typeof data.credits === 'number' ? data.credits : 0,
           session_token: data.session_token
         });
 
-        showToast(`🎉 Вы успешно вошли как ${data.name}! Доступно генераций: ${data.credits}`, 'success');
+        if (data.bonus_blocked && data.credits === 0) {
+          showToast('⚠️ На этом устройстве или IP уже были получены 5 бесплатных генераций ранее. Войдите в первый аккаунт или пополните баланс!', 'error');
+        } else {
+          showToast(`🎉 Вы вошли как ${data.name}! Доступно генераций: ${data.credits}`, 'success');
+        }
       } catch (e) {
         showToast('Ошибка Яндекс ID: ' + e.message, 'error');
       }
     }
 
     async function initAuthSystem() {
+      getHardwareFingerprint();
       try {
-        // 1. Восстанавливаем сохраненную сессию сразу при открытии страницы
         const savedUser = localStorage.getItem('kardpro_auth_user');
         if (savedUser) {
           const parsed = JSON.parse(savedUser);
@@ -827,32 +861,14 @@
           }
         }
 
-        // 2. Если только что вернулись из Яндекс OAuth — обрабатываем токен
         if (pendingYandexToken) {
           await processYandexToken(pendingYandexToken);
         }
 
-        // 3. Получаем конфигурацию с сервера
         const res = await fetch('/api/payment-webhook?action=config');
         const cfg = await res.json();
         if (cfg.yandexClientId) oauthConfig.yandexClientId = cfg.yandexClientId;
 
-        if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
-          supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          if (session && session.user) {
-            await handleSupabaseSession(session);
-          }
-
-          supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-            if (session && session.user) {
-              await handleSupabaseSession(session);
-            }
-          });
-        }
-
-        // 4. Актуализируем точный баланс с сервера
         if (currentSessionToken) {
           await fetchUserCreditsFromDB();
           await checkReturnedPayment();
@@ -868,35 +884,11 @@
       window.location.href = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
     }
 
-    async function loginWithOAuth(provider) {
-      if (!supabaseClient) {
-        showAuthStatus('Для входа через Google добавьте SUPABASE_ANON_KEY в Vercel — либо войдите за 1 секунду через Яндекс ID или Email ниже!', true);
-        return;
-      }
-      const { error } = await supabaseClient.auth.signInWithOAuth({
-        provider: provider,
-        options: { redirectTo: window.location.origin }
-      });
-      if (error) showAuthStatus('Включите Google в панели Supabase или используйте вход через Яндекс ID / Email ниже', true);
-    }
-
-    async function handleSupabaseSession(session) {
-      if (session && session.user) {
-        currentUser = session.user;
-        currentSessionToken = session.access_token;
-        const label = currentUser.email ? currentUser.email.split('@')[0] : 'Профиль';
-        document.getElementById('authNavText').innerText = `🟢 ${label}`;
-        document.getElementById('logoutBtn').classList.remove('hidden');
-        closeAuthModal();
-        await fetchUserCreditsFromDB();
-        await checkReturnedPayment();
-      }
-    }
-
     async function fetchUserCreditsFromDB() {
       if (!currentSessionToken) return;
       try {
-        const res = await fetch('/api/payment-webhook?action=profile', {
+        const fp = encodeURIComponent(getHardwareFingerprint());
+        const res = await fetch(`/api/payment-webhook?action=profile&fp=${fp}`, {
           headers: { 'Authorization': `Bearer ${currentSessionToken}` }
         });
         if (res.ok) {
@@ -927,7 +919,6 @@
       el.innerText = msg;
     }
 
-    // Безотказная регистрация и вход по Email через сервер (не требует ключей в браузере!)
     async function handleEmailAuth(mode) {
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value.trim();
@@ -940,7 +931,13 @@
         const res = await fetch('/api/payment-webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'email_auth', mode, email, password })
+          body: JSON.stringify({
+            action: 'email_auth',
+            mode,
+            email,
+            password,
+            deviceFp: getHardwareFingerprint()
+          })
         });
         const data = await res.json();
         if (!res.ok || data.error) {
@@ -955,16 +952,19 @@
           session_token: data.session_token
         });
 
-        showToast(`🎉 Добро пожаловать, ${data.name}! Доступно генераций: ${data.credits}`, 'success');
+        if (data.credits === 0) {
+          showToast('ℹ️ Для получения 5 бесплатных стартовых генераций войдите через Яндекс ID (или пополните баланс от 50 ₽).', 'info');
+        } else {
+          showToast(`🎉 Добро пожаловать, ${data.name}! Доступно генераций: ${data.credits}`, 'success');
+        }
       } catch (e) {
         showAuthStatus('Ошибка соединения с сервером: ' + e.message, true);
       }
     }
 
-    async function logoutUser() {
+    function logoutUser() {
       localStorage.removeItem('kardpro_auth_user');
       localStorage.removeItem('kardpro_yandex_user');
-      if (supabaseClient) await supabaseClient.auth.signOut();
       currentUser = null;
       currentSessionToken = null;
       updateCreditsUI(0);
@@ -975,7 +975,7 @@
 
     function handleTopUpClick() {
       if (!currentUser || !currentSessionToken) {
-        showToast('🎁 Сначала войдите в аккаунт — вам начислится 5 бесплатных генераций!', 'info');
+        showToast('🎁 Сначала войдите в аккаунт через Яндекс ID!', 'info');
         openAuthModal();
         return;
       }
@@ -1050,7 +1050,12 @@
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${currentSessionToken}`
             },
-            body: JSON.stringify({ action: 'confirm_return', orderId: paidOrder, credits: addCredits })
+            body: JSON.stringify({
+              action: 'confirm_return',
+              orderId: paidOrder,
+              credits: addCredits,
+              deviceFp: getHardwareFingerprint()
+            })
           });
           const data = await res.json();
           if (data.ok) {
@@ -1078,7 +1083,11 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${currentSessionToken}`
           },
-          body: JSON.stringify({ action: 'promo', code })
+          body: JSON.stringify({
+            action: 'promo',
+            code,
+            deviceFp: getHardwareFingerprint()
+          })
         });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка промокода');
@@ -1571,7 +1580,7 @@
 
     async function generateWithAI() {
       if (!currentUser || !currentSessionToken) {
-        showToast('🎁 Войдите через Яндекс или Email, чтобы получить 5 бесплатных генераций!', 'info');
+        showToast('🎁 Войдите через Яндекс ID, чтобы получить 5 бесплатных генераций!', 'info');
         openAuthModal();
         return;
       }
