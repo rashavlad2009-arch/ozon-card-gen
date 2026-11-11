@@ -18,15 +18,9 @@ function findEnvVar(suffixes) {
 function getEnvConfig() {
   const apiKey = findEnvVar(['GROQ_API_KEY']);
   const sbUrl = (findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
-  const sbAnonKey = findEnvVar([
-    'SUPABASE_ANON_KEY',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'SUPABASE_PUBLISHABLE_KEY',
-    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
-  ]);
   const sbServiceKey = findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']);
   const secretSalt = sbServiceKey || apiKey || 'kardpro_master_secret_2026';
-  return { apiKey, sbUrl, sbAnonKey, sbServiceKey, secretSalt };
+  return { apiKey, sbUrl, sbServiceKey, secretSalt };
 }
 
 function verifySessionToken(token, salt) {
@@ -46,7 +40,7 @@ function verifySessionToken(token, salt) {
 function readCookieVault(req, salt) {
   try {
     const cookieHeader = req.headers.cookie || '';
-    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault_v3='));
+    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault='));
     if (!match) return {};
     const raw = decodeURIComponent(match.split('=')[1]);
     const [b64, sig] = raw.split('.');
@@ -64,128 +58,63 @@ function writeCookieVault(res, vaultObj, salt) {
     const b64 = Buffer.from(JSON.stringify(vaultObj)).toString('base64url');
     const sig = crypto.createHmac('sha256', salt).update(b64).digest('base64url');
     const val = encodeURIComponent(`${b64}.${sig}`);
-    res.setHeader('Set-Cookie', `kp_vault_v3=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
+    res.setHeader('Set-Cookie', `kp_vault=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
   } catch (e) {}
 }
 
-async function fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, email) {
-  if (!sbUrl) return null;
-
-  if (sbServiceKey) {
-    try {
-      const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
-        method: 'POST',
-        headers: {
-          'apikey': sbServiceKey,
-          'Authorization': `Bearer ${sbServiceKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ type: 'magiclink', email })
-      });
-      if (linkRes.ok) {
-        const linkData = await linkRes.json();
-        const u = linkData?.user || linkData;
-        if (u?.id) {
-          const meta = u.user_metadata || {};
-          return {
-            supabaseUid: u.id,
-            credits: typeof meta.credits === 'number' ? meta.credits : null,
-            genCount: meta.gen_count || 0,
-            usedLabels: Array.isArray(meta.used_labels) ? meta.used_labels : [],
-            passHash: meta.pass_hash || null,
-            mode: 'admin'
-          };
-        }
-      }
-    } catch (e) {}
+async function getCloudUserByEmail(sbUrl, sbServiceKey, email) {
+  if (!sbUrl || !sbServiceKey || !email) return null;
+  try {
+    const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers: {
+        'apikey': sbServiceKey,
+        'Authorization': `Bearer ${sbServiceKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type: 'magiclink', email })
+    });
+    if (!linkRes.ok) return null;
+    const data = await linkRes.json();
+    return data?.user || (data?.id ? data : null);
+  } catch (e) {
+    return null;
   }
-
-  const activeKey = sbAnonKey || sbServiceKey;
-  if (activeKey) {
-    try {
-      const autoPassword = 'Kp!' + crypto.createHmac('sha256', secretSalt).update(`cloud_sync_${email}`).digest('hex').substring(0, 20);
-      const tokenRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: { 'apikey': activeKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: autoPassword })
-      });
-      if (tokenRes.ok) {
-        const tokenData = await tokenRes.json();
-        const u = tokenData?.user;
-        const userJwt = tokenData?.access_token;
-        if (u?.id && userJwt) {
-          const meta = u.user_metadata || {};
-          return {
-            supabaseUid: u.id,
-            userJwt,
-            credits: typeof meta.credits === 'number' ? meta.credits : null,
-            genCount: meta.gen_count || 0,
-            usedLabels: Array.isArray(meta.used_labels) ? meta.used_labels : [],
-            passHash: meta.pass_hash || null,
-            mode: 'user_jwt'
-          };
-        }
-      }
-    } catch (e) {}
-  }
-
-  return null;
 }
 
-async function saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, email, nextCredits, nextGenCount) {
-  if (!sbUrl || !cloudState) return;
-
-  const metaPayload = {
-    kp_init: true,
-    credits: nextCredits,
-    gen_count: nextGenCount,
-    used_labels: cloudState.usedLabels || [],
-    pass_hash: cloudState.passHash || null
-  };
-
-  if (cloudState.mode === 'admin' && sbServiceKey && cloudState.supabaseUid) {
-    try {
-      await fetch(`${sbUrl}/auth/v1/admin/users/${cloudState.supabaseUid}`, {
-        method: 'PUT',
-        headers: {
-          'apikey': sbServiceKey,
-          'Authorization': `Bearer ${sbServiceKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ user_metadata: metaPayload })
-      });
-    } catch (e) {}
-
-    try {
-      await fetch(`${sbUrl}/rest/v1/profiles`, {
-        method: 'POST',
-        headers: {
-          'apikey': sbServiceKey,
-          'Authorization': `Bearer ${sbServiceKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify({
-          id: cloudState.supabaseUid,
-          email,
+async function saveCloudUserCredits(sbUrl, sbServiceKey, sbUserId, email, oldMeta, nextCredits) {
+  if (!sbUrl || !sbServiceKey || !sbUserId) return;
+  try {
+    await fetch(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
+      method: 'PUT',
+      headers: {
+        'apikey': sbServiceKey,
+        'Authorization': `Bearer ${sbServiceKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user_metadata: {
+          ...oldMeta,
+          kp_initialized: true,
+          has_spent: true,
+          bonus_blocked: false,
           credits: nextCredits
-        })
-      });
-    } catch (e) {}
-  } else if (cloudState.mode === 'user_jwt' && cloudState.userJwt) {
-    const activeKey = sbAnonKey || sbServiceKey;
-    try {
-      await fetch(`${sbUrl}/auth/v1/user`, {
-        method: 'PUT',
-        headers: {
-          'apikey': activeKey,
-          'Authorization': `Bearer ${cloudState.userJwt}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ data: metaPayload })
-      });
-    } catch (e) {}
-  }
+        }
+      })
+    });
+  } catch (e) {}
+
+  try {
+    await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(sbUserId)}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': sbServiceKey,
+        'Authorization': `Bearer ${sbServiceKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ credits: nextCredits })
+    });
+  } catch (e) {}
 }
 
 export default async function handler(req, res) {
@@ -193,7 +122,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -207,7 +135,7 @@ export default async function handler(req, res) {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '').trim();
 
-    const { apiKey, sbUrl, sbAnonKey, sbServiceKey, secretSalt } = getEnvConfig();
+    const { apiKey, sbUrl, sbServiceKey, secretSalt } = getEnvConfig();
 
     if (!apiKey) {
       return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
@@ -229,12 +157,20 @@ export default async function handler(req, res) {
     }
 
     const cookieVault = readCookieVault(req, secretSalt);
-    const memRecord = global.usersVault[userObj.email] || cookieVault[userObj.email] || null;
-    const cloudState = await fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, userObj.email);
+    const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
 
-    let currentCredits = (cloudState && typeof cloudState.credits === 'number')
-      ? cloudState.credits
-      : (memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : (userObj.provider === 'yandex' ? 5 : 0));
+    // 1. Читаем актуальный баланс из облака Supabase (auth.users)
+    const sbUser = await getCloudUserByEmail(sbUrl, sbServiceKey, userObj.email);
+    const cloudMeta = sbUser?.user_metadata || {};
+
+    let currentCredits = 5;
+    if (typeof cloudMeta.credits === 'number') {
+      currentCredits = cloudMeta.credits;
+    } else if (memRecord && typeof memRecord.credits === 'number') {
+      currentCredits = memRecord.credits;
+    } else if (userObj.provider === 'email') {
+      currentCredits = 0;
+    }
 
     if (currentCredits <= 0) {
       return res.status(402).json({
@@ -378,25 +314,25 @@ export default async function handler(req, res) {
     const cleanedJson = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const content = JSON.parse(cleanedJson);
 
+    // 2. Списываем 1 генерацию и сохраняем в облако Supabase и куку
     const nextCredits = Math.max(0, currentCredits - 1);
-    const nextGenCount = (cloudState?.genCount || memRecord?.genCount || 0) + 1;
-
     const updatedRecord = {
       ...(memRecord || {}),
-      id: userObj.id,
+      id: sbUser?.id || userObj.id,
       email: userObj.email,
       name: userObj.name,
-      provider: userObj.provider || 'yandex',
-      isInitialized: true,
       credits: nextCredits,
-      genCount: nextGenCount
+      bonusBlocked: false,
+      usedLabels: Array.isArray(memRecord?.usedLabels) ? memRecord.usedLabels : []
     };
 
-    global.usersVault[userObj.email] = updatedRecord;
-    cookieVault[userObj.email] = updatedRecord;
+    global.usersVault[updatedRecord.id] = updatedRecord;
+    cookieVault[updatedRecord.id] = updatedRecord;
     writeCookieVault(res, cookieVault, secretSalt);
 
-    await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, userObj.email, nextCredits, nextGenCount);
+    if (sbUser?.id) {
+      await saveCloudUserCredits(sbUrl, sbServiceKey, sbUser.id, userObj.email, cloudMeta, nextCredits);
+    }
 
     content.remaining_credits = nextCredits;
     return res.status(200).json(content);
