@@ -42,6 +42,12 @@ function getEnvConfig() {
   return { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt };
 }
 
+// Форматирование детерминированного ID строго в стандарт UUID v4 (8-4-4-4-12) для совместимости с PostgreSQL
+function emailToDeterministicUUID(email) {
+  const hex = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
 function normalizeEmail(rawEmail) {
   const clean = String(rawEmail || '').trim().toLowerCase();
   if (!clean.includes('@')) return clean;
@@ -350,7 +356,7 @@ export default async function handler(req, res) {
         }
 
         const verifiedEmail = normalizeEmail(rawEmail);
-        const deterministicId = crypto.createHash('sha256').update(`user_${verifiedEmail}`).digest('hex').substring(0, 32);
+        const deterministicId = emailToDeterministicUUID(verifiedEmail);
 
         const record = await getOrInitUserWithAntiAbuse(
           req, res, sbUrl, sbServiceKey, secretSalt,
@@ -380,7 +386,7 @@ export default async function handler(req, res) {
         }
 
         const email = normalizeEmail(rawEmail);
-        const deterministicId = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
+        const deterministicId = emailToDeterministicUUID(email);
         const passHash = crypto.createHmac('sha256', secretSalt).update(`${email}:${password}`).digest('hex');
 
         const record = await getOrInitUserWithAntiAbuse(
