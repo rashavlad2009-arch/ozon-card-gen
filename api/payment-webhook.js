@@ -12,8 +12,7 @@ const FALLBACK_SUPABASE_URL = 'https://irxszktfwtravyeqnueh.supabase.co';
 const FALLBACK_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
 
 global.usersVault = global.usersVault || {};
-global.claimedDevices = global.claimedDevices || {};
-global.claimedIps = global.claimedIps || {};
+global.claimedDevices = global.claimedDevices || {}; // hwHash -> ownerEmail
 
 function findEnvVar(suffixes) {
   for (const s of suffixes) {
@@ -42,7 +41,6 @@ function getEnvConfig() {
   return { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt };
 }
 
-// Форматирование детерминированного ID строго в стандарт UUID v4 (8-4-4-4-12) для совместимости с PostgreSQL
 function emailToDeterministicUUID(email) {
   const hex = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
@@ -64,17 +62,12 @@ function normalizeEmail(rawEmail) {
   return `${local}@${domain}`;
 }
 
-function getClientIpHash(req, salt) {
-  const forwarded = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || '';
-  const ip = String(forwarded).split(',')[0].trim() || req.socket?.remoteAddress || 'unknown_ip';
-  return crypto.createHmac('sha256', salt).update(`ip_${ip}`).digest('hex').substring(0, 24);
-}
-
 function createSessionToken(userObj, salt) {
   const payload = Buffer.from(JSON.stringify({
     id: userObj.id,
     email: userObj.email,
-    name: userObj.name
+    name: userObj.name,
+    provider: userObj.provider || 'yandex'
   })).toString('base64url');
   const sig = crypto.createHmac('sha256', salt).update(payload).digest('base64url');
   return `kp.${payload}.${sig}`;
@@ -97,7 +90,7 @@ function verifySessionToken(token, salt) {
 function readCookieVault(req, salt) {
   try {
     const cookieHeader = req.headers.cookie || '';
-    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault='));
+    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault_v3='));
     if (!match) return {};
     const raw = decodeURIComponent(match.split('=')[1]);
     const [b64, sig] = raw.split('.');
@@ -115,178 +108,282 @@ function writeCookieVault(res, vaultObj, salt) {
     const b64 = Buffer.from(JSON.stringify(vaultObj)).toString('base64url');
     const sig = crypto.createHmac('sha256', salt).update(b64).digest('base64url');
     const val = encodeURIComponent(`${b64}.${sig}`);
-    res.setHeader('Set-Cookie', `kp_vault=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
+    res.setHeader('Set-Cookie', `kp_vault_v3=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
   } catch (e) {}
 }
 
-async function getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretSalt, userId, email, name, deviceFp, isVerifiedOAuth) {
-  const cookieVault = readCookieVault(req, secretSalt);
-  const ipHash = getClientIpHash(req, secretSalt);
-  const hwHash = deviceFp ? crypto.createHmac('sha256', secretSalt).update(`hw_${deviceFp}`).digest('hex').substring(0, 24) : null;
+// Облачная синхронизация пользователя через системную таблицу auth.users и profiles в Supabase
+async function fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, email) {
+  if (!sbUrl) return null;
 
-  const existingRecord = global.usersVault[userId] || cookieVault[userId] || null;
-  let dbCredits = null;
-
-  if (sbUrl && sbServiceKey) {
+  // 1. Попытка через Admin API (если задан SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY)
+  if (sbServiceKey) {
     try {
-      const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits`, {
-        headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-      });
-      if (profRes.ok) {
-        const profList = await profRes.json();
-        if (Array.isArray(profList) && profList.length > 0 && typeof profList[0].credits === 'number') {
-          dbCredits = profList[0].credits;
-        }
-      }
-    } catch (e) {}
-  }
-
-  if (existingRecord !== null || dbCredits !== null) {
-    const currentCredits = dbCredits !== null
-      ? dbCredits
-      : (typeof existingRecord.credits === 'number' ? existingRecord.credits : 0);
-
-    const record = {
-      id: userId,
-      email: email || existingRecord?.email || '',
-      name: name || existingRecord?.name || (email ? email.split('@')[0] : 'Селлер'),
-      credits: currentCredits,
-      usedLabels: Array.isArray(existingRecord?.usedLabels) ? existingRecord.usedLabels : [],
-      passHash: existingRecord?.passHash || null,
-      bonusBlocked: false
-    };
-
-    if (currentCredits > 0 && isVerifiedOAuth) {
-      cookieVault._bonus_owner_id = cookieVault._bonus_owner_id || userId;
-      if (hwHash && !global.claimedDevices[hwHash]) global.claimedDevices[hwHash] = userId;
-      if (ipHash && !global.claimedIps[ipHash]) global.claimedIps[ipHash] = userId;
-    }
-
-    global.usersVault[userId] = record;
-    cookieVault[userId] = record;
-    writeCookieVault(res, cookieVault, secretSalt);
-    return record;
-  }
-
-  const cookieOwner = cookieVault._bonus_owner_id;
-  const hwOwner = hwHash ? global.claimedDevices[hwHash] : null;
-  const ipOwner = global.claimedIps[ipHash];
-
-  let alreadyClaimedOnDevice = false;
-  if (cookieOwner && cookieOwner !== userId) alreadyClaimedOnDevice = true;
-  if (hwOwner && hwOwner !== userId) alreadyClaimedOnDevice = true;
-  if (ipOwner && ipOwner !== userId) alreadyClaimedOnDevice = true;
-
-  if (!alreadyClaimedOnDevice && sbUrl && sbServiceKey && (hwHash || ipHash)) {
-    try {
-      const devLabel = `trial_hw_${hwHash || ipHash}`;
-      const checkRes = await fetch(`${sbUrl}/rest/v1/payments_log?label=eq.${encodeURIComponent(devLabel)}&select=user_id`, {
-        headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-      });
-      if (checkRes.ok) {
-        const list = await checkRes.json();
-        if (Array.isArray(list) && list.length > 0 && list[0].user_id !== userId) {
-          alreadyClaimedOnDevice = true;
-        }
-      }
-    } catch (e) {}
-  }
-
-  let starterCredits = 0;
-  let bonusBlocked = false;
-
-  if (!isVerifiedOAuth || alreadyClaimedOnDevice) {
-    starterCredits = 0;
-    bonusBlocked = true;
-  } else {
-    starterCredits = 5;
-    cookieVault._bonus_owner_id = userId;
-    if (hwHash) global.claimedDevices[hwHash] = userId;
-    if (ipHash) global.claimedIps[ipHash] = userId;
-
-    if (sbUrl && sbServiceKey) {
-      try {
-        const devLabel = `trial_hw_${hwHash || ipHash}`;
-        await fetch(`${sbUrl}/rest/v1/payments_log`, {
-          method: 'POST',
-          headers: {
-            'apikey': sbServiceKey,
-            'Authorization': `Bearer ${sbServiceKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ label: devLabel, user_id: userId, credits: 5 })
-        });
-      } catch (e) {}
-    }
-  }
-
-  const newRecord = {
-    id: userId,
-    email,
-    name: name || (email ? email.split('@')[0] : 'Селлер'),
-    credits: starterCredits,
-    usedLabels: [],
-    passHash: null,
-    bonusBlocked
-  };
-
-  global.usersVault[userId] = newRecord;
-  cookieVault[userId] = newRecord;
-  writeCookieVault(res, cookieVault, secretSalt);
-
-  if (sbUrl && sbServiceKey) {
-    try {
-      await fetch(`${sbUrl}/rest/v1/profiles`, {
+      const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
         method: 'POST',
         headers: {
           'apikey': sbServiceKey,
           'Authorization': `Bearer ${sbServiceKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ id: userId, email, credits: starterCredits })
+        body: JSON.stringify({ type: 'magiclink', email })
       });
+      if (linkRes.ok) {
+        const linkData = await linkRes.json();
+        const u = linkData?.user || linkData;
+        if (u?.id) {
+          const meta = u.user_metadata || {};
+          // Также проверяем таблицу profiles по реальному UUID из auth.users
+          let profCredits = null;
+          try {
+            const pRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${u.id}&select=credits`, {
+              headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
+            });
+            if (pRes.ok) {
+              const pList = await pRes.json();
+              if (Array.isArray(pList) && pList.length > 0 && typeof pList[0].credits === 'number') {
+                profCredits = pList[0].credits;
+              }
+            }
+          } catch (e) {}
+
+          const isInitialized = Boolean(meta.kp_init);
+          const credits = typeof meta.credits === 'number'
+            ? meta.credits
+            : (profCredits !== null ? profCredits : null);
+
+          return {
+            supabaseUid: u.id,
+            isInitialized,
+            credits,
+            genCount: meta.gen_count || 0,
+            usedLabels: Array.isArray(meta.used_labels) ? meta.used_labels : [],
+            passHash: meta.pass_hash || null,
+            mode: 'admin'
+          };
+        }
+      }
     } catch (e) {}
   }
 
-  return newRecord;
+  // 2. Резервная синхронизация через публичный SUPABASE_ANON_KEY (работает даже без Service Role Key!)
+  const activeKey = sbAnonKey || sbServiceKey;
+  if (activeKey) {
+    try {
+      const autoPassword = 'Kp!' + crypto.createHmac('sha256', secretSalt).update(`cloud_sync_${email}`).digest('hex').substring(0, 20);
+      let tokenRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { 'apikey': activeKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: autoPassword })
+      });
+
+      if (!tokenRes.ok) {
+        await fetch(`${sbUrl}/auth/v1/signup`, {
+          method: 'POST',
+          headers: { 'apikey': activeKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: autoPassword })
+        });
+        tokenRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: { 'apikey': activeKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: autoPassword })
+        });
+      }
+
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json();
+        const u = tokenData?.user;
+        const userJwt = tokenData?.access_token;
+        if (u?.id && userJwt) {
+          const meta = u.user_metadata || {};
+          return {
+            supabaseUid: u.id,
+            userJwt,
+            isInitialized: Boolean(meta.kp_init),
+            credits: typeof meta.credits === 'number' ? meta.credits : null,
+            genCount: meta.gen_count || 0,
+            usedLabels: Array.isArray(meta.used_labels) ? meta.used_labels : [],
+            passHash: meta.pass_hash || null,
+            mode: 'user_jwt'
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
+  return null;
 }
 
-async function saveHybridUserRecord(req, res, sbUrl, sbServiceKey, secretSalt, record) {
-  global.usersVault[record.id] = record;
-  const cookieVault = readCookieVault(req, secretSalt);
-  cookieVault[record.id] = record;
-  writeCookieVault(res, cookieVault, secretSalt);
+async function saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, record) {
+  if (!sbUrl || !cloudState) return;
 
-  if (sbUrl && sbServiceKey) {
+  const metaPayload = {
+    kp_init: true,
+    credits: record.credits,
+    gen_count: record.genCount || 0,
+    used_labels: (record.usedLabels || []).slice(-40),
+    pass_hash: record.passHash || null
+  };
+
+  if (cloudState.mode === 'admin' && sbServiceKey && cloudState.supabaseUid) {
     try {
-      await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(record.id)}`, {
-        method: 'PATCH',
+      await fetch(`${sbUrl}/auth/v1/admin/users/${cloudState.supabaseUid}`, {
+        method: 'PUT',
         headers: {
           'apikey': sbServiceKey,
           'Authorization': `Bearer ${sbServiceKey}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ credits: record.credits })
+        body: JSON.stringify({ user_metadata: metaPayload })
+      });
+    } catch (e) {}
+
+    try {
+      await fetch(`${sbUrl}/rest/v1/profiles`, {
+        method: 'POST',
+        headers: {
+          'apikey': sbServiceKey,
+          'Authorization': `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          id: cloudState.supabaseUid,
+          email: record.email,
+          credits: record.credits
+        })
+      });
+    } catch (e) {}
+  } else if (cloudState.mode === 'user_jwt' && cloudState.userJwt) {
+    const activeKey = sbAnonKey || sbServiceKey;
+    try {
+      await fetch(`${sbUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'apikey': activeKey,
+          'Authorization': `Bearer ${cloudState.userJwt}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ data: metaPayload })
       });
     } catch (e) {}
   }
 }
 
-async function resolveUserFromRequest(req, sbUrl, sbServiceKey, secretSalt) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '').trim();
-  if (!token) return null;
-  return verifySessionToken(token, secretSalt);
+// Загрузка или инициализация профиля с поддержкой кросс-девайс синхронизации (Телефон <-> ПК)
+async function getOrSyncUserAccount(req, res, cfg, rawEmail, name, deviceFp, provider) {
+  const { sbUrl, sbAnonKey, sbServiceKey, secretSalt } = cfg;
+  const email = normalizeEmail(rawEmail);
+  const userId = emailToDeterministicUUID(email);
+  const isYandex = provider === 'yandex';
+
+  const cookieVault = readCookieVault(req, secretSalt);
+  const hwHash = deviceFp ? crypto.createHmac('sha256', secretSalt).update(`hw_${deviceFp}`).digest('hex').substring(0, 24) : null;
+
+  // 1. Запрашиваем актуальное состояние аккаунта из облачной базы Supabase
+  const cloudState = await fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, email);
+  const memRecord = global.usersVault[email] || cookieVault[email] || null;
+
+  const accountExists = Boolean(
+    (cloudState && cloudState.isInitialized && typeof cloudState.credits === 'number') ||
+    (memRecord && memRecord.isInitialized && typeof memRecord.credits === 'number')
+  );
+
+  // А) Если этот аккаунт УЖЕ существует (например, вы вошли на телефоне, а теперь открыли ПК)
+  if (accountExists) {
+    let syncedCredits = (cloudState && typeof cloudState.credits === 'number')
+      ? cloudState.credits
+      : memRecord.credits;
+
+    const genCount = Math.max(cloudState?.genCount || 0, memRecord?.genCount || 0);
+
+    // Авто-восстановление, если из-за старого бага аккаунту Яндекса был ошибочно записан 0 при 0 генераций
+    if (isYandex && syncedCredits === 0 && genCount === 0 && !memRecord?.bonusBlocked) {
+      syncedCredits = 5;
+    }
+
+    const record = {
+      id: cloudState?.supabaseUid || userId,
+      email,
+      name: name || memRecord?.name || email.split('@')[0],
+      provider,
+      isInitialized: true,
+      credits: syncedCredits,
+      genCount,
+      usedLabels: cloudState?.usedLabels?.length ? cloudState.usedLabels : (memRecord?.usedLabels || []),
+      passHash: cloudState?.passHash || memRecord?.passHash || null,
+      bonusBlocked: false
+    };
+
+    if (isYandex && syncedCredits > 0) {
+      cookieVault._bonus_owner_email = cookieVault._bonus_owner_email || email;
+      if (hwHash && !global.claimedDevices[hwHash]) global.claimedDevices[hwHash] = email;
+    }
+
+    global.usersVault[email] = record;
+    cookieVault[email] = record;
+    writeCookieVault(res, cookieVault, secretSalt);
+    await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, record);
+
+    return record;
+  }
+
+  // Б) Это совершенно НОВЫЙ аккаунт. Проверяем антифрод только по текущему устройству (Hardware FP + Cookie)
+  const cookieOwnerEmail = cookieVault._bonus_owner_email;
+  const hwOwnerEmail = hwHash ? global.claimedDevices[hwHash] : null;
+
+  let alreadyClaimedByOtherAccountOnThisDevice = false;
+  if (cookieOwnerEmail && cookieOwnerEmail !== email) alreadyClaimedByOtherAccountOnThisDevice = true;
+  if (hwOwnerEmail && hwOwnerEmail !== email) alreadyClaimedByOtherAccountOnThisDevice = true;
+
+  let starterCredits = 0;
+  let bonusBlocked = false;
+
+  if (!isYandex) {
+    // Регистрация по обычному Email/Паролю не дает бесплатных генераций (защита от генераторов фейковых почт)
+    starterCredits = 0;
+    bonusBlocked = true;
+  } else if (alreadyClaimedByOtherAccountOnThisDevice) {
+    // На ЭТОМ ЖЕ физическом устройстве уже получали бонус на другой аккаунт Яндекса
+    starterCredits = 0;
+    bonusBlocked = true;
+  } else {
+    starterCredits = 5;
+    cookieVault._bonus_owner_email = email;
+    if (hwHash) global.claimedDevices[hwHash] = email;
+  }
+
+  const newRecord = {
+    id: cloudState?.supabaseUid || userId,
+    email,
+    name: name || email.split('@')[0],
+    provider,
+    isInitialized: true,
+    credits: starterCredits,
+    genCount: 0,
+    usedLabels: [],
+    passHash: null,
+    bonusBlocked
+  };
+
+  global.usersVault[email] = newRecord;
+  cookieVault[email] = newRecord;
+  writeCookieVault(res, cookieVault, secretSalt);
+  await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, newRecord);
+
+  return newRecord;
 }
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt } = getEnvConfig();
+  const cfg = getEnvConfig();
+  const { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt } = cfg;
 
   if (req.method === 'GET') {
     const { action, label, fp } = req.query;
@@ -300,9 +397,15 @@ export default async function handler(req, res) {
     }
 
     if (action === 'profile') {
-      const userObj = await resolveUserFromRequest(req, sbUrl, sbServiceKey, secretSalt);
-      if (!userObj) return res.status(401).json({ error: 'Unauthorized' });
-      const record = await getOrInitUserWithAntiAbuse(req, res, sbUrl, sbServiceKey, secretSalt, userObj.id, userObj.email, userObj.name, fp || '', true);
+      const authHeader = req.headers.authorization || '';
+      const token = authHeader.replace('Bearer ', '').trim();
+      const userObj = verifySessionToken(token, secretSalt);
+      if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
+
+      const record = await getOrSyncUserAccount(
+        req, res, cfg,
+        userObj.email, userObj.name, fp || '', userObj.provider || 'yandex'
+      );
       return res.status(200).json({
         ok: true,
         id: record.id,
@@ -328,6 +431,7 @@ export default async function handler(req, res) {
         ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
         : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
+      // А) Авторизация через Яндекс ID (Единый баланс между телефоном и ПК)
       if (body?.action === 'social_auth') {
         const { accessToken, clientProfile, deviceFp } = body;
         let rawEmail = '';
@@ -355,13 +459,7 @@ export default async function handler(req, res) {
           return res.status(401).json({ error: 'Не удалось получить профиль от Яндекса' });
         }
 
-        const verifiedEmail = normalizeEmail(rawEmail);
-        const deterministicId = emailToDeterministicUUID(verifiedEmail);
-
-        const record = await getOrInitUserWithAntiAbuse(
-          req, res, sbUrl, sbServiceKey, secretSalt,
-          deterministicId, verifiedEmail, displayName, deviceFp || '', true
-        );
+        const record = await getOrSyncUserAccount(req, res, cfg, rawEmail, displayName, deviceFp || '', 'yandex');
         const sessionToken = createSessionToken(record, secretSalt);
 
         return res.status(200).json({
@@ -375,6 +473,7 @@ export default async function handler(req, res) {
         });
       }
 
+      // Б) Вход по Email + Пароль
       if (body?.action === 'email_auth') {
         const rawEmail = String(body.email || '').trim();
         const password = String(body.password || '').trim();
@@ -386,20 +485,17 @@ export default async function handler(req, res) {
         }
 
         const email = normalizeEmail(rawEmail);
-        const deterministicId = emailToDeterministicUUID(email);
         const passHash = crypto.createHmac('sha256', secretSalt).update(`${email}:${password}`).digest('hex');
 
-        const record = await getOrInitUserWithAntiAbuse(
-          req, res, sbUrl, sbServiceKey, secretSalt,
-          deterministicId, email, email.split('@')[0], deviceFp, false
-        );
+        const record = await getOrSyncUserAccount(req, res, cfg, email, email.split('@')[0], deviceFp, 'email');
 
         if (record.passHash && record.passHash !== passHash && mode === 'login') {
           return res.status(401).json({ error: 'Неверный пароль для этого Email' });
         }
 
         record.passHash = passHash;
-        await saveHybridUserRecord(req, res, sbUrl, sbServiceKey, secretSalt, record);
+        const cloudState = await fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, email);
+        await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, record);
 
         const sessionToken = createSessionToken(record, secretSalt);
         return res.status(200).json({
@@ -413,15 +509,18 @@ export default async function handler(req, res) {
         });
       }
 
+      // В) Промокоды и подтверждение оплаты
       if (body?.action === 'promo' || body?.action === 'confirm_return') {
-        const userObj = await resolveUserFromRequest(req, sbUrl, sbServiceKey, secretSalt);
-        if (!userObj) {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.replace('Bearer ', '').trim();
+        const userObj = verifySessionToken(token, secretSalt);
+        if (!userObj || !userObj.email) {
           return res.status(401).json({ error: 'Пожалуйста, войдите в аккаунт' });
         }
 
-        const record = await getOrInitUserWithAntiAbuse(
-          req, res, sbUrl, sbServiceKey, secretSalt,
-          userObj.id, userObj.email, userObj.name, body.deviceFp || '', false
+        const record = await getOrSyncUserAccount(
+          req, res, cfg,
+          userObj.email, userObj.name, body.deviceFp || '', userObj.provider || 'yandex'
         );
 
         if (body.action === 'promo') {
@@ -433,14 +532,18 @@ export default async function handler(req, res) {
           const globalPromoKey = `promo_used_${code}`;
 
           if (code !== 'VIP2026' && (record.usedLabels.includes(globalPromoKey) || cookieVault[globalPromoKey])) {
-            return res.status(400).json({ error: 'Этот промокод уже был использован на вашем устройстве!' });
+            return res.status(400).json({ error: 'Этот промокод уже был активирован на вашем аккаунте!' });
           }
 
           record.credits += bonus;
           record.usedLabels.push(globalPromoKey);
           cookieVault[globalPromoKey] = true;
+          cookieVault[record.email] = record;
+          global.usersVault[record.email] = record;
           writeCookieVault(res, cookieVault, secretSalt);
-          await saveHybridUserRecord(req, res, sbUrl, sbServiceKey, secretSalt, record);
+
+          const cloudState = await fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, record.email);
+          await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, record);
 
           return res.status(200).json({ ok: true, added: bonus, credits: record.credits });
         }
@@ -451,12 +554,19 @@ export default async function handler(req, res) {
           if (!record.usedLabels.includes(orderId)) {
             record.credits += addCount;
             record.usedLabels.push(orderId);
-            await saveHybridUserRecord(req, res, sbUrl, sbServiceKey, secretSalt, record);
+            const cookieVault = readCookieVault(req, secretSalt);
+            cookieVault[record.email] = record;
+            global.usersVault[record.email] = record;
+            writeCookieVault(res, cookieVault, secretSalt);
+
+            const cloudState = await fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, record.email);
+            await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, record);
           }
           return res.status(200).json({ ok: true, added: addCount, credits: record.credits });
         }
       }
 
+      // Г) Прямой HTTP-вебхук от ЮMoney
       const {
         notification_type = '',
         operation_id = '',
@@ -481,13 +591,8 @@ export default async function handler(req, res) {
       if (label && label.startsWith('kp_')) {
         const parts = label.split('_');
         const parsedCredits = parseInt(parts[1], 10);
-        const userId = parts[2];
         const creditsToAdd = [5, 10, 20].includes(parsedCredits) ? parsedCredits : 5;
-
         global.usersVault[`paid_${label}`] = creditsToAdd;
-        if (userId && global.usersVault[userId]) {
-          global.usersVault[userId].credits += creditsToAdd;
-        }
       }
 
       return res.status(200).send('OK');
