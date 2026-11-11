@@ -23,6 +23,19 @@ function getEnvConfig() {
   return { apiKey, sbUrl, sbServiceKey, secretSalt };
 }
 
+function createSessionToken(userObj, salt) {
+  const payload = Buffer.from(JSON.stringify({
+    id: userObj.id,
+    email: userObj.email,
+    name: userObj.name,
+    provider: userObj.provider || 'yandex',
+    credits: typeof userObj.credits === 'number' ? userObj.credits : 0,
+    ts: Date.now()
+  })).toString('base64url');
+  const sig = crypto.createHmac('sha256', salt).update(payload).digest('base64url');
+  return `kp.${payload}.${sig}`;
+}
+
 function verifySessionToken(token, salt) {
   if (!token || !token.startsWith('kp.')) return null;
   const parts = token.split('.');
@@ -159,7 +172,6 @@ export default async function handler(req, res) {
     const cookieVault = readCookieVault(req, secretSalt);
     const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
 
-    // 1. Читаем актуальный баланс из облака Supabase (auth.users)
     const sbUser = await getCloudUserByEmail(sbUrl, sbServiceKey, userObj.email);
     const cloudMeta = sbUser?.user_metadata || {};
 
@@ -168,6 +180,8 @@ export default async function handler(req, res) {
       currentCredits = cloudMeta.credits;
     } else if (memRecord && typeof memRecord.credits === 'number') {
       currentCredits = memRecord.credits;
+    } else if (typeof userObj.credits === 'number') {
+      currentCredits = userObj.credits;
     } else if (userObj.provider === 'email') {
       currentCredits = 0;
     }
@@ -314,14 +328,15 @@ export default async function handler(req, res) {
     const cleanedJson = rawContent.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
     const content = JSON.parse(cleanedJson);
 
-    // 2. Списываем 1 генерацию и сохраняем в облако Supabase и куку
     const nextCredits = Math.max(0, currentCredits - 1);
     const updatedRecord = {
       ...(memRecord || {}),
       id: sbUser?.id || userObj.id,
       email: userObj.email,
       name: userObj.name,
+      provider: userObj.provider || 'yandex',
       credits: nextCredits,
+      hasSpent: true,
       bonusBlocked: false,
       usedLabels: Array.isArray(memRecord?.usedLabels) ? memRecord.usedLabels : []
     };
@@ -335,6 +350,7 @@ export default async function handler(req, res) {
     }
 
     content.remaining_credits = nextCredits;
+    content.session_token = createSessionToken(updatedRecord, secretSalt);
     return res.status(200).json(content);
   } catch (err) {
     return res.status(500).json({ error: err.message });
