@@ -11,7 +11,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kard-pro.ru/">
   <meta property="og:title" content="KARD-PRO — ИИ-студия воронки карточек для маркетплейсов">
-  <meta property="og:description" content="3 слайда за 1 клик: Обложка + Характеристики + Комплектация, ластик объектов, студийный ИИ-фон и экспорт Ultra HD.">
+  <meta property="og:description" content="3 слайда за 1 клик: Обложка + Характеристики + Комплектация, распознавание товара по фото и экспорт Ultra HD.">
   <meta property="og:image" content="https://kard-pro.ru/api/og">
   <meta name="twitter:card" content="summary_large_image">
 
@@ -26,7 +26,7 @@
       background-size: 20px 20px;
     }
     canvas {
-      max-height: 66vh;
+      max-height: 63vh;
       width: auto;
       max-width: 100%;
       box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -35,6 +35,7 @@
       touch-action: none;
     }
     canvas.eraser-cursor { cursor: crosshair !important; }
+    canvas.resize-cursor { cursor: nwse-resize !important; }
     canvas:active { cursor: grabbing; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -46,6 +47,39 @@
 
   <!-- TOAST УВЕДОМЛЕНИЯ -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- МОДАЛЬНОЕ ОКНО ОБРАТНОЙ СВЯЗИ (vlad.gembar@mail.ru) -->
+  <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <button onclick="closeFeedbackModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
+
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
+          ✉️ Поддержка и идеи по развитию
+        </div>
+        <h2 class="text-xl font-extrabold text-white">Обратная связь KARD-PRO</h2>
+        <p class="text-xs text-slate-400">Есть предложения по улучшению генератора, вопросы по оплате или сотрудничеству? Напишите напрямую разработчику:</p>
+      </div>
+
+      <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-2">
+        <div class="text-xs">
+          <span class="text-[10px] text-slate-400 block">Почта для связи:</span>
+          <b id="supportEmailText" class="text-sm text-indigo-300 select-all">vlad.gembar@mail.ru</b>
+        </div>
+        <button onclick="copySupportEmail()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition shrink-0 cursor-pointer">
+          📋 Скопировать
+        </button>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-[11px] text-slate-400 font-semibold block">Напишите ваше сообщение (откроется в вашей почте):</label>
+        <textarea id="feedbackMessageInput" rows="3" placeholder="Здравствуйте, Влад! Хочу предложить идею или задать вопрос по сайту..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
+        <button onclick="sendFeedbackMailto()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs shadow-lg transition cursor-pointer">
+          🚀 Отправить письмо на vlad.gembar@mail.ru
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ (ЯНДЕКС ID + EMAIL) -->
   <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
@@ -105,7 +139,7 @@
           ⚡ Мгновенное пополнение KARD-PRO AI
         </div>
         <h2 class="text-2xl font-extrabold text-white tracking-tight">Выберите пакет генераций</h2>
-        <p class="text-xs text-slate-400">Каждая генерация сразу создает воронку из 3 слайдов (Обложка + Характеристики + Комплектация) и продающий SEO-текст!</p>
+        <p class="text-xs text-slate-400">Каждая генерация сразу создает воронку из 3 слайдов (Обложка + Характеристики + Комплектация), 3 варианта заголовка и SEO-текст!</p>
       </div>
 
       <div class="grid grid-cols-3 gap-3">
@@ -162,7 +196,7 @@
       <div>
         <div class="flex items-center gap-2">
           <span id="appTitle" class="font-extrabold text-sm tracking-tight text-white">KARD-PRO</span>
-          <span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">Studio 4.0</span>
+          <span class="text-[10px] bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded-full font-semibold">Studio 4.5</span>
         </div>
         <p class="text-[10px] text-slate-400 hidden sm:block">Ozon • Wildberries • Яндекс Маркет • Авито</p>
       </div>
@@ -176,6 +210,11 @@
     </div>
 
     <div class="flex items-center gap-2">
+      <!-- Кнопка обратной связи в шапке -->
+      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold transition items-center gap-1.5 cursor-pointer" title="Написать автору: vlad.gembar@mail.ru">
+        <span>✉️ Связь</span>
+      </button>
+
       <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
         <span id="authNavText">👤 Войти (+5 генераций)</span>
       </button>
@@ -212,7 +251,7 @@
           <span>✨ 1. ИИ-Старт</span>
         </button>
         <button id="tabBtn_media" onclick="switchTab('media')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
-          <span>📸 2. Фото/Ластик</span>
+          <span>📸 2. Фото/Размер</span>
         </button>
         <button id="tabBtn_style" onclick="switchTab('style')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5">
           <span>🎨 3. Шаблоны</span>
@@ -227,25 +266,49 @@
 
       <div class="flex-1 overflow-y-auto p-4 space-y-4">
 
-        <!-- ВКЛАДКА 1: ИИ-ВОРОНКА И БЫСТРЫЕ КОМПОЗИЦИИ -->
+        <!-- ВКЛАДКА 1: УМНЫЙ ИИ-ГЕНЕРАТОР (ПО ТЕКСТУ ИЛИ ПО ФОТО ТОВАРА) -->
         <div id="tab_ai" class="space-y-4">
           <div class="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-4 rounded-2xl border border-indigo-500/30 space-y-3">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-300">✨ ИИ-Генератор воронки (3 слайда)</span>
-              <span class="text-[10px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md font-bold">УТП + Размеры + Набор</span>
+              <span class="text-xs font-extrabold uppercase tracking-wider text-indigo-300">✨ 1. ИИ-Упаковка 3 слайдов</span>
+              <select id="aiToneSelect" class="bg-[#070a12] border border-white/10 rounded-lg px-2 py-0.5 text-[10px] text-emerald-300 font-bold outline-none">
+                <option value="hit">🔥 Тон: Хит продаж</option>
+                <option value="luxury">👑 Тон: Премиум / Люкс</option>
+                <option value="trust">🛡️ Тон: Надежность и ГОСТ</option>
+                <option value="gift">🎁 Тон: Идея для подарка</option>
+              </select>
             </div>
-            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар и ключевые характеристики (например: Робот-пылесос с влажной уборкой, лидаром, 4000 Па, управление со смартфона)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition"></textarea>
+
+            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар (или просто загрузите фото товара и нажмите «Распознать по фото»)..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 transition"></textarea>
             
             <div class="flex flex-wrap gap-1.5">
               <span class="text-[10px] text-slate-500 self-center mr-1">Примеры:</span>
               <button onclick="fillSamplePrompt('Беспроводные наушники с активным шумоподавлением ANC, 40 часов работы, чехол и кабель Type-C в комплекте')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🎧 Наушники</button>
               <button onclick="fillSamplePrompt('Термокружка автомобильная 500 мл из нержавеющей стали, держит тепло 12 часов, ситечко и подарочная коробка')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">☕ Термокружка</button>
-              <button onclick="fillSamplePrompt('Светильник настольный декоративный 3D лофт с теплой светодиодной лампой E27')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">💡 Светильник</button>
+              <button onclick="fillSamplePrompt('Кашпо с автополивом для домашних цветов и суккулентов, стильный геометрический дизайн')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🪴 Кашпо</button>
             </div>
 
-            <button id="aiBtn" onclick="generateWithAI()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
-              <span>🤖 Сгенерировать воронку из 3 слайдов + SEO</span>
-            </button>
+            <div class="flex items-center justify-between text-[11px] text-slate-300 pt-0.5">
+              <label class="flex items-center gap-1.5 cursor-pointer">
+                <input id="autoAiPaletteToggle" type="checkbox" checked class="accent-indigo-500"> 🎨 Авто-подбор цвета под товар
+              </label>
+            </div>
+
+            <!-- Две кнопки ИИ: По описанию ИЛИ Распознать прямо по загруженному фото -->
+            <div class="grid grid-cols-1 gap-2">
+              <button id="aiBtn" onclick="generateWithAI(false)" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer">
+                <span>🤖 Сгенерировать воронку из 3 слайдов + SEO</span>
+              </button>
+              <button id="aiVisionBtn" onclick="generateWithAI(true)" class="w-full py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-indigo-500/30 text-indigo-200 font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer">
+                <span>👁️ Не хотите писать текст? Распознать товар по загруженному фото (AI Vision)</span>
+              </button>
+            </div>
+
+            <!-- Переключатель 3 вариантов заголовка (A/B тест) -->
+            <div id="titleVariantsBox" class="hidden pt-2 border-t border-white/10 space-y-1.5">
+              <span class="text-[10px] text-indigo-300 font-bold block">🎯 A/B тест: выберите лучший заголовок от ИИ в 1 клик:</span>
+              <div id="titleVariantsList" class="flex flex-col gap-1"></div>
+            </div>
           </div>
 
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
@@ -295,12 +358,12 @@
           </div>
         </div>
 
-        <!-- ВКЛАДКА 2: ТОВАР, ЛАСТИК ОБЪЕКТОВ, УЛУЧШЕНИЕ ФОТО И ИИ-ФОН -->
+        <!-- ВКЛАДКА 2: РАЗМЕРЫ ФОТО ТОВАРА, ЛАСТИК И ИИ-ФОН -->
         <div id="tab_media" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-blue-300">📦 1. Фото товара (Файл или Ctrl + V)</span>
-              <button onclick="syncProductPosAllSlides()" class="text-[10px] text-indigo-300 hover:underline">Синхронизировать на 3 слайда</button>
+              <span class="text-xs font-bold text-blue-300">📦 1. Фото товара и точный размер</span>
+              <button onclick="syncProductPosAllSlides()" class="text-[10px] text-indigo-300 hover:underline">Применить ко всем слайдам</button>
             </div>
             <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
             
@@ -313,6 +376,33 @@
               </button>
             </div>
 
+            <!-- Блок управления размерами добавляемого фото -->
+            <div class="bg-[#070a12] border border-white/10 p-3 rounded-xl space-y-2.5 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-indigo-300">📐 Размер фото товара: <b id="scaleValueLabel">85%</b></span>
+                <div class="flex gap-1">
+                  <button onclick="setQuickProductScale(50)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px]">50%</button>
+                  <button onclick="setQuickProductScale(85)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px]">85%</button>
+                  <button onclick="setQuickProductScale(120)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px]">120%</button>
+                  <button onclick="setQuickProductScale(160)" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/15 text-[10px]">160%</button>
+                </div>
+              </div>
+              <input id="imgScale" type="range" min="15" max="260" value="85" class="w-full" oninput="updateProductScaleFromSlider(this.value)">
+              
+              <div class="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <span class="text-[10px] text-slate-400">↔ Ширина фото (%):</span>
+                  <input id="imgStretchX" type="range" min="50" max="160" value="100" class="w-full" oninput="drawCard()">
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400">↕ Высота фото (%):</span>
+                  <input id="imgStretchY" type="range" min="50" max="160" value="100" class="w-full" oninput="drawCard()">
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400">💡 <b>Совет:</b> Вы также можете тянуть фото за синие уголки прямо на карточке или крутить колесико мыши над товаром!</p>
+            </div>
+
+            <!-- Ластик объектов -->
             <div class="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl space-y-2 text-xs">
               <div class="flex items-center justify-between">
                 <span class="font-bold text-indigo-300">🧽 Ластик лишних деталей на фото</span>
@@ -321,9 +411,6 @@
                 </button>
               </div>
               <div id="eraserControls" class="hidden space-y-1.5 pt-1">
-                <div class="flex justify-between text-[10px] text-slate-300">
-                  <span>Проведите мышкой по товару на холсте, чтобы стереть деталь</span>
-                </div>
                 <div class="flex items-center gap-2">
                   <span class="text-[10px] text-slate-400 shrink-0">Кисть:</span>
                   <input id="eraserSize" type="range" min="8" max="120" value="35" class="w-full">
@@ -332,28 +419,24 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 pt-1 text-xs">
+            <div class="grid grid-cols-3 gap-2 pt-1 text-xs">
               <div>
-                <span class="text-[11px] text-slate-400">Масштаб товара</span>
-                <input id="imgScale" type="range" min="15" max="220" value="85" class="w-full" oninput="drawCard()">
-              </div>
-              <div>
-                <span class="text-[11px] text-slate-400">Поворот (°)</span>
+                <span class="text-[10px] text-slate-400">Поворот (°)</span>
                 <input id="imgRotate" type="range" min="-45" max="45" value="0" class="w-full" oninput="drawCard()">
               </div>
               <div>
-                <span class="text-[11px] text-slate-400">Яркость (%)</span>
+                <span class="text-[10px] text-slate-400">Яркость</span>
                 <input id="imgBrightness" type="range" min="60" max="150" value="100" class="w-full" oninput="drawCard()">
               </div>
               <div>
-                <span class="text-[11px] text-slate-400">Контраст и Сочность (%)</span>
+                <span class="text-[10px] text-slate-400">Контраст</span>
                 <input id="imgContrast" type="range" min="60" max="160" value="106" class="w-full" oninput="drawCard()">
               </div>
             </div>
 
             <div class="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
               <button onclick="enhanceProductSharpness()" class="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg text-[11px] font-bold transition">
-                ✨ Повысить четкость (HD)
+                ✨ Четкость HD
               </button>
               <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
                 <input id="showPodium" type="checkbox" checked onchange="drawCard()"> 🛸 Подиум
@@ -575,6 +658,11 @@
               <input id="productOnTopToggle" type="checkbox" onchange="drawCard()" class="accent-indigo-500">
             </div>
 
+            <div class="flex items-center justify-between bg-[#070a12] p-3 rounded-xl border border-white/10">
+              <span>🟦 Показывать синие уголки размера на товаре</span>
+              <input id="showResizeHandlesToggle" type="checkbox" checked onchange="drawCard()" class="accent-indigo-500">
+            </div>
+
             <div class="space-y-2">
               <div class="flex items-center justify-between bg-[#070a12] p-2.5 rounded-xl border border-white/10">
                 <span class="font-semibold text-slate-200">📦 Слой: Фото товара</span>
@@ -656,30 +744,50 @@
 
       </div>
 
-      <div class="p-3 border-t border-white/10 bg-[#070a12] grid grid-cols-2 gap-2 text-xs">
-        <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить проект</button>
-        <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-2 rounded-xl font-semibold text-slate-300 transition">📂 Открыть проект</button>
+      <!-- Нижний бар проекта и прямой контакт с автором vlad.gembar@mail.ru -->
+      <div class="p-3 border-t border-white/10 bg-[#070a12] space-y-2 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить проект</button>
+          <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300 transition">📂 Открыть проект</button>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/5 px-1">
+          <span>Связь с автором:</span>
+          <button onclick="openFeedbackModal()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">
+            ✉️ vlad.gembar@mail.ru
+          </button>
+        </div>
       </div>
     </aside>
 
-    <!-- ПРАВАЯ ЧАСТЬ: ТУЛБАР СЛАЙДОВ + ХОЛСТ -->
-    <main id="dropZoneMain" class="flex-1 canvas-bg flex flex-col items-center justify-between p-3 lg:p-5 relative">
+    <!-- ПРАВАЯ ЧАСТЬ: ТУЛБАР СЛАЙДОВ + БЫСТРЫЙ РАЗМЕР ФОТО + ХОЛСТ -->
+    <main id="dropZoneMain" class="flex-1 canvas-bg flex flex-col items-center justify-between p-3 lg:p-4 relative">
       
       <div class="flex flex-wrap items-center justify-center gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10">
-        <button id="slideTab_0" onclick="switchSlide(0)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer">
+        <button id="slideTab_0" onclick="switchSlide(0)" class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer">
           <span>1. Обложка (УТП)</span>
         </button>
-        <button id="slideTab_1" onclick="switchSlide(1)" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+        <button id="slideTab_1" onclick="switchSlide(1)" class="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
           <span>2. Характеристики 📏</span>
         </button>
-        <button id="slideTab_2" onclick="switchSlide(2)" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+        <button id="slideTab_2" onclick="switchSlide(2)" class="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
           <span>3. Комплектация 📦</span>
         </button>
 
-        <div class="h-5 w-px bg-white/10 mx-1"></div>
+        <div class="h-5 w-px bg-white/10 mx-0.5"></div>
+
+        <!-- Быстрый регулятор размера фото товара прямо над холстом -->
+        <div class="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2.5 py-1 rounded-xl text-xs" title="Меняйте размер добавленного фото кнопками, ползунком, колесиком мыши или за уголки на холсте">
+          <span class="text-[11px] text-slate-300">🔍 Фото:</span>
+          <button onclick="stepProductScale(-10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center">−</button>
+          <input id="quickScaleSlider" type="range" min="15" max="260" value="85" class="w-20" oninput="updateProductScaleFromSlider(this.value)">
+          <button onclick="stepProductScale(10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center">+</button>
+          <span id="quickScaleText" class="text-[10px] font-bold text-indigo-300 w-9 text-right">85%</span>
+        </div>
+
+        <div class="h-5 w-px bg-white/10 mx-0.5"></div>
 
         <button onclick="undoAction()" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition" title="Отменить действие (Ctrl+Z)">
-          ↶ Отменить
+          ↶
         </button>
         <button onclick="redoAction()" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition" title="Повторить действие (Ctrl+Y)">
           ↷
@@ -691,11 +799,11 @@
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-4 py-1.5 rounded-full backdrop-blur-md">
-        <span>📋 Вставьте фото по <b>Ctrl+V</b> или перетащите на холст</span>
+        <span>📐 Тяните фото за <b>синие уголки</b> или крутите <b>колесико мыши</b> для изменения размера</span>
         <span class="text-white/20">•</span>
-        <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">Скачать этот слайд</button>
+        <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">Скачать слайд</button>
         <span class="text-white/20">•</span>
-        <button onclick="downloadAllSlides()" class="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer">Скачать все 3 слайда (Ultra HD)</button>
+        <button onclick="openFeedbackModal()" class="text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer">✉️ vlad.gembar@mail.ru</button>
       </div>
     </main>
 
@@ -728,6 +836,28 @@
         toast.style.transform = 'translateY(10px)';
         setTimeout(() => toast.remove(), 300);
       }, 3800);
+    }
+
+    // =========================================================================
+    // МОДАЛЬНОЕ ОКНО ОБРАТНОЙ СВЯЗИ (vlad.gembar@mail.ru)
+    // =========================================================================
+    const SUPPORT_EMAIL = 'vlad.gembar@mail.ru';
+
+    function openFeedbackModal() {
+      document.getElementById('feedbackModal').classList.remove('hidden');
+    }
+    function closeFeedbackModal() {
+      document.getElementById('feedbackModal').classList.add('hidden');
+    }
+    function copySupportEmail() {
+      navigator.clipboard.writeText(SUPPORT_EMAIL);
+      showToast('📋 Почта vlad.gembar@mail.ru скопирована!', 'success');
+    }
+    function sendFeedbackMailto() {
+      const msg = document.getElementById('feedbackMessageInput').value.trim();
+      const subject = encodeURIComponent('Обратная связь по сайту KARD-PRO.RU');
+      const body = encodeURIComponent(msg || 'Здравствуйте, Влад! Пишу вам по поводу сервиса KARD-PRO:');
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
     }
 
     // =========================================================================
@@ -1120,7 +1250,7 @@
     function setBgPreset(promptTxt) { document.getElementById('bgPromptInput').value = promptTxt; }
 
     // =========================================================================
-    // ГРАФИЧЕСКОЕ ЯДРО: 3 СЛАЙДА, БУФЕРНЫЙ ЛАСТИК 60 FPS И СЛОИ
+    // ГРАФИЧЕСКОЕ ЯДРО: ИНТЕРАКТИВНОЕ МАСШТАБИРОВАНИЕ ФОТО ЗА УГЛЫ И КОЛЕСИКОМ
     // =========================================================================
     const canvas = document.getElementById('cardCanvas');
     const ctx = canvas.getContext('2d');
@@ -1133,6 +1263,7 @@
 
     let isEraserActive = false;
     let isErasingNow = false;
+    let isExportingNow = false;
 
     let currentSlideIndex = 0;
     const SLIDE_NAMES = [
@@ -1147,6 +1278,7 @@
         subtitle: "Чистый звук • Активное шумоподавление",
         badge: "ХИТ ПРОДАЖ",
         sticker: "ГАРАНТИЯ 1 ГОД",
+        productScale: 85,
         showDimensions: false,
         dimWidth: "18 см",
         dimHeight: "24 см",
@@ -1170,6 +1302,7 @@
         subtitle: "Передовые технологии и компактность",
         badge: "ПАРАМЕТРЫ",
         sticker: "100% ОРИГИНАЛ",
+        productScale: 80,
         showDimensions: true,
         dimWidth: "6.2 см",
         dimHeight: "4.8 см",
@@ -1194,6 +1327,7 @@
         subtitle: "Всё необходимое уже в коробке",
         badge: "ЧТО В НАБОРЕ",
         sticker: "ПОДАРОК ВНУТРИ",
+        productScale: 85,
         showDimensions: false,
         dimWidth: "18 см",
         dimHeight: "24 см",
@@ -1254,12 +1388,40 @@
 
     function getActiveSlide() { return slidesState[currentSlideIndex]; }
 
+    // Управление масштабом фото товара (синхронизировано между верхним баром, вкладкой 2 и холстом)
+    function updateProductScaleFromSlider(val) {
+      const clamped = Math.min(260, Math.max(15, parseInt(val || 85, 10)));
+      const s = getActiveSlide();
+      s.productScale = clamped;
+      document.getElementById('imgScale').value = clamped;
+      document.getElementById('quickScaleSlider').value = clamped;
+      document.getElementById('scaleValueLabel').innerText = clamped + '%';
+      document.getElementById('quickScaleText').innerText = clamped + '%';
+      drawCard();
+    }
+
+    function stepProductScale(delta) {
+      const s = getActiveSlide();
+      updateProductScaleFromSlider((s.productScale || 85) + delta);
+    }
+
+    function setQuickProductScale(val) {
+      document.getElementById('imgStretchX').value = 100;
+      document.getElementById('imgStretchY').value = 100;
+      updateProductScaleFromSlider(val);
+    }
+
     function syncUIFromCurrentSlide() {
       const s = getActiveSlide();
+      const sc = s.productScale || 85;
       document.getElementById('titleText').value = s.title;
       document.getElementById('subText').value = s.subtitle;
       document.getElementById('badgeText').value = s.badge;
       document.getElementById('stickerText').value = s.sticker;
+      document.getElementById('imgScale').value = sc;
+      document.getElementById('quickScaleSlider').value = sc;
+      document.getElementById('scaleValueLabel').innerText = sc + '%';
+      document.getElementById('quickScaleText').innerText = sc + '%';
       document.getElementById('showDimensions').checked = !!s.showDimensions;
       document.getElementById('dimWidthInput').value = s.dimWidth || '18 см';
       document.getElementById('dimHeightInput').value = s.dimHeight || '24 см';
@@ -1290,9 +1452,12 @@
 
     function syncProductPosAllSlides() {
       pushHistoryState();
-      const pos = getActiveSlide().positions.product;
-      slidesState.forEach(s => { s.positions.product = { x: pos.x, y: pos.y }; });
-      showToast('Позиция товара синхронизирована на все 3 слайда!', 'success');
+      const cur = getActiveSlide();
+      slidesState.forEach(s => {
+        s.positions.product = { x: cur.positions.product.x, y: cur.positions.product.y };
+        s.productScale = cur.productScale || 85;
+      });
+      showToast('Позиция и размер товара скопированы на все 3 слайда!', 'success');
     }
 
     function switchSlide(idx) {
@@ -1301,9 +1466,9 @@
       [0, 1, 2].forEach(i => {
         const btn = document.getElementById('slideTab_' + i);
         if (i === idx) {
-          btn.className = 'px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-500/25';
+          btn.className = 'px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-500/25';
         } else {
-          btn.className = 'px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer';
+          btn.className = 'px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer';
         }
       });
       syncUIFromCurrentSlide();
@@ -1337,14 +1502,27 @@
       }
     }
 
+    function getProductDimensionsOnCanvas(s) {
+      const activeSource = (isEraserActive && productEditCanvas) ? productEditCanvas : productImg;
+      if (!activeSource) return { w: 360, h: 360, baseRatio: 1 };
+      const cw = 900;
+      const ch = 1200;
+      const scale = (s.productScale || 85) / 100;
+      const stretchX = (parseInt(document.getElementById('imgStretchX').value) || 100) / 100;
+      const stretchY = (parseInt(document.getElementById('imgStretchY').value) || 100) / 100;
+      const baseRatio = Math.min((cw * 0.8) / activeSource.width, (ch * 0.55) / activeSource.height);
+      return {
+        w: activeSource.width * baseRatio * scale * stretchX,
+        h: activeSource.height * baseRatio * scale * stretchY,
+        baseRatio
+      };
+    }
+
     function eraseAtPointer(mouseX, mouseY) {
       if (!productEditCanvas) return;
       const s = getActiveSlide();
-      const cw = canvas.width; const ch = canvas.height;
-      const scale = document.getElementById('imgScale').value / 100;
-      const baseRatio = Math.min((cw * 0.8) / productEditCanvas.width, (ch * 0.55) / productEditCanvas.height);
-      const prodW = productEditCanvas.width * baseRatio * scale;
-      const prodH = productEditCanvas.height * baseRatio * scale;
+      const { w: prodW, h: prodH, baseRatio } = getProductDimensionsOnCanvas(s);
+      const scale = (s.productScale || 85) / 100;
 
       const relX = mouseX - (s.positions.product.x - prodW / 2);
       const relY = mouseY - (s.positions.product.y - prodH / 2);
@@ -1578,7 +1756,42 @@
       syncUIFromCurrentSlide();
     }
 
-    async function generateWithAI() {
+    // Сжатие фото товара в легкую миниатюру для отправки в AI Vision
+    function getProductThumbnailBase64() {
+      if (!productImg) return null;
+      const thumb = document.createElement('canvas');
+      const maxDim = 512;
+      const ratio = Math.min(maxDim / productImg.width, maxDim / productImg.height, 1);
+      thumb.width = Math.round(productImg.width * ratio);
+      thumb.height = Math.round(productImg.height * ratio);
+      thumb.getContext('2d').drawImage(productImg, 0, 0, thumb.width, thumb.height);
+      return thumb.toDataURL('image/jpeg', 0.8);
+    }
+
+    function renderTitleVariants(variants) {
+      const box = document.getElementById('titleVariantsBox');
+      const list = document.getElementById('titleVariantsList');
+      if (!Array.isArray(variants) || variants.length === 0) {
+        box.classList.add('hidden');
+        return;
+      }
+      box.classList.remove('hidden');
+      list.innerHTML = '';
+      variants.forEach((vText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'text-left text-[11px] bg-white/5 hover:bg-indigo-600/30 border border-white/10 px-2.5 py-1.5 rounded-lg text-slate-200 font-semibold transition cursor-pointer';
+        btn.innerText = `${idx + 1}. ${vText}`;
+        btn.onclick = () => {
+          slidesState[0].title = vText;
+          if (currentSlideIndex === 0) document.getElementById('titleText').value = vText;
+          drawCard();
+          showToast('🎯 Заголовок обложки обновлен!', 'info');
+        };
+        list.appendChild(btn);
+      });
+    }
+
+    async function generateWithAI(useVision = false) {
       if (!currentUser || !currentSessionToken) {
         showToast('🎁 Войдите через Яндекс ID, чтобы получить 5 бесплатных генераций!', 'info');
         openAuthModal();
@@ -1591,10 +1804,25 @@
       }
 
       const prompt = document.getElementById('aiPrompt').value.trim();
-      if (!prompt) return showToast('Опишите ваш товар в поле 1!', 'error');
+      const tone = document.getElementById('aiToneSelect').value || 'hit';
+      let imageBase64 = null;
+
+      if (useVision) {
+        if (!productImg) {
+          switchTab('media');
+          return showToast('📸 Сначала загрузите или вставьте (Ctrl+V) фото вашего товара!', 'error');
+        }
+        imageBase64 = getProductThumbnailBase64();
+      } else if (!prompt) {
+        if (productImg) {
+          imageBase64 = getProductThumbnailBase64();
+        } else {
+          return showToast('Опишите ваш товар в поле 1 или загрузите фото товара!', 'error');
+        }
+      }
 
       const btn = document.getElementById('aiBtn');
-      btn.innerText = '⏳ ИИ упаковывает 3 слайда воронки...';
+      btn.innerText = '⏳ ИИ анализирует товар и создает 3 слайда...';
       btn.disabled = true;
 
       try {
@@ -1605,7 +1833,7 @@
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${currentSessionToken}`
           },
-          body: JSON.stringify({ product: prompt })
+          body: JSON.stringify({ product: prompt, tone, imageBase64 })
         });
 
         const data = await res.json();
@@ -1642,11 +1870,22 @@
             slidesState[idx].sticker = sl.sticker || slidesState[idx].sticker;
             if (Array.isArray(sl.bullets) && sl.bullets.length > 0) {
               slidesState[idx].bullets = sl.bullets.map(b => ({
-                text: icons[idx] + b.replace(/^([✓🔥⚡💎★•]\s*)/, ''),
+                text: icons[idx] + String(b).replace(/^([✓🔥⚡💎★•]\s*)/, ''),
                 x: 50, y: 950, w: 560, h: 62
               }));
             }
           });
+        }
+
+        if (data.title_variants) {
+          renderTitleVariants(data.title_variants);
+        }
+
+        if (data.ai_colors && document.getElementById('autoAiPaletteToggle').checked) {
+          if (data.ai_colors.bg1 && /^#[0-9a-f]{6}$/i.test(data.ai_colors.bg1)) document.getElementById('customBg1').value = data.ai_colors.bg1;
+          if (data.ai_colors.bg2 && /^#[0-9a-f]{6}$/i.test(data.ai_colors.bg2)) document.getElementById('customBg2').value = data.ai_colors.bg2;
+          if (data.ai_colors.accent && /^#[0-9a-f]{6}$/i.test(data.ai_colors.accent)) document.getElementById('customAccent').value = data.ai_colors.accent;
+          if (data.ai_colors.badge && /^#[0-9a-f]{6}$/i.test(data.ai_colors.badge)) document.getElementById('customBadge').value = data.ai_colors.badge;
         }
 
         if (data.dimensions) {
@@ -1660,7 +1899,7 @@
 
         autoArrangeAllSlides();
         switchSlide(0);
-        showToast('🎉 Воронка из 3 слайдов и SEO готовы!', 'success');
+        showToast('🎉 Воронка из 3 слайдов, палитра и SEO готовы!', 'success');
       } catch (e) {
         showToast(e.message, 'error');
       } finally {
@@ -1770,16 +2009,18 @@
       }
     }
 
+    // Безопасный рендер полей буллитов (без поломки при кавычках в тексте)
     function renderBulletsInputs() {
       const container = document.getElementById('bulletsContainer');
       container.innerHTML = '';
       const bulletsData = getActiveSlide().bullets;
       bulletsData.forEach((item, idx) => {
+        const safeText = String(item.text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
         const div = document.createElement('div');
         div.className = 'bg-[#070a12] border border-white/10 p-2.5 rounded-xl space-y-2 text-xs';
         div.innerHTML = `
           <div class="flex gap-2 items-center">
-            <input type="text" value="${item.text}" oninput="updateBulletText(${idx}, this.value)" class="w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs">
+            <input type="text" value="${safeText}" oninput="updateBulletText(${idx}, this.value)" class="w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white">
             <button onclick="removeBullet(${idx})" class="bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white px-2 py-1 rounded-lg font-bold">✕</button>
           </div>
           <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
@@ -1837,7 +2078,7 @@
           originalProductImg = img;
           initProductEditCanvas(img);
           drawCard();
-          showToast('📸 Фото товара загружено!', 'success');
+          showToast('📸 Фото товара загружено! Тяните за синие уголки на карточке для изменения размера.', 'success');
         };
         img.src = ev.target.result;
       };
@@ -1905,6 +2146,21 @@
       return el && el.checked;
     }
 
+    // Проверка попадания мыши в один из 4 угловых маркеров масштабирования фото товара
+    function isPointerOnResizeHandle(mouseX, mouseY, s) {
+      if (!productImg || isLayerLocked('product')) return false;
+      const { w, h } = getProductDimensionsOnCanvas(s);
+      const px = s.positions.product.x;
+      const py = s.positions.product.y;
+      const corners = [
+        { x: px - w / 2, y: py - h / 2 },
+        { x: px + w / 2, y: py - h / 2 },
+        { x: px - w / 2, y: py + h / 2 },
+        { x: px + w / 2, y: py + h / 2 }
+      ];
+      return corners.some(c => Math.hypot(mouseX - c.x, mouseY - c.y) <= 26);
+    }
+
     function handleStart(e) {
       const { x: mouseX, y: mouseY } = getPointerPos(e);
 
@@ -1917,6 +2173,14 @@
       const s = getActiveSlide();
       const positions = s.positions;
       const bulletsData = s.bullets;
+
+      // 1. Сначала проверяем, потянул ли пользователь за угловой маркер изменения размера фото
+      if (isPointerOnResizeHandle(mouseX, mouseY, s)) {
+        pushHistoryState();
+        draggingItem = 'product_resize';
+        canvas.classList.add('resize-cursor');
+        return;
+      }
 
       if (document.getElementById('showPriceTag').checked) {
         if (mouseX >= positions.price.x && mouseX <= positions.price.x + 220 && mouseY >= positions.price.y && mouseY <= positions.price.y + 80) {
@@ -1984,10 +2248,7 @@
       }
 
       if (productImg && !isLayerLocked('product')) {
-        const scale = document.getElementById('imgScale').value / 100;
-        const baseRatio = Math.min((canvas.width * 0.8) / productImg.width, (canvas.height * 0.55) / productImg.height);
-        const w = productImg.width * baseRatio * scale;
-        const h = productImg.height * baseRatio * scale;
+        const { w, h } = getProductDimensionsOnCanvas(s);
         if (Math.abs(mouseX - positions.product.x) <= w / 2 && Math.abs(mouseY - positions.product.y) <= h / 2) {
           pushHistoryState();
           draggingItem = 'product'; dragOffsetX = mouseX - positions.product.x; dragOffsetY = mouseY - positions.product.y;
@@ -1997,20 +2258,39 @@
     }
 
     function handleMove(e) {
+      const { x: mouseX, y: mouseY } = getPointerPos(e);
+      const s = getActiveSlide();
+
       if (isEraserActive && isErasingNow) {
         if (e.cancelable) e.preventDefault();
-        const { x: mouseX, y: mouseY } = getPointerPos(e);
         eraseAtPointer(mouseX, mouseY);
         return;
       }
 
-      if (!draggingItem) return;
+      // Интерактивное масштабирование фото при перетаскивании за угол
+      if (draggingItem === 'product_resize' && productImg) {
+        if (e.cancelable) e.preventDefault();
+        const dist = Math.hypot(mouseX - s.positions.product.x, mouseY - s.positions.product.y);
+        const { baseRatio } = getProductDimensionsOnCanvas(s);
+        const baseDiagHalf = Math.hypot(productImg.width * baseRatio, productImg.height * baseRatio) / 2;
+        const newScale = Math.round((dist / Math.max(1, baseDiagHalf)) * 100);
+        updateProductScaleFromSlider(newScale);
+        return;
+      }
+
+      if (!draggingItem) {
+        if (isPointerOnResizeHandle(mouseX, mouseY, s)) {
+          canvas.classList.add('resize-cursor');
+        } else {
+          canvas.classList.remove('resize-cursor');
+        }
+        return;
+      }
+
       if (e.cancelable) e.preventDefault();
-      let { x: mouseX, y: mouseY } = getPointerPos(e);
       let nextX = mouseX - dragOffsetX;
       let nextY = mouseY - dragOffsetY;
 
-      const s = getActiveSlide();
       const positions = s.positions;
       const bulletsData = s.bullets;
 
@@ -2034,6 +2314,7 @@
     }
 
     function handleEnd() {
+      canvas.classList.remove('resize-cursor');
       if (isErasingNow && productEditCanvas) {
         isErasingNow = false;
         const updated = new Image();
@@ -2048,6 +2329,19 @@
         drawCard();
       }
     }
+
+    // Изменение размера фото товара колесиком мыши прямо на холсте
+    canvas.addEventListener('wheel', (e) => {
+      if (!productImg || isLayerLocked('product')) return;
+      const { x: mouseX, y: mouseY } = getPointerPos(e);
+      const s = getActiveSlide();
+      const { w, h } = getProductDimensionsOnCanvas(s);
+      if (Math.abs(mouseX - s.positions.product.x) <= w / 2 + 30 && Math.abs(mouseY - s.positions.product.y) <= h / 2 + 30) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 6 : -6;
+        updateProductScaleFromSlider((s.productScale || 85) + delta);
+      }
+    }, { passive: false });
 
     canvas.addEventListener('mousedown', handleStart);
     window.addEventListener('mousemove', handleMove);
@@ -2174,14 +2468,12 @@
       let prodW = 360, prodH = 360;
 
       if (activeSource) {
-        const scale = document.getElementById('imgScale').value / 100;
+        const { w, h } = getProductDimensionsOnCanvas(s);
+        prodW = w;
+        prodH = h;
         const rot = (parseInt(document.getElementById('imgRotate').value) || 0) * Math.PI / 180;
         const brightness = document.getElementById('imgBrightness').value || 100;
         const contrast = document.getElementById('imgContrast').value || 106;
-
-        const baseRatio = Math.min((cw * 0.8) / activeSource.width, (ch * 0.55) / activeSource.height);
-        prodW = activeSource.width * baseRatio * scale;
-        prodH = activeSource.height * baseRatio * scale;
 
         if (document.getElementById('showReflection').checked) {
           ctx.save();
@@ -2201,15 +2493,36 @@
         ctx.shadowOffsetY = 20;
         ctx.drawImage(activeSource, -prodW / 2, -prodH / 2, prodW, prodH);
         ctx.filter = 'none';
+        ctx.restore();
 
-        if (draggingItem === 'product') {
-          ctx.strokeStyle = '#6366f1';
+        // Отрисовка интерактивных угловых маркеров изменения размера (скрываются при скачивании!)
+        const showHandles = document.getElementById('showResizeHandlesToggle').checked;
+        if (!isExportingNow && showHandles && !isLayerLocked('product')) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(99, 102, 241, 0.65)';
           ctx.lineWidth = 2;
           ctx.setLineDash([8, 6]);
-          ctx.strokeRect(-prodW / 2 - 8, -prodH / 2 - 8, prodW + 16, prodH + 16);
+          ctx.strokeRect(positions.product.x - prodW / 2, positions.product.y - prodH / 2, prodW, prodH);
+          ctx.setLineDash([]);
+
+          const corners = [
+            { x: positions.product.x - prodW / 2, y: positions.product.y - prodH / 2 },
+            { x: positions.product.x + prodW / 2, y: positions.product.y - prodH / 2 },
+            { x: positions.product.x - prodW / 2, y: positions.product.y + prodH / 2 },
+            { x: positions.product.x + prodW / 2, y: positions.product.y + prodH / 2 }
+          ];
+          corners.forEach(c => {
+            ctx.fillStyle = '#6366f1';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.rect(c.x - 8, c.y - 8, 16, 16);
+            ctx.fill();
+            ctx.stroke();
+          });
+          ctx.restore();
         }
-        ctx.restore();
-      } else {
+      } else if (!isExportingNow) {
         const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
         ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.setLineDash([12, 12]);
         drawBox(ctx, cw * 0.2, ch * 0.28, cw * 0.6, ch * 0.34, 28);
@@ -2231,12 +2544,13 @@
       }
     }
 
-    function drawCard() {
+    function drawCard(logicalW = null, logicalH = null) {
       const s = getActiveSlide();
       const positions = s.positions;
       const bulletsData = s.bullets;
 
-      const cw = canvas.width; const ch = canvas.height;
+      const cw = logicalW || canvas.width;
+      const ch = logicalH || canvas.height;
       const bg1 = document.getElementById('customBg1').value;
       const bg2 = document.getElementById('customBg2').value;
       const accent = document.getElementById('customAccent').value;
@@ -2383,7 +2697,7 @@
           ctx.fill();
         }
 
-        if (draggingItem === 'bullet' && dragIndex === idx) {
+        if (!isExportingNow && draggingItem === 'bullet' && dragIndex === idx) {
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 2;
           ctx.strokeRect(bp.x - 2, bp.y - 2, bp.w + 4, bp.h + 4);
@@ -2470,7 +2784,7 @@
         ctx.restore();
       }
 
-      if (document.getElementById('safeZoneToggle').checked) {
+      if (!isExportingNow && document.getElementById('safeZoneToggle').checked) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
         ctx.strokeStyle = '#ef4444';
@@ -2491,64 +2805,65 @@
       }
     }
 
+    // Честный векторный рендер в Ultra HD 2x без потери резкости шрифтов и фото
     function exportCanvasDataURL() {
       const mode = document.getElementById('exportQualitySelect').value || 'png_2x';
       const is2x = mode.includes('2x');
       const mime = mode.includes('webp') ? 'image/webp' : 'image/png';
       const ext = mode.includes('webp') ? 'webp' : 'png';
 
+      const baseW = canvas.width;
+      const baseH = canvas.height;
+      isExportingNow = true;
+
       if (!is2x) {
-        return { url: canvas.toDataURL(mime, 0.96), ext };
+        drawCard(baseW, baseH);
+        const url = canvas.toDataURL(mime, 0.96);
+        isExportingNow = false;
+        drawCard();
+        return { url, ext };
       }
 
-      const hdCanvas = document.createElement('canvas');
-      hdCanvas.width = canvas.width * 2;
-      hdCanvas.height = canvas.height * 2;
-      const hdCtx = hdCanvas.getContext('2d');
-      hdCtx.imageSmoothingEnabled = true;
-      hdCtx.imageSmoothingQuality = 'high';
-      hdCtx.drawImage(canvas, 0, 0, hdCanvas.width, hdCanvas.height);
-      return { url: hdCanvas.toDataURL(mime, 0.96), ext };
+      canvas.width = baseW * 2;
+      canvas.height = baseH * 2;
+      ctx.save();
+      ctx.scale(2, 2);
+      drawCard(baseW, baseH);
+      ctx.restore();
+
+      const url = canvas.toDataURL(mime, 0.96);
+
+      canvas.width = baseW;
+      canvas.height = baseH;
+      isExportingNow = false;
+      drawCard();
+
+      return { url, ext };
     }
 
     function downloadCard() {
-      const wasSafeZone = document.getElementById('safeZoneToggle').checked;
-      if (wasSafeZone) {
-        document.getElementById('safeZoneToggle').checked = false;
-        drawCard();
-      }
       const { url, ext } = exportCanvasDataURL();
       const link = document.createElement('a');
       link.download = `kard-pro-slide-${currentSlideIndex + 1}.${ext}`;
       link.href = url;
       link.click();
-      if (wasSafeZone) {
-        document.getElementById('safeZoneToggle').checked = true;
-        drawCard();
-      }
-      showToast(`⬇ Слайд ${currentSlideIndex + 1} сохранен в высоком разрешении!`, 'success');
+      showToast(`⬇ Слайд ${currentSlideIndex + 1} сохранен в Ultra HD!`, 'success');
     }
 
     async function downloadAllSlides() {
       const prevSlide = currentSlideIndex;
-      const wasSafeZone = document.getElementById('safeZoneToggle').checked;
-      document.getElementById('safeZoneToggle').checked = false;
-
       showToast('📦 Экспортируем все 3 слайда в Ultra HD...', 'info');
       const fileLabels = ['1-main-utp', '2-specs', '3-package'];
       for (let i = 0; i < 3; i++) {
         switchSlide(i);
-        drawCard();
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, 200));
         const { url, ext } = exportCanvasDataURL();
         const link = document.createElement('a');
         link.download = `kard-pro-${fileLabels[i]}.${ext}`;
         link.href = url;
         link.click();
-        await new Promise(r => setTimeout(r, 350));
+        await new Promise(r => setTimeout(r, 320));
       }
-
-      document.getElementById('safeZoneToggle').checked = wasSafeZone;
       switchSlide(prevSlide);
       showToast('✅ Все 3 слайда успешно скачаны!', 'success');
     }
