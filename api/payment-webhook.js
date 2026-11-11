@@ -66,7 +66,6 @@ function normalizeEmail(rawEmail) {
   return `${local}@${domain}`;
 }
 
-// Криптографический токен сессии со встроенным подписанным балансом
 function createSessionToken(userObj, salt) {
   const payload = Buffer.from(JSON.stringify({
     id: userObj.id,
@@ -222,12 +221,10 @@ async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email,
 
     let syncedCredits = candidates.length > 0 ? Math.max(...candidates) : 5;
 
-    // Если в одном из хранилищ зафиксирована честная трата (например, 4 из 5), берем актуальный остаток
     if (candidates.some(c => c > 0 && c < 5) && syncedCredits === 5) {
       syncedCredits = Math.min(...candidates.filter(c => c > 0));
     }
 
-    // Автоматическое восстановление, если Яндекс-аккаунт ранее попал под ложный 0
     if (isVerifiedOAuth && syncedCredits === 0 && !cloudMeta.has_spent && !localRecord?.hasSpent) {
       syncedCredits = 5;
     }
@@ -265,7 +262,6 @@ async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email,
     return record;
   }
 
-  // Новый пользователь: проверяем антифрод только на том же физическом браузере
   const existingYandexEmailOnDevice = cookieVault._yandex_owner_email;
   const hwOwnerEmail = hwHash ? global.claimedDevices[hwHash] : null;
 
@@ -345,6 +341,13 @@ function resolveUserFromRequest(req, secretSalt) {
   const token = authHeader.replace('Bearer ', '').trim();
   if (!token) return null;
   return verifySessionToken(token, secretSalt);
+}
+
+// Единая функция валидации количества генераций (поддерживает и тарифы 5/10/20, и любую пользовательскую сумму до 10 000 шт)
+function sanitizeCreditsCount(val) {
+  const num = parseInt(val, 10);
+  if (isNaN(num) || num < 1) return 5;
+  return Math.min(10000, num);
 }
 
 export default async function handler(req, res) {
@@ -525,7 +528,15 @@ export default async function handler(req, res) {
 
         if (body.action === 'confirm_return') {
           const { orderId, credits } = body;
-          const addCount = [5, 10, 20].includes(Number(credits)) ? Number(credits) : 5;
+          if (!orderId || !String(orderId).startsWith('kp_')) {
+            return res.status(400).json({ error: 'Некорректный идентификатор заказа' });
+          }
+
+          // Проверяем, что число генераций совпадает с зашитым в метку заказа kp_<credits>_<userId>_<rand>
+          const parts = String(orderId).split('_');
+          const labelCredits = sanitizeCreditsCount(parts[1] || credits);
+          const addCount = sanitizeCreditsCount(credits || labelCredits);
+
           if (!record.usedLabels.includes(orderId)) {
             record.credits += addCount;
             record.usedLabels.push(orderId);
@@ -541,7 +552,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // Прямой HTTP-вебхук от ЮMoney (4100119681467569)
+      // Прямой HTTP-вебхук от ЮMoney (4100119681467569) — поддержка любых сумм и пакетов
       const {
         notification_type = '',
         operation_id = '',
@@ -565,9 +576,8 @@ export default async function handler(req, res) {
 
       if (label && label.startsWith('kp_')) {
         const parts = label.split('_');
-        const parsedCredits = parseInt(parts[1], 10);
+        const creditsToAdd = sanitizeCreditsCount(parts[1]);
         const userId = parts[2];
-        const creditsToAdd = [5, 10, 20].includes(parsedCredits) ? parsedCredits : 5;
 
         global.usersVault[`paid_${label}`] = creditsToAdd;
         if (userId && sbUrl && sbServiceKey) {
@@ -578,12 +588,16 @@ export default async function handler(req, res) {
             if (uRes.ok) {
               const uData = await uRes.json();
               const meta = uData?.user_metadata || {};
-              const cur = typeof meta.credits === 'number' ? meta.credits : 0;
-              await updateSupabaseCloudRecord(sbUrl, sbServiceKey, userId, uData.email || '', {
-                ...meta,
-                kp_initialized: true,
-                credits: cur + creditsToAdd
-              });
+              const used = Array.isArray(meta.used_labels) ? meta.used_labels : [];
+              if (!used.includes(label)) {
+                const cur = typeof meta.credits === 'number' ? meta.credits : 0;
+                await updateSupabaseCloudRecord(sbUrl, sbServiceKey, userId, uData.email || '', {
+                  ...meta,
+                  kp_initialized: true,
+                  credits: cur + creditsToAdd,
+                  used_labels: [...used, label]
+                });
+              }
             }
           } catch (e) {}
         }
