@@ -130,6 +130,102 @@ async function saveCloudUserCredits(sbUrl, sbServiceKey, sbUserId, email, oldMet
   } catch (e) {}
 }
 
+// Этап 1: Точное распознавание товара по фотографии (Groq Vision + динамический список моделей + резервный Vision-шлюз)
+async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
+  const visionPrompt = userHint
+    ? `Посмотри на фото товара (подсказка пользователя: "${userHint}"). Напиши на русском языке в 1-2 предложениях точное название этого товара, его тип, цвет, материал, видимые детали и назначение для продажи на маркетплейсе.`
+    : `Внимательно посмотри на фотографию товара. Определи, что именно изображено на фото: напиши на русском языке точное название товара, его категорию, цвет, материал, форму и ключевые видимые особенности в 1-2 предложениях.`;
+
+  // Приоритетный список актуальных мультимодальных моделей Groq 2026
+  let visionModels = [
+    'qwen/qwen3.8-27b',
+    'qwen/qwen3.6-27b',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
+    'llama-3.2-90b-vision-preview',
+    'llama-3.2-11b-vision-preview'
+  ];
+
+  // Динамически подтягиваем все активные модели из каталога Groq, чтобы не зависеть от переименований
+  try {
+    const mRes = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (mRes.ok) {
+      const mData = await mRes.json();
+      const dynamicVision = (mData.data || [])
+        .map(m => m.id)
+        .filter(id => {
+          const low = id.toLowerCase();
+          return low.includes('vision') || low.includes('vl') || low.includes('scout') || low.includes('maverick') || low.includes('qwen3');
+        });
+      visionModels = [...new Set([...visionModels, ...dynamicVision])];
+    }
+  } catch (e) {}
+
+  // Важно: для Vision-моделей передаем строго одно сообщение role: "user" без role: "system" и без json_object
+  for (const vModel of visionModels) {
+    try {
+      const vRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: vModel,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: visionPrompt },
+                { type: 'image_url', image_url: { url: imageBase64 } }
+              ]
+            }
+          ],
+          temperature: 0.3,
+          max_completion_tokens: 300
+        })
+      });
+
+      if (vRes.ok) {
+        const vData = await vRes.json();
+        const text = vData.choices?.[0]?.message?.content?.trim();
+        if (text && text.length > 5) {
+          return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Резервный бесплатный мультимодальный шлюз OpenAI Vision (на случай если в Groq временно недоступны Vision-модели)
+  try {
+    const backupRes = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'openai',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: visionPrompt },
+              { type: 'image_url', image_url: { url: imageBase64 } }
+            ]
+          }
+        ]
+      })
+    });
+    if (backupRes.ok) {
+      const bData = await backupRes.json();
+      const bText = bData.choices?.[0]?.message?.content?.trim();
+      if (bText && bText.length > 5) return bText;
+    }
+  } catch (e) {}
+
+  return null;
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -141,7 +237,7 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const product = (body?.product || '').trim();
+    let product = (body?.product || '').trim();
     const tone = body?.tone || 'hit';
     const imageBase64 = body?.imageBase64 || null;
 
@@ -191,6 +287,23 @@ export default async function handler(req, res) {
         error: 'NO_CREDITS',
         message: 'Бесплатные генерации закончились. Пополните баланс от 50 ₽!'
       });
+    }
+
+    // Если передано фото товара — запускаем Этап 1 (AI Vision распознавание)
+    let recognizedProduct = null;
+    if (imageBase64 && imageBase64.startsWith('data:image/')) {
+      recognizedProduct = await recognizeProductFromImage(apiKey, imageBase64, product);
+      if (recognizedProduct) {
+        product = product ? `${product} (${recognizedProduct})` : recognizedProduct;
+      } else if (!product) {
+        return res.status(422).json({
+          error: 'Не удалось разглядеть товар на фото. Попробуйте загрузить более четкое фото или кратко подпишите название товара в поле 1.'
+        });
+      }
+    }
+
+    if (!product) {
+      return res.status(400).json({ error: 'Опишите ваш товар или загрузите его фотографию!' });
     }
 
     const toneInstructions = {
@@ -246,80 +359,44 @@ export default async function handler(req, res) {
   "seo": "Продающее SEO-описание для карточки товара на 500-700 символов с ключевыми запросами и характеристиками."
 }`;
 
+    // Этап 2: Генерация структурированной воронки из 3 слайдов по распознанному товару
+    let candidateModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'];
+    try {
+      const mRes = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      });
+      if (mRes.ok) {
+        const mData = await mRes.json();
+        const ids = (mData.data || [])
+          .map(m => m.id)
+          .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
+        candidateModels = [...new Set([...candidateModels, ...ids])];
+      }
+    } catch (e) {}
+
     let rawContent = null;
     let lastError = 'Ошибка обращения к модели ИИ';
 
-    if (imageBase64 && imageBase64.startsWith('data:image/')) {
-      const visionModels = [
-        'meta-llama/llama-4-scout-17b-16e-instruct',
-        'meta-llama/llama-4-maverick-17b-128e-instruct'
-      ];
-      for (const vModel of visionModels) {
-        try {
-          const vRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: vModel,
-              response_format: { type: 'json_object' },
-              messages: [
-                { role: 'system', content: systemPrompt },
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: product ? `Товар на фото (${product}). Создай воронку:` : 'Определи товар на фото и создай для него продающую воронку из 3 слайдов:' },
-                    { type: 'image_url', image_url: { url: imageBase64 } }
-                  ]
-                }
-              ],
-              temperature: 0.65
-            })
-          });
-          const vData = await vRes.json();
-          if (vRes.ok && vData.choices?.[0]?.message?.content) {
-            rawContent = vData.choices[0].message.content;
-            break;
-          }
-        } catch (e) {}
-      }
-    }
-
-    if (!rawContent) {
-      let candidateModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
-      try {
-        const mRes = await fetch('https://api.groq.com/openai/v1/models', {
-          headers: { 'Authorization': `Bearer ${apiKey}` }
-        });
-        if (mRes.ok) {
-          const mData = await mRes.json();
-          const ids = (mData.data || [])
-            .map(m => m.id)
-            .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
-          candidateModels = [...new Set([...candidateModels, ...ids])];
-        }
-      } catch (e) {}
-
-      for (const modelId of candidateModels) {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: modelId,
-            response_format: { type: 'json_object' },
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: `Товар: ${product || 'Популярный товар для маркетплейса'}` }
-            ],
-            temperature: 0.7
-          })
-        });
-        const result = await response.json();
-        if (response.ok && result.choices?.[0]?.message?.content) {
-          rawContent = result.choices[0].message.content;
-          break;
-        } else {
-          lastError = result.error?.message || `Ошибка модели ${modelId}`;
-        }
+    for (const modelId of candidateModels) {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelId,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }
+          ],
+          temperature: 0.7
+        })
+      });
+      const result = await response.json();
+      if (response.ok && result.choices?.[0]?.message?.content) {
+        rawContent = result.choices[0].message.content;
+        break;
+      } else {
+        lastError = result.error?.message || `Ошибка модели ${modelId}`;
       }
     }
 
@@ -349,6 +426,9 @@ export default async function handler(req, res) {
       await saveCloudUserCredits(sbUrl, sbServiceKey, sbUser.id, userObj.email, cloudMeta, nextCredits);
     }
 
+    if (recognizedProduct) {
+      content.recognized_product = recognizedProduct;
+    }
     content.remaining_credits = nextCredits;
     content.session_token = createSessionToken(updatedRecord, secretSalt);
     return res.status(200).json(content);
