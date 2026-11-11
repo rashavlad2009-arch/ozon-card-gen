@@ -33,6 +33,7 @@
       border-radius: 16px;
       cursor: grab;
       touch-action: none;
+      transition: aspect-ratio 0.15s ease;
     }
     canvas.eraser-cursor { cursor: crosshair !important; }
     canvas.resize-cursor { cursor: nwse-resize !important; }
@@ -202,11 +203,12 @@
       </div>
     </div>
 
+    <!-- Кнопки быстрого переключения формата и темы под маркетплейс -->
     <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
-      <button onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-blue-300 font-semibold transition">🔵 Ozon</button>
-      <button onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition">🟣 Wildberries</button>
-      <button onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold transition">🟡 Яндекс</button>
-      <button onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition">🟢 Авито</button>
+      <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 font-bold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🔵 Ozon (3:4)</button>
+      <button id="mpBtn_wb" onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🟣 Wildberries (3:4)</button>
+      <button id="mpBtn_ym" onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold transition cursor-pointer" title="Квадратный формат 1000×1000 (1:1)">🟡 Яндекс (1:1)</button>
+      <button id="mpBtn_avito" onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition cursor-pointer" title="Горизонтальный формат 1200×900 (4:3)">🟢 Авито (4:3)</button>
     </div>
 
     <div class="flex items-center gap-1.5 sm:gap-2">
@@ -313,12 +315,12 @@
 
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
-              <label class="font-bold text-slate-200">🧩 Авто-раскладка блоков на слайде</label>
-              <select id="canvasFormat" onchange="changeCanvasFormat()" class="bg-[#070a12] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-indigo-300 font-semibold outline-none">
-                <option value="ozon">Ozon / WB (900×1200)</option>
-                <option value="square">Яндекс / Квадрат (1000×1000)</option>
-                <option value="avito_h">Авито Горизонт (1200×900)</option>
-                <option value="story">Сторис / Рилс (1080×1920)</option>
+              <label class="font-bold text-slate-200">🧩 Формат карточки и раскладка</label>
+              <select id="canvasFormat" onchange="changeCanvasFormat(true)" class="bg-[#070a12] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-indigo-300 font-semibold outline-none">
+                <option value="ozon">Ozon / WB (900×1200 • 3:4)</option>
+                <option value="square">Яндекс / Квадрат (1000×1000 • 1:1)</option>
+                <option value="avito_h">Авито Горизонт (1200×900 • 4:3)</option>
+                <option value="story">Сторис / Рилс (1080×1920 • 9:16)</option>
               </select>
             </div>
 
@@ -442,6 +444,9 @@
                 ⇄ Отзеркалить
               </button>
               <label class="flex items-center gap-1 cursor-pointer text-slate-300">
+                <input id="showPodium" type="checkbox" checked onchange="drawCard()"> 🛸 Подиум
+              </label>
+              <label class="flex items-center gap-1 cursor-pointer text-slate-300">
                 <input id="showReflection" type="checkbox" onchange="drawCard()"> 🪞 Отражение
               </label>
             </div>
@@ -538,7 +543,6 @@
               </div>
             </div>
 
-            <!-- Векторная 3D-графика подиума и фоновой сетки -->
             <div class="grid grid-cols-2 gap-2 pt-1">
               <div>
                 <span class="text-[11px] text-slate-400 block mb-1">🛸 Вид 3D-подиума</span>
@@ -781,7 +785,7 @@
       </div>
     </aside>
 
-    <!-- ПРАВАЯ ЧАСТЬ: ТУЛБАР СЛАЙДОВ + БЫСТРЫЙ РАЗМЕР ФОТО + ХОЛСТ -->
+    <!-- ПРАВАЯ ЧАСТЬ: ТУЛБАР СЛАЙДОВ + ИНДИКАТОР ФОРМАТА + БЫСТРЫЙ РАЗМЕР ФОТО + ХОЛСТ -->
     <main id="dropZoneMain" class="flex-1 canvas-bg flex flex-col items-center justify-between p-2 sm:p-4 relative order-1 lg:order-2">
       
       <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10">
@@ -796,6 +800,11 @@
         </button>
 
         <div class="h-5 w-px bg-white/10 mx-0.5"></div>
+
+        <!-- Индикатор текущего разрешения карточки -->
+        <span id="canvasSizeBadge" class="text-[11px] bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-2.5 py-1 rounded-xl font-bold">
+          📐 900×1200 (3:4)
+        </span>
 
         <!-- Быстрый регулятор размера фото товара прямо над холстом -->
         <div class="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2 py-1 rounded-xl text-xs">
@@ -814,8 +823,8 @@
         </button>
       </div>
 
-      <div class="my-auto flex items-center justify-center py-2">
-        <canvas id="cardCanvas" width="900" height="1200"></canvas>
+      <div class="my-auto flex items-center justify-center py-2 w-full">
+        <canvas id="cardCanvas" width="900" height="1200" style="aspect-ratio: 900 / 1200;"></canvas>
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-md">
@@ -842,6 +851,7 @@
 
     function showToast(message, type = 'info') {
       const container = document.getElementById('toastContainer');
+      if (!container) return;
       const toast = document.createElement('div');
       const colors = {
         info: 'bg-[#131b2e] border-indigo-500/50 text-indigo-100',
@@ -1054,7 +1064,6 @@
       } catch (e) {}
     }
 
-    // Авто-синхронизация баланса при переключении вкладки между телефоном и ПК
     window.addEventListener('focus', () => {
       if (currentSessionToken) fetchUserCreditsFromDB();
     });
@@ -1339,7 +1348,7 @@
         subtitle: "Передовые технологии и компактность",
         badge: "ПАРАМЕТРЫ",
         sticker: "100% ОРИГИНАЛ",
-        productScale: 80,
+        productScale: 85,
         showDimensions: true,
         dimWidth: "6.2 см",
         dimHeight: "4.8 см",
@@ -1390,7 +1399,6 @@
     let historyStack = [];
     let redoStack = [];
 
-    // Автосохранение проекта, чтобы пользователь никогда не потерял работу
     function triggerAutoSave() {
       try {
         const payload = {
@@ -1409,6 +1417,10 @@
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed.slidesState) && parsed.slidesState.length === 3) {
             slidesState = parsed.slidesState;
+            // Защита от случайно сохраненного минимального масштаба 15%
+            slidesState.forEach(s => {
+              if (!s.productScale || s.productScale < 30) s.productScale = 85;
+            });
             if (parsed.seo) document.getElementById('seoResult').value = parsed.seo;
           }
         }
@@ -1620,15 +1632,14 @@
       }
     }
 
-    // Динамический расчет габаритов товара для всех форматов холста (Ozon, Квадрат, Авито, Сторис)
     function getProductDimensionsOnCanvas(s, customW = null, customH = null) {
       const activeSource = (isEraserActive && productEditCanvas) ? productEditCanvas : productImg;
       if (!activeSource) return { w: 360, h: 360, baseRatio: 1 };
       const cw = customW || (isExportingNow ? canvas.width / 2 : canvas.width);
       const ch = customH || (isExportingNow ? canvas.height / 2 : canvas.height);
       const scale = (s.productScale || 85) / 100;
-      const stretchX = (parseInt(document.getElementById('imgStretchX').value) || 100) / 100;
-      const stretchY = (parseInt(document.getElementById('imgStretchY').value) || 100) / 100;
+      const stretchX = (parseInt(document.getElementById('imgStretchX').value, 10) || 100) / 100;
+      const stretchY = (parseInt(document.getElementById('imgStretchY').value, 10) || 100) / 100;
       const baseRatio = Math.min((cw * 0.8) / activeSource.width, (ch * 0.55) / activeSource.height);
       return {
         w: activeSource.width * baseRatio * scale * stretchX,
@@ -1649,7 +1660,7 @@
 
       const imgX = (relX / prodW) * productEditCanvas.width;
       const imgY = (relY / prodH) * productEditCanvas.height;
-      const brushRadius = (parseInt(document.getElementById('eraserSize').value) || 35) / (baseRatio * scale);
+      const brushRadius = (parseInt(document.getElementById('eraserSize').value, 10) || 35) / (baseRatio * scale);
 
       const oCtx = productEditCanvas.getContext('2d');
       oCtx.save();
@@ -1670,7 +1681,6 @@
       showToast('Исходное фото товара восстановлено', 'info');
     }
 
-    // Реальный матричный фильтр повышения резкости пикселей 3x3 (Unsharp Convolution)
     function enhanceProductSharpness() {
       if (!productImg) return showToast('Сначала загрузите фото товара!', 'error');
       const w = productImg.width;
@@ -1686,7 +1696,7 @@
       const src = srcData.data;
       const dst = dstData.data;
 
-      const mix = 0.35; // Сила матричной резкости
+      const mix = 0.35;
       for (let y = 1; y < h - 1; y++) {
         for (let x = 1; x < w - 1; x++) {
           const i = (y * w + x) * 4;
@@ -1714,7 +1724,6 @@
       sharpImg.src = off.toDataURL();
     }
 
-    // Автономный генератор структуры 3 слайдов (работает мгновенно даже без интернета)
     function generateAutonomousTemplate() {
       pushHistoryState();
       const rawText = document.getElementById('aiPrompt').value.trim() || 'ПРЕМИУМ ТОВАР';
@@ -1812,37 +1821,63 @@
       minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff', text: '#0f172a' }
     };
 
+    // Переключение кнопок маркетплейсов (Ozon, WB, Яндекс, Авито) с мгновенным изменением размера карточки
     function setMarketplacePreset(mp) {
-      if (mp === 'ozon') { document.getElementById('canvasFormat').value = 'ozon'; document.getElementById('themeSelect').value = 'ozon'; }
-      else if (mp === 'wb') { document.getElementById('canvasFormat').value = 'ozon'; document.getElementById('themeSelect').value = 'wb'; }
-      else if (mp === 'ym') { document.getElementById('canvasFormat').value = 'square'; document.getElementById('themeSelect').value = 'ym'; }
-      else if (mp === 'avito') { document.getElementById('canvasFormat').value = 'avito_h'; document.getElementById('themeSelect').value = 'avito'; }
-      applyThemePreset();
-      changeCanvasFormat();
+      pushHistoryState();
+      const map = {
+        ozon: { fmt: 'ozon', theme: 'ozon', label: '🔵 Ozon • 900×1200 (3:4)' },
+        wb: { fmt: 'ozon', theme: 'wb', label: '🟣 Wildberries • 900×1200 (3:4)' },
+        ym: { fmt: 'square', theme: 'ym', label: '🟡 Яндекс • 1000×1000 (1:1)' },
+        avito: { fmt: 'avito_h', theme: 'avito', label: '🟢 Авито • 1200×900 (4:3)' }
+      };
+      const cfg = map[mp] || map.ozon;
+
+      document.getElementById('canvasFormat').value = cfg.fmt;
+      document.getElementById('themeSelect').value = cfg.theme;
+
+      // Подсветка активной кнопки в шапке
+      ['ozon', 'wb', 'ym', 'avito'].forEach(id => {
+        const btn = document.getElementById('mpBtn_' + id);
+        if (!btn) return;
+        if (id === mp) {
+          btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold transition cursor-pointer';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-semibold transition cursor-pointer';
+        }
+      });
+
+      applyThemePreset(false);
+      changeCanvasFormat(true);
+      showToast(`📐 Установлен формат: ${cfg.label}`, 'info');
     }
 
-    function changeCanvasFormat() {
-      const oldW = canvas.width;
-      const oldH = canvas.height;
+    function changeCanvasFormat(rearrange = true) {
       const val = document.getElementById('canvasFormat').value;
-      if (val === 'ozon') { canvas.width = 900; canvas.height = 1200; }
-      else if (val === 'square') { canvas.width = 1000; canvas.height = 1000; }
-      else if (val === 'avito_h') { canvas.width = 1200; canvas.height = 900; }
-      else if (val === 'story') { canvas.width = 1080; canvas.height = 1920; }
+      let labelText = '📐 900×1200 (3:4)';
 
-      const rx = canvas.width / oldW;
-      const ry = canvas.height / oldH;
-      slidesState.forEach(s => {
-        Object.keys(s.positions).forEach(k => {
-          s.positions[k].x = Math.round(s.positions[k].x * rx);
-          s.positions[k].y = Math.round(s.positions[k].y * ry);
-        });
-        s.bullets.forEach(b => {
-          b.x = Math.round(b.x * rx);
-          b.y = Math.round(b.y * ry);
-        });
-      });
-      syncUIFromCurrentSlide();
+      if (val === 'ozon') {
+        canvas.width = 900; canvas.height = 1200;
+        labelText = '📐 900×1200 (3:4)';
+      } else if (val === 'square') {
+        canvas.width = 1000; canvas.height = 1000;
+        labelText = '📐 1000×1000 (1:1)';
+      } else if (val === 'avito_h') {
+        canvas.width = 1200; canvas.height = 900;
+        labelText = '📐 1200×900 (4:3)';
+      } else if (val === 'story') {
+        canvas.width = 1080; canvas.height = 1920;
+        labelText = '📐 1080×1920 (9:16)';
+      }
+
+      canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
+      const badgeEl = document.getElementById('canvasSizeBadge');
+      if (badgeEl) badgeEl.textContent = labelText;
+
+      if (rearrange) {
+        autoArrangeAllSlides();
+      } else {
+        syncUIFromCurrentSlide();
+      }
       triggerAutoSave();
     }
 
@@ -1922,26 +1957,34 @@
       const ch = canvas.height;
       const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
 
-      slideObj.positions.badge = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.04) };
-      slideObj.positions.title = { x: Math.round(cw * 0.06), y: Math.round(ch * 0.13) };
-      slideObj.positions.product = { x: Math.round(cw * 0.52), y: Math.round(ch * 0.49) };
-      slideObj.positions.logo = { x: Math.round(cw * 0.85), y: Math.round(ch * 0.09) };
-      slideObj.positions.sticker = { x: Math.round(cw * 0.82), y: Math.round(ch * 0.65) };
-      slideObj.positions.price = { x: Math.round(cw * 0.68), y: Math.round(ch * 0.22) };
+      slideObj.positions.badge = { x: Math.round(cw * 0.05), y: Math.round(ch * 0.04) };
+      slideObj.positions.title = { x: Math.round(cw * 0.05), y: Math.round(ch * 0.13) };
+      slideObj.positions.logo = { x: Math.round(cw * 0.86), y: Math.round(ch * 0.09) };
+      slideObj.positions.price = { x: Math.round(cw * 0.70), y: Math.round(ch * 0.22) };
 
-      const pH = Math.round(Math.max(54, ch * 0.052));
+      // Для широкого горизонтального формата Авито (1200x900) ставим товар правее, а буллиты — слева
+      if (cw > ch) {
+        slideObj.positions.product = { x: Math.round(cw * 0.68), y: Math.round(ch * 0.54) };
+        slideObj.positions.sticker = { x: Math.round(cw * 0.88), y: Math.round(ch * 0.76) };
+      } else {
+        slideObj.positions.product = { x: Math.round(cw * 0.52), y: Math.round(ch * 0.48) };
+        slideObj.positions.sticker = { x: Math.round(cw * 0.82), y: Math.round(ch * 0.65) };
+      }
+
+      const pH = Math.round(Math.max(52, ch * 0.052));
       const gap = Math.round(ch * 0.013);
       const totalH = slideObj.bullets.length * (pH + gap);
       let startY = ch - totalH - Math.round(ch * 0.04);
 
-      slideObj.positions.rating = { x: Math.round(cw * 0.06), y: startY - 58 };
+      slideObj.positions.rating = { x: Math.round(cw * 0.05), y: startY - 56 };
 
       ctx.font = `700 24px ${fontName}, sans-serif`;
       slideObj.bullets.forEach((b, idx) => {
         const textW = ctx.measureText(b.text).width;
-        b.w = Math.min(Math.max(Math.round(textW + 76), 340), cw - 100);
+        const maxAllowedW = cw > ch ? Math.round(cw * 0.48) : (cw - 100);
+        b.w = Math.min(Math.max(Math.round(textW + 76), 340), maxAllowedW);
         b.h = pH;
-        b.x = Math.round(cw * 0.06);
+        b.x = Math.round(cw * 0.05);
         b.y = startY + idx * (pH + gap);
       });
     }
@@ -2206,7 +2249,6 @@
       }
     }
 
-    // Безопасный рендер полей буллитов через чистый DOM API (100% защита от XSS и кавычек)
     function renderBulletsInputs() {
       const container = document.getElementById('bulletsContainer');
       container.innerHTML = '';
@@ -2298,7 +2340,7 @@
       triggerAutoSave();
     }
 
-    function applyThemePreset() {
+    function applyThemePreset(redraw = true) {
       const key = document.getElementById('themeSelect').value;
       const t = themes[key];
       if (!t) return;
@@ -2308,10 +2350,13 @@
       document.getElementById('customBadge').value = t.badge;
       document.getElementById('pillBgColor').value = t.pillBg;
       document.getElementById('customTextColor').value = t.text || '#ffffff';
-      drawCard();
-      triggerAutoSave();
+      if (redraw) {
+        drawCard();
+        triggerAutoSave();
+      }
     }
 
+    // Надежная загрузка фото товара с автоматическим восстановлением масштаба 85%
     function loadProductFile(file) {
       if (!file || !file.type.startsWith('image/')) return;
       currentFileBlob = file;
@@ -2322,19 +2367,38 @@
           productImg = img;
           originalProductImg = img;
           initProductEditCanvas(img);
+
+          // Если масштаб ранее сбился на 15%, возвращаем стандартные 85% и центрируем товар
+          slidesState.forEach(s => {
+            if (!s.productScale || s.productScale < 35) s.productScale = 85;
+            if (!s.positions.product || s.positions.product.x < 50 || s.positions.product.x > canvas.width - 50) {
+              s.positions.product = { x: Math.round(canvas.width * 0.52), y: Math.round(canvas.height * 0.48) };
+            }
+          });
+
+          const curScale = getActiveSlide().productScale || 85;
+          document.getElementById('imgScale').value = curScale;
+          document.getElementById('quickScaleSlider').value = curScale;
+          document.getElementById('scaleValueLabel').textContent = curScale + '%';
+          document.getElementById('quickScaleText').textContent = curScale + '%';
+
           drawCard();
           try {
             const thumb = getProductThumbnailBase64();
             if (thumb) localStorage.setItem('kardpro_autosave_product_img', thumb);
           } catch (e) {}
-          showToast('📸 Фото товара загружено! Тяните за синие уголки на карточке для изменения размера.', 'success');
+          showToast('📸 Фото товара загружено на карточку!', 'success');
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     }
 
-    document.getElementById('imgUpload').addEventListener('change', (e) => loadProductFile(e.target.files[0]));
+    document.getElementById('imgUpload').addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        loadProductFile(e.target.files[0]);
+      }
+    });
 
     document.getElementById('bgFileUpload').addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -2410,7 +2474,6 @@
     }
 
     function handleStart(e) {
-      // Жест Pinch-to-Zoom двумя пальцами на смартфонах и планшетах
       if (e.touches && e.touches.length === 2 && productImg && !isLayerLocked('product')) {
         if (e.cancelable) e.preventDefault();
         pinchStartDist = Math.hypot(
@@ -2744,7 +2807,7 @@
         const brightness = document.getElementById('imgBrightness').value || 100;
         const contrast = document.getElementById('imgContrast').value || 106;
 
-        if (document.getElementById('showReflection').checked) {
+        if (document.getElementById('showReflection')?.checked) {
           ctx.save();
           ctx.translate(positions.product.x, positions.product.y + prodH * 0.85);
           ctx.scale(1, -0.35);
@@ -2764,7 +2827,7 @@
         ctx.filter = 'none';
         ctx.restore();
 
-        const showHandles = document.getElementById('showResizeHandlesToggle').checked;
+        const showHandles = document.getElementById('showResizeHandlesToggle')?.checked !== false;
         if (!isExportingNow && showHandles && !isLayerLocked('product')) {
           ctx.save();
           ctx.strokeStyle = 'rgba(99, 102, 241, 0.65)';
@@ -2792,7 +2855,7 @@
         }
       } else if (!isExportingNow) {
         const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.setLineDash([12, 12]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 3; ctx.setLineDash([12, 12]);
         drawBox(ctx, cw * 0.2, ch * 0.28, cw * 0.6, ch * 0.34, 28);
         ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = '#94a3b8'; ctx.font = `700 22px ${fontName}, sans-serif`;
@@ -2826,18 +2889,17 @@
       const pillBg = document.getElementById('pillBgColor').value;
       const textColor = document.getElementById('customTextColor').value || '#ffffff';
       const pillStyle = document.getElementById('pillStyleSelect').value;
-      const podiumType = document.getElementById('podiumTypeSelect').value;
-      const bgPattern = document.getElementById('bgPatternSelect').value;
+      const podiumType = document.getElementById('podiumTypeSelect')?.value || 'neon_ring';
+      const bgPattern = document.getElementById('bgPatternSelect')?.value || 'rays';
       const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
       const titleFontSize = parseInt(document.getElementById('titleSize').value, 10) || 44;
       const dimmer = parseInt(document.getElementById('bgDimmer').value, 10) || 0;
-      const prodOnTop = document.getElementById('productOnTopToggle').checked;
+      const prodOnTop = document.getElementById('productOnTopToggle')?.checked || false;
       
       const title = (s.title || '').toUpperCase();
       const sub = s.subtitle || '';
       const badge = (s.badge || '').toUpperCase();
 
-      // 1. Фон и декоративные векторные паттерны
       if (customBgImg) {
         ctx.drawImage(customBgImg, 0, 0, cw, ch);
       } else {
@@ -2879,7 +2941,7 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      if (document.getElementById('showGlow').checked) {
+      if (document.getElementById('showGlow')?.checked !== false) {
         const rad = ctx.createRadialGradient(positions.product.x, positions.product.y, 30, positions.product.x, positions.product.y, cw * 0.55);
         rad.addColorStop(0, accent + '66');
         rad.addColorStop(1, 'transparent');
@@ -2887,8 +2949,9 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // 2. Векторные 3D-подиумы
-      if (document.getElementById('showPodium').checked && podiumType !== 'none') {
+      // Безопасная проверка подиума (исправлен фатальный сбой!)
+      const isPodiumChecked = document.getElementById('showPodium')?.checked !== false;
+      if (isPodiumChecked && podiumType !== 'none') {
         const podY = positions.product.y + 230;
         ctx.save();
         if (podiumType === 'neon_ring') {
@@ -2981,7 +3044,7 @@
         ctx.fillText(sub, positions.title.x, subY + 10);
       }
 
-      if (document.getElementById('showRating').checked && currentSlideIndex === 0) {
+      if (document.getElementById('showRating')?.checked && currentSlideIndex === 0) {
         const rTxt = document.getElementById('ratingText').value;
         ctx.font = `800 20px ${fontName}, sans-serif`;
         const rw = ctx.measureText(rTxt).width + 38;
@@ -3045,7 +3108,7 @@
         renderProductLayer(s, cw, ch, accent);
       }
 
-      if (document.getElementById('showPriceTag').checked) {
+      if (document.getElementById('showPriceTag')?.checked) {
         const pNew = document.getElementById('priceNewText').value;
         const pOld = document.getElementById('priceOldText').value;
         const px = positions.price ? positions.price.x : 640;
@@ -3077,7 +3140,7 @@
         ctx.restore();
       }
 
-      if (document.getElementById('showSticker').checked) {
+      if (document.getElementById('showSticker')?.checked !== false) {
         const sTxt = (s.sticker || '').toUpperCase();
         const sCol = document.getElementById('stickerColor').value;
         const sx = positions.sticker.x;
@@ -3110,7 +3173,7 @@
         ctx.restore();
       }
 
-      if (!isExportingNow && document.getElementById('safeZoneToggle').checked) {
+      if (!isExportingNow && document.getElementById('safeZoneToggle')?.checked) {
         ctx.save();
         ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
         ctx.strokeStyle = '#ef4444';
