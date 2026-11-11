@@ -18,9 +18,15 @@ function findEnvVar(suffixes) {
 function getEnvConfig() {
   const apiKey = findEnvVar(['GROQ_API_KEY']);
   const sbUrl = (findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
+  const sbAnonKey = findEnvVar([
+    'SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'SUPABASE_PUBLISHABLE_KEY',
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
+  ]);
   const sbServiceKey = findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']);
   const secretSalt = sbServiceKey || apiKey || 'kardpro_master_secret_2026';
-  return { apiKey, sbUrl, sbServiceKey, secretSalt };
+  return { apiKey, sbUrl, sbAnonKey, sbServiceKey, secretSalt };
 }
 
 function verifySessionToken(token, salt) {
@@ -40,7 +46,7 @@ function verifySessionToken(token, salt) {
 function readCookieVault(req, salt) {
   try {
     const cookieHeader = req.headers.cookie || '';
-    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault='));
+    const match = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault_v3='));
     if (!match) return {};
     const raw = decodeURIComponent(match.split('=')[1]);
     const [b64, sig] = raw.split('.');
@@ -58,8 +64,128 @@ function writeCookieVault(res, vaultObj, salt) {
     const b64 = Buffer.from(JSON.stringify(vaultObj)).toString('base64url');
     const sig = crypto.createHmac('sha256', salt).update(b64).digest('base64url');
     const val = encodeURIComponent(`${b64}.${sig}`);
-    res.setHeader('Set-Cookie', `kp_vault=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
+    res.setHeader('Set-Cookie', `kp_vault_v3=${val}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
   } catch (e) {}
+}
+
+async function fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, email) {
+  if (!sbUrl) return null;
+
+  if (sbServiceKey) {
+    try {
+      const linkRes = await fetch(`${sbUrl}/auth/v1/admin/generate_link`, {
+        method: 'POST',
+        headers: {
+          'apikey': sbServiceKey,
+          'Authorization': `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ type: 'magiclink', email })
+      });
+      if (linkRes.ok) {
+        const linkData = await linkRes.json();
+        const u = linkData?.user || linkData;
+        if (u?.id) {
+          const meta = u.user_metadata || {};
+          return {
+            supabaseUid: u.id,
+            credits: typeof meta.credits === 'number' ? meta.credits : null,
+            genCount: meta.gen_count || 0,
+            usedLabels: Array.isArray(meta.used_labels) ? meta.used_labels : [],
+            passHash: meta.pass_hash || null,
+            mode: 'admin'
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
+  const activeKey = sbAnonKey || sbServiceKey;
+  if (activeKey) {
+    try {
+      const autoPassword = 'Kp!' + crypto.createHmac('sha256', secretSalt).update(`cloud_sync_${email}`).digest('hex').substring(0, 20);
+      const tokenRes = await fetch(`${sbUrl}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: { 'apikey': activeKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: autoPassword })
+      });
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json();
+        const u = tokenData?.user;
+        const userJwt = tokenData?.access_token;
+        if (u?.id && userJwt) {
+          const meta = u.user_metadata || {};
+          return {
+            supabaseUid: u.id,
+            userJwt,
+            credits: typeof meta.credits === 'number' ? meta.credits : null,
+            genCount: meta.gen_count || 0,
+            usedLabels: Array.isArray(meta.used_labels) ? meta.used_labels : [],
+            passHash: meta.pass_hash || null,
+            mode: 'user_jwt'
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
+  return null;
+}
+
+async function saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, email, nextCredits, nextGenCount) {
+  if (!sbUrl || !cloudState) return;
+
+  const metaPayload = {
+    kp_init: true,
+    credits: nextCredits,
+    gen_count: nextGenCount,
+    used_labels: cloudState.usedLabels || [],
+    pass_hash: cloudState.passHash || null
+  };
+
+  if (cloudState.mode === 'admin' && sbServiceKey && cloudState.supabaseUid) {
+    try {
+      await fetch(`${sbUrl}/auth/v1/admin/users/${cloudState.supabaseUid}`, {
+        method: 'PUT',
+        headers: {
+          'apikey': sbServiceKey,
+          'Authorization': `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user_metadata: metaPayload })
+      });
+    } catch (e) {}
+
+    try {
+      await fetch(`${sbUrl}/rest/v1/profiles`, {
+        method: 'POST',
+        headers: {
+          'apikey': sbServiceKey,
+          'Authorization': `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          id: cloudState.supabaseUid,
+          email,
+          credits: nextCredits
+        })
+      });
+    } catch (e) {}
+  } else if (cloudState.mode === 'user_jwt' && cloudState.userJwt) {
+    const activeKey = sbAnonKey || sbServiceKey;
+    try {
+      await fetch(`${sbUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'apikey': activeKey,
+          'Authorization': `Bearer ${cloudState.userJwt}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ data: metaPayload })
+      });
+    } catch (e) {}
+  }
 }
 
 export default async function handler(req, res) {
@@ -67,6 +193,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -80,7 +207,7 @@ export default async function handler(req, res) {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '').trim();
 
-    const { apiKey, sbUrl, sbServiceKey, secretSalt } = getEnvConfig();
+    const { apiKey, sbUrl, sbAnonKey, sbServiceKey, secretSalt } = getEnvConfig();
 
     if (!apiKey) {
       return res.status(500).json({ error: 'Не задан GROQ_API_KEY в настройках Vercel -> Environment Variables' });
@@ -94,7 +221,7 @@ export default async function handler(req, res) {
     }
 
     const userObj = verifySessionToken(token, secretSalt);
-    if (!userObj) {
+    if (!userObj || !userObj.email) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
         message: 'Сессия устарела, пожалуйста, войдите в аккаунт снова'
@@ -102,27 +229,17 @@ export default async function handler(req, res) {
     }
 
     const cookieVault = readCookieVault(req, secretSalt);
-    const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
-    let currentCredits = memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : 0;
+    const memRecord = global.usersVault[userObj.email] || cookieVault[userObj.email] || null;
+    const cloudState = await fetchCloudUserState(sbUrl, sbAnonKey, sbServiceKey, secretSalt, userObj.email);
 
-    if (sbUrl && sbServiceKey) {
-      try {
-        const profRes = await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userObj.id)}&select=credits`, {
-          headers: { 'apikey': sbServiceKey, 'Authorization': `Bearer ${sbServiceKey}` }
-        });
-        if (profRes.ok) {
-          const profList = await profRes.json();
-          if (Array.isArray(profList) && profList.length > 0 && typeof profList[0].credits === 'number') {
-            currentCredits = profList[0].credits;
-          }
-        }
-      } catch (e) {}
-    }
+    let currentCredits = (cloudState && typeof cloudState.credits === 'number')
+      ? cloudState.credits
+      : (memRecord && typeof memRecord.credits === 'number' ? memRecord.credits : (userObj.provider === 'yandex' ? 5 : 0));
 
     if (currentCredits <= 0) {
       return res.status(402).json({
         error: 'NO_CREDITS',
-        message: 'На вашем балансе 0 генераций. Войдите через основной аккаунт Яндекс ID или пополните баланс от 50 ₽!'
+        message: 'Бесплатные генерации закончились. Пополните баланс от 50 ₽!'
       });
     }
 
@@ -182,7 +299,6 @@ export default async function handler(req, res) {
     let rawContent = null;
     let lastError = 'Ошибка обращения к модели ИИ';
 
-    // Если передано фото товара — сначала пробуем Vision-модель для распознавания товара по картинке
     if (imageBase64 && imageBase64.startsWith('data:image/')) {
       const visionModels = [
         'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -218,7 +334,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Если фото не передавалось или Vision-модель недоступна — используем текстовый каскад моделей
     if (!rawContent) {
       let candidateModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
       try {
@@ -264,32 +379,24 @@ export default async function handler(req, res) {
     const content = JSON.parse(cleanedJson);
 
     const nextCredits = Math.max(0, currentCredits - 1);
+    const nextGenCount = (cloudState?.genCount || memRecord?.genCount || 0) + 1;
+
     const updatedRecord = {
       ...(memRecord || {}),
       id: userObj.id,
       email: userObj.email,
       name: userObj.name,
+      provider: userObj.provider || 'yandex',
+      isInitialized: true,
       credits: nextCredits,
-      usedLabels: Array.isArray(memRecord?.usedLabels) ? memRecord.usedLabels : []
+      genCount: nextGenCount
     };
 
-    global.usersVault[userObj.id] = updatedRecord;
-    cookieVault[userObj.id] = updatedRecord;
+    global.usersVault[userObj.email] = updatedRecord;
+    cookieVault[userObj.email] = updatedRecord;
     writeCookieVault(res, cookieVault, secretSalt);
 
-    if (sbUrl && sbServiceKey) {
-      try {
-        await fetch(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userObj.id)}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': sbServiceKey,
-            'Authorization': `Bearer ${sbServiceKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ credits: nextCredits })
-        });
-      } catch (e) {}
-    }
+    await saveCloudUserState(sbUrl, sbAnonKey, sbServiceKey, cloudState, userObj.email, nextCredits, nextGenCount);
 
     content.remaining_credits = nextCredits;
     return res.status(200).json(content);
