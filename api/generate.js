@@ -73,7 +73,10 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const product = body?.product;
+    const product = (body?.product || '').trim();
+    const tone = body?.tone || 'hit';
+    const imageBase64 = body?.imageBase64 || null;
+
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '').trim();
 
@@ -123,9 +126,28 @@ export default async function handler(req, res) {
       });
     }
 
+    const toneInstructions = {
+      hit: 'Сделай упор на максимальный CTR, яркую выгоду и бестселлер.',
+      luxury: 'Сделай упор на премиальность, статус, долговечность и дорогие материалы.',
+      trust: 'Сделай упор на надежность, проверку качества, безопасность и гарантию.',
+      gift: 'Сделай упор на готовую идею для подарка, эмоции и богатую комплектацию.'
+    };
+
     const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
+Задача: ${toneInstructions[tone] || toneInstructions.hit}
 Создай продающую воронку из 3 слайдов карточки товара и верни строго валидный JSON без markdown-обертки:
 {
+  "title_variants": [
+    "Главный заголовок Вариант 1 (2-3 слова КАПСОМ)",
+    "Альтернативный заголовок Вариант 2 (2-3 слова КАПСОМ)",
+    "Выгодный заголовок Вариант 3 (2-3 слова КАПСОМ)"
+  ],
+  "ai_colors": {
+    "bg1": "#HEX_верх_фона_под_товар",
+    "bg2": "#HEX_темный_низ_фона",
+    "accent": "#HEX_яркий_акцент",
+    "badge": "#HEX_цвет_бейджа"
+  },
   "slides": [
     {
       "title": "Главный заголовок 2-3 слова КАПСОМ",
@@ -154,46 +176,85 @@ export default async function handler(req, res) {
     "height": "24 см"
   },
   "bg_prompt": "Detailed English prompt for commercial product studio background with empty center podium, soft cinematic lighting, 8k photorealistic",
-  "seo": "Продающее SEO-описание для карточки товара на 500-700 символов с ключевыми запросами."
+  "seo": "Продающее SEO-описание для карточки товара на 500-700 символов с ключевыми запросами и характеристиками."
 }`;
-
-    let candidateModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
-    try {
-      const mRes = await fetch('https://api.groq.com/openai/v1/models', {
-        headers: { 'Authorization': `Bearer ${apiKey}` }
-      });
-      if (mRes.ok) {
-        const mData = await mRes.json();
-        const ids = (mData.data || [])
-          .map(m => m.id)
-          .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
-        candidateModels = [...new Set([...candidateModels, ...ids])];
-      }
-    } catch (e) {}
 
     let rawContent = null;
     let lastError = 'Ошибка обращения к модели ИИ';
 
-    for (const modelId of candidateModels) {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: modelId,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Товар: ${product}` }
-          ],
-          temperature: 0.7
-        })
-      });
-      const result = await response.json();
-      if (response.ok && result.choices?.[0]?.message?.content) {
-        rawContent = result.choices[0].message.content;
-        break;
-      } else {
-        lastError = result.error?.message || `Ошибка модели ${modelId}`;
+    // Если передано фото товара — сначала пробуем Vision-модель для распознавания товара по картинке
+    if (imageBase64 && imageBase64.startsWith('data:image/')) {
+      const visionModels = [
+        'meta-llama/llama-4-scout-17b-16e-instruct',
+        'meta-llama/llama-4-maverick-17b-128e-instruct'
+      ];
+      for (const vModel of visionModels) {
+        try {
+          const vRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: vModel,
+              response_format: { type: 'json_object' },
+              messages: [
+                { role: 'system', content: systemPrompt },
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: product ? `Товар на фото (${product}). Создай воронку:` : 'Определи товар на фото и создай для него продающую воронку из 3 слайдов:' },
+                    { type: 'image_url', image_url: { url: imageBase64 } }
+                  ]
+                }
+              ],
+              temperature: 0.65
+            })
+          });
+          const vData = await vRes.json();
+          if (vRes.ok && vData.choices?.[0]?.message?.content) {
+            rawContent = vData.choices[0].message.content;
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Если фото не передавалось или Vision-модель недоступна — используем текстовый каскад моделей
+    if (!rawContent) {
+      let candidateModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'];
+      try {
+        const mRes = await fetch('https://api.groq.com/openai/v1/models', {
+          headers: { 'Authorization': `Bearer ${apiKey}` }
+        });
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          const ids = (mData.data || [])
+            .map(m => m.id)
+            .filter(id => !id.includes('whisper') && !id.includes('guard') && !id.includes('tts') && !id.includes('orpheus'));
+          candidateModels = [...new Set([...candidateModels, ...ids])];
+        }
+      } catch (e) {}
+
+      for (const modelId of candidateModels) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelId,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: `Товар: ${product || 'Популярный товар для маркетплейса'}` }
+            ],
+            temperature: 0.7
+          })
+        });
+        const result = await response.json();
+        if (response.ok && result.choices?.[0]?.message?.content) {
+          rawContent = result.choices[0].message.content;
+          break;
+        } else {
+          lastError = result.error?.message || `Ошибка модели ${modelId}`;
+        }
       }
     }
 
