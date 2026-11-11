@@ -205,7 +205,7 @@
 
     <!-- Кнопки быстрого переключения формата и темы под маркетплейс -->
     <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
-      <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 font-bold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🔵 Ozon (3:4)</button>
+      <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🔵 Ozon (3:4)</button>
       <button id="mpBtn_wb" onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🟣 Wildberries (3:4)</button>
       <button id="mpBtn_ym" onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold transition cursor-pointer" title="Квадратный формат 1000×1000 (1:1)">🟡 Яндекс (1:1)</button>
       <button id="mpBtn_avito" onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition cursor-pointer" title="Горизонтальный формат 1200×900 (4:3)">🟢 Авито (4:3)</button>
@@ -470,10 +470,10 @@
             </div>
 
             <div class="flex flex-wrap gap-1.5">
-              <button onclick="setBgPreset('Luxury dark marble podium with warm golden bokeh lights, studio product lighting, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">✨ Мрамор</button>
-              <button onclick="setBgPreset('Minimalist wooden podium surrounded by green tropical leaves and morning sunlight, eco style, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">🌿 Эко-дерево</button>
-              <button onclick="setBgPreset('Futuristic cyber neon studio podium with blue and pink rim lighting, dark background, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">🔮 Неон</button>
-              <button onclick="setBgPreset('Clean white minimalist podium with soft natural window shadows, 8k')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-lg text-slate-300">🤍 Светлый</button>
+              <button onclick="setBgPreset('Luxury dark marble podium with warm golden bokeh lights, studio product lighting, 8k', true)" class="text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 px-2 py-1 rounded-lg text-slate-300 cursor-pointer">✨ Мрамор</button>
+              <button onclick="setBgPreset('Minimalist wooden podium surrounded by green tropical leaves and morning sunlight, eco style, 8k', true)" class="text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 px-2 py-1 rounded-lg text-slate-300 cursor-pointer">🌿 Эко-дерево</button>
+              <button onclick="setBgPreset('Futuristic cyber neon studio podium with blue and pink rim lighting, dark background, 8k', true)" class="text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 px-2 py-1 rounded-lg text-slate-300 cursor-pointer">🔮 Неон</button>
+              <button onclick="setBgPreset('Clean white minimalist podium with soft natural window shadows, 8k', true)" class="text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 px-2 py-1 rounded-lg text-slate-300 cursor-pointer">🤍 Светлый</button>
             </div>
 
             <textarea id="bgPromptInput" rows="2" placeholder="Промпт студийного фона..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500"></textarea>
@@ -482,7 +482,7 @@
               <button id="comfyGenBtn" onclick="generateAIBackground()" class="col-span-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold py-2.5 px-3 rounded-xl transition shadow-lg shadow-emerald-500/20 cursor-pointer">
                 🚀 Сгенерировать ИИ-фон
               </button>
-              <button onclick="clearCustomBg()" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2.5 px-2 rounded-xl text-slate-200 transition">
+              <button onclick="clearCustomBg()" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2.5 px-2 rounded-xl text-slate-200 transition cursor-pointer">
                 🔄 Сбросить
               </button>
             </div>
@@ -809,16 +809,16 @@
         <!-- Быстрый регулятор размера фото товара прямо над холстом -->
         <div class="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2 py-1 rounded-xl text-xs">
           <span class="text-[11px] text-slate-300 hidden sm:inline">🔍 Фото:</span>
-          <button onclick="stepProductScale(-10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center">−</button>
+          <button onclick="stepProductScale(-10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center cursor-pointer">−</button>
           <input id="quickScaleSlider" type="range" min="15" max="260" value="85" class="w-16 sm:w-20" oninput="updateProductScaleFromSlider(this.value)">
-          <button onclick="stepProductScale(10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center">+</button>
+          <button onclick="stepProductScale(10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center cursor-pointer">+</button>
           <span id="quickScaleText" class="text-[10px] font-bold text-indigo-300 w-8 text-right">85%</span>
         </div>
 
-        <button onclick="undoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition" title="Отменить действие (Ctrl+Z)">
+        <button onclick="undoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer" title="Отменить действие (Ctrl+Z)">
           ↶
         </button>
-        <button onclick="redoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition" title="Повторить действие (Ctrl+Y)">
+        <button onclick="redoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer" title="Повторить действие (Ctrl+Y)">
           ↷
         </button>
       </div>
@@ -1291,7 +1291,11 @@
     }
 
     function fillSamplePrompt(txt) { document.getElementById('aiPrompt').value = txt; }
-    function setBgPreset(promptTxt) { document.getElementById('bgPromptInput').value = promptTxt; }
+
+    function setBgPreset(promptTxt, autoRun = false) {
+      document.getElementById('bgPromptInput').value = promptTxt;
+      if (autoRun) generateAIBackground();
+    }
 
     // =========================================================================
     // ГРАФИЧЕСКОЕ ЯДРО: МАСШТАБ ЗА УГЛЫ, PINCH-TO-ZOOM НА ТЕЛЕФОНЕ И АВТОСЕЙВ
@@ -1310,6 +1314,7 @@
     let isExportingNow = false;
     let pinchStartDist = null;
     let pinchStartScale = 85;
+    let bgGenerationCounter = 0;
 
     let currentSlideIndex = 0;
     const SLIDE_NAMES = [
@@ -1417,7 +1422,6 @@
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed.slidesState) && parsed.slidesState.length === 3) {
             slidesState = parsed.slidesState;
-            // Защита от случайно сохраненного минимального масштаба 15%
             slidesState.forEach(s => {
               if (!s.productScale || s.productScale < 30) s.productScale = 85;
             });
@@ -1446,6 +1450,9 @@
       productImg = null;
       originalProductImg = null;
       productEditCanvas = null;
+      customBgImg = null;
+      document.getElementById('imgUpload').value = '';
+      document.getElementById('bgFileUpload').value = '';
       syncUIFromCurrentSlide();
       showToast('🔄 Макет сброшен к стандартному виду', 'info');
     }
@@ -1795,8 +1802,27 @@
 
     function saveComfyUrl() { localStorage.setItem('ozon_comfy_url', document.getElementById('comfyUrl').value.trim()); }
     function toggleComfySettings() { document.getElementById('comfySettingsBox').classList.toggle('hidden'); }
-    function clearCustomBg() { customBgImg = null; drawCard(); }
-    function removeLogo() { logoImg = null; drawCard(); }
+
+    function clearCustomBg() {
+      customBgImg = null;
+      document.getElementById('bgFileUpload').value = '';
+      const status = document.getElementById('bgStatus');
+      if (status) status.classList.add('hidden');
+      const btn = document.getElementById('comfyGenBtn');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🚀 Сгенерировать ИИ-фон';
+      }
+      drawCard();
+      showToast('🔄 ИИ-фон сброшен к градиентной теме', 'info');
+    }
+
+    function removeLogo() {
+      logoImg = null;
+      document.getElementById('logoUpload').value = '';
+      drawCard();
+    }
+
     function replaceBulletIcons(icon) {
       pushHistoryState();
       const s = getActiveSlide();
@@ -1821,7 +1847,6 @@
       minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff', text: '#0f172a' }
     };
 
-    // Переключение кнопок маркетплейсов (Ozon, WB, Яндекс, Авито) с мгновенным изменением размера карточки
     function setMarketplacePreset(mp) {
       pushHistoryState();
       const map = {
@@ -1835,7 +1860,6 @@
       document.getElementById('canvasFormat').value = cfg.fmt;
       document.getElementById('themeSelect').value = cfg.theme;
 
-      // Подсветка активной кнопки в шапке
       ['ozon', 'wb', 'ym', 'avito'].forEach(id => {
         const btn = document.getElementById('mpBtn_' + id);
         if (!btn) return;
@@ -1962,7 +1986,6 @@
       slideObj.positions.logo = { x: Math.round(cw * 0.86), y: Math.round(ch * 0.09) };
       slideObj.positions.price = { x: Math.round(cw * 0.70), y: Math.round(ch * 0.22) };
 
-      // Для широкого горизонтального формата Авито (1200x900) ставим товар правее, а буллиты — слева
       if (cw > ch) {
         slideObj.positions.product = { x: Math.round(cw * 0.68), y: Math.round(ch * 0.54) };
         slideObj.positions.sticker = { x: Math.round(cw * 0.88), y: Math.round(ch * 0.76) };
@@ -2148,42 +2171,101 @@
       }
     }
 
+    // Надежный загрузчик изображения с таймаутом и защитой от зависания при повторных кликах
+    function loadImageElementWithTimeout(srcUrl, timeoutMs = 18000) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        const timer = setTimeout(() => {
+          img.src = '';
+          reject(new Error('Превышено время ожидания ответа сервера фона'));
+        }, timeoutMs);
+
+        img.onload = () => {
+          clearTimeout(timer);
+          resolve(img);
+        };
+        img.onerror = () => {
+          clearTimeout(timer);
+          reject(new Error('Ошибка декодирования изображения'));
+        };
+        img.src = srcUrl;
+      });
+    }
+
+    // Полностью исправленная функция многократной генерации ИИ-фона
     async function generateAIBackground() {
       const mode = document.getElementById('bgEngineMode').value;
-      const bgPrompt = document.getElementById('bgPromptInput').value.trim() || 'Luxury minimalist product podium, studio soft lighting, bokeh, 8k';
+      const basePrompt = document.getElementById('bgPromptInput').value.trim() || 'Luxury minimalist product podium, studio soft lighting, bokeh, 8k';
       const status = document.getElementById('bgStatus');
       const btn = document.getElementById('comfyGenBtn');
 
       status.classList.remove('hidden');
       btn.disabled = true;
+      btn.textContent = '⏳ Генерируем новый фон...';
 
       if (mode === 'cloud') {
-        status.textContent = '☁️ Отрисовка студийного ИИ-фона Flux (5-8 сек)...';
+        bgGenerationCounter += 1;
+        const variations = [
+          'cinematic rim lighting, luxury studio',
+          'dramatic soft shadows, high-end commercial',
+          'warm ambient glow, depth of field bokeh',
+          'professional product photography, crisp reflections',
+          'modern minimalist aesthetic, volumetric light'
+        ];
+        const variationTag = variations[bgGenerationCounter % variations.length];
+        status.textContent = `☁️ Отрисовка варианта #${bgGenerationCounter} в Flux AI (5-8 сек)...`;
+
         try {
-          const seed = Math.floor(Math.random() * 999999);
-          const encoded = encodeURIComponent(bgPrompt + ', commercial product background, empty center podium, no text, 8k photorealistic');
-          const cloudUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${canvas.width}&height=${canvas.height}&seed=${seed}&nologo=true&model=flux`;
+          const seed = Math.floor(Math.random() * 99999999) + Date.now() % 10000;
+          const reqW = Math.min(1024, canvas.width);
+          const reqH = Math.min(1024, canvas.height);
+          const encoded = encodeURIComponent(`${basePrompt}, ${variationTag}, commercial product background, empty center podium, no text, 8k photorealistic`);
+          const cloudUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${reqW}&height=${reqH}&seed=${seed}&nologo=true&model=flux&t=${Date.now()}`;
 
-          const imgRes = await fetch(cloudUrl);
-          const blob = await imgRes.blob();
-          const localUrl = URL.createObjectURL(blob);
+          let loadedImg = null;
 
-          const bgImg = new Image();
-          bgImg.onload = () => {
-            customBgImg = bgImg;
-            drawCard();
-            status.textContent = '✅ Студийный ИИ-фон установлен на все слайды!';
-            showToast('🌄 Студийный ИИ-фон установлен!', 'success');
-            btn.disabled = false;
-          };
-          bgImg.src = localUrl;
+          // Попытка 1: Загрузка через fetch + Blob со сбросом кэша (гарантирует чистоту холста для экспорта)
+          try {
+            const controller = new AbortController();
+            const fTimer = setTimeout(() => controller.abort(), 16000);
+            const imgRes = await fetch(cloudUrl, { cache: 'no-store', signal: controller.signal });
+            clearTimeout(fTimer);
+
+            if (imgRes.ok) {
+              const contentType = imgRes.headers.get('content-type') || '';
+              if (contentType.includes('image')) {
+                const blob = await imgRes.blob();
+                if (blob.size > 1000) {
+                  const localUrl = URL.createObjectURL(blob);
+                  loadedImg = await loadImageElementWithTimeout(localUrl, 10000);
+                }
+              }
+            }
+          } catch (e) {}
+
+          // Попытка 2: Если fetch был ограничен CORS или очередью — грузим напрямую через Image с запасной моделью
+          if (!loadedImg) {
+            const fallbackUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${reqW}&height=${reqH}&seed=${seed + 7}&nologo=true&t=${Date.now()}`;
+            loadedImg = await loadImageElementWithTimeout(fallbackUrl, 18000);
+          }
+
+          customBgImg = loadedImg;
+          drawCard();
+          status.textContent = `✅ Студийный ИИ-фон (вариант #${bgGenerationCounter}) установлен! Нажмите ещё раз для смены.`;
+          showToast(`🌄 Студийный ИИ-фон #${bgGenerationCounter} установлен!`, 'success');
         } catch (err) {
-          status.textContent = '⚠️ Повторите попытку через пару секунд.';
+          status.textContent = '⚠️ Сервер генерации перегружен. Нажмите кнопку ещё раз через 2 секунды.';
+          showToast('Сервер фона занят, попробуйте нажать ещё раз!', 'error');
+        } finally {
+          // Кнопка ВСЕГДА разблокируется для повторных нажатий!
           btn.disabled = false;
+          btn.textContent = '🔄 Сгенерировать другой ИИ-фон';
         }
         return;
       }
 
+      // Режим локального ComfyUI
       const comfyUrl = document.getElementById('comfyUrl').value.trim().replace(/\/$/, '');
       status.textContent = '🔌 Связь с локальным ComfyUI...';
 
@@ -2202,7 +2284,7 @@
           "3": { "class_type": "KSampler", "inputs": { "cfg": 7, "denoise": 1, "latent_image": ["5", 0], "model": ["4", 0], "negative": ["7", 0], "positive": ["6", 0], "sampler_name": "euler", "scheduler": "normal", "seed": seed, "steps": 20 } },
           "4": { "class_type": "CheckpointLoaderSimple", "inputs": { "ckpt_name": ckptName } },
           "5": { "class_type": "EmptyLatentImage", "inputs": { "batch_size": 1, "height": 1024, "width": 768 } },
-          "6": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["4", 1], "text": bgPrompt } },
+          "6": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["4", 1], "text": basePrompt } },
           "7": { "class_type": "CLIPTextEncode", "inputs": { "clip": ["4", 1], "text": "text, watermark, blurry, low quality" } },
           "8": { "class_type": "VAEDecode", "inputs": { "samples": ["3", 0], "vae": ["4", 2] } },
           "9": { "class_type": "SaveImage", "inputs": { "filename_prefix": "KardBG", "images": ["8", 0] } }
@@ -2232,20 +2314,17 @@
         }
 
         if (!filename) throw new Error('Таймаут генерации');
-        const imgUrl = `${comfyUrl}/view?filename=${encodeURIComponent(filename)}&type=output`;
-        const bgImg = new Image();
-        bgImg.crossOrigin = 'anonymous';
-        bgImg.onload = () => {
-          customBgImg = bgImg;
-          drawCard();
-          status.textContent = '✅ Локальный ИИ-фон установлен!';
-        };
-        bgImg.src = imgUrl;
+        const imgUrl = `${comfyUrl}/view?filename=${encodeURIComponent(filename)}&type=output&t=${Date.now()}`;
+        const bgImg = await loadImageElementWithTimeout(imgUrl, 15000);
+        customBgImg = bgImg;
+        drawCard();
+        status.textContent = '✅ Локальный ИИ-фон установлен!';
       } catch (err) {
         showToast('Не удалось связаться с ComfyUI. Используйте Облачный Flux.', 'error');
         status.classList.add('hidden');
       } finally {
         btn.disabled = false;
+        btn.textContent = '🔄 Сгенерировать другой ИИ-фон';
       }
     }
 
@@ -2356,7 +2435,6 @@
       }
     }
 
-    // Надежная загрузка фото товара с автоматическим восстановлением масштаба 85%
     function loadProductFile(file) {
       if (!file || !file.type.startsWith('image/')) return;
       currentFileBlob = file;
@@ -2368,7 +2446,6 @@
           originalProductImg = img;
           initProductEditCanvas(img);
 
-          // Если масштаб ранее сбился на 15%, возвращаем стандартные 85% и центрируем товар
           slidesState.forEach(s => {
             if (!s.productScale || s.productScale < 35) s.productScale = 85;
             if (!s.positions.product || s.positions.product.x < 50 || s.positions.product.x > canvas.width - 50) {
@@ -2397,11 +2474,12 @@
     document.getElementById('imgUpload').addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) {
         loadProductFile(e.target.files[0]);
+        e.target.value = '';
       }
     });
 
     document.getElementById('bgFileUpload').addEventListener('change', (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files && e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -2410,6 +2488,7 @@
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     });
 
     window.addEventListener('paste', (e) => {
@@ -2433,7 +2512,7 @@
     });
 
     document.getElementById('logoUpload').addEventListener('change', (e) => {
-      const file = e.target.files[0];
+      const file = e.target.files && e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -2442,6 +2521,7 @@
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
+      e.target.value = '';
     });
 
     function getPointerPos(e) {
@@ -2949,15 +3029,18 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // Безопасная проверка подиума (исправлен фатальный сбой!)
+      // Динамический 3D-подиум, который масштабируется под размер фотографии товара
       const isPodiumChecked = document.getElementById('showPodium')?.checked !== false;
       if (isPodiumChecked && podiumType !== 'none') {
-        const podY = positions.product.y + 230;
+        const { w: curProdW, h: curProdH } = getProductDimensionsOnCanvas(s, cw, ch);
+        const podY = productImg ? (positions.product.y + curProdH * 0.44) : (positions.product.y + 220);
+        const podRadiusX = productImg ? Math.max(180, Math.min(340, curProdW * 0.58)) : 260;
+
         ctx.save();
         if (podiumType === 'neon_ring') {
           ctx.beginPath();
-          ctx.ellipse(positions.product.x, podY, 260, 48, 0, 0, Math.PI * 2);
-          const podGrad = ctx.createLinearGradient(positions.product.x - 260, podY, positions.product.x + 260, podY);
+          ctx.ellipse(positions.product.x, podY, podRadiusX, 46, 0, 0, Math.PI * 2);
+          const podGrad = ctx.createLinearGradient(positions.product.x - podRadiusX, podY, positions.product.x + podRadiusX, podY);
           podGrad.addColorStop(0, pillBg);
           podGrad.addColorStop(0.5, accent);
           podGrad.addColorStop(1, pillBg);
@@ -2971,12 +3054,12 @@
           ctx.stroke();
         } else if (podiumType === 'gold_stage') {
           ctx.beginPath();
-          ctx.ellipse(positions.product.x, podY + 14, 270, 52, 0, 0, Math.PI * 2);
+          ctx.ellipse(positions.product.x, podY + 14, podRadiusX + 8, 50, 0, 0, Math.PI * 2);
           ctx.fillStyle = '#78350f';
           ctx.fill();
           ctx.beginPath();
-          ctx.ellipse(positions.product.x, podY, 265, 48, 0, 0, Math.PI * 2);
-          const gGrad = ctx.createLinearGradient(positions.product.x - 265, podY, positions.product.x + 265, podY);
+          ctx.ellipse(positions.product.x, podY, podRadiusX, 46, 0, 0, Math.PI * 2);
+          const gGrad = ctx.createLinearGradient(positions.product.x - podRadiusX, podY, positions.product.x + podRadiusX, podY);
           gGrad.addColorStop(0, '#b45309');
           gGrad.addColorStop(0.5, '#fde047');
           gGrad.addColorStop(1, '#b45309');
@@ -2984,7 +3067,7 @@
           ctx.fill();
         } else if (podiumType === 'glass_plate') {
           ctx.beginPath();
-          ctx.ellipse(positions.product.x, podY, 270, 46, 0, 0, Math.PI * 2);
+          ctx.ellipse(positions.product.x, podY, podRadiusX, 44, 0, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
           ctx.fill();
           ctx.lineWidth = 2;
@@ -3019,14 +3102,21 @@
         ctx.fillText(badge, positions.badge.x + 24, positions.badge.y + 32);
       }
 
+      // Умный перенос заголовка по реальной пиксельной ширине холста
       ctx.fillStyle = textColor;
       ctx.font = `900 ${titleFontSize}px ${fontName}, sans-serif`;
+      const maxTitleWidth = cw - positions.title.x - 45;
       const words = title.split(' ');
       let line1 = '', line2 = '';
       words.forEach(w => {
-        if ((line1 + w).length < 17 || !line1) line1 += (line1 ? ' ' : '') + w;
-        else line2 += (line2 ? ' ' : '') + w;
+        const testLine = line1 ? (line1 + ' ' + w) : w;
+        if (!line2 && (ctx.measureText(testLine).width <= maxTitleWidth || !line1)) {
+          line1 = testLine;
+        } else {
+          line2 += (line2 ? ' ' : '') + w;
+        }
       });
+
       ctx.save();
       ctx.shadowColor = textColor === '#ffffff' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.4)';
       ctx.shadowBlur = 14;
