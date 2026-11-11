@@ -130,47 +130,84 @@
     </div>
   </div>
 
-  <!-- МОДАЛЬНОЕ ОКНО ТАРИФОВ ЮMONEY (4100119681467569) -->
+  <!-- МОДАЛЬНОЕ ОКНО ТАРИФОВ ЮMONEY (4100119681467569) + КАЛЬКУЛЯТОР СВОЕЙ СУММЫ -->
   <div id="payModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative max-h-[94vh] overflow-y-auto">
       <button onclick="closePayModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
       
-      <div class="text-center space-y-1.5">
+      <div class="text-center space-y-1">
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
-          ⚡ Защищенное пополнение ЮMoney
+          ⚡ Мгновенное пополнение KARD-PRO AI
         </div>
-        <h2 class="text-2xl font-extrabold text-white tracking-tight">Выберите пакет генераций</h2>
-        <p class="text-xs text-slate-400">Каждая генерация сразу создает воронку из 3 слайдов (Обложка + Характеристики + Комплектация), 3 варианта заголовка и SEO-текст!</p>
+        <h2 class="text-2xl font-extrabold text-white tracking-tight">Пополнение генераций</h2>
+        <p class="text-xs text-slate-400">1 генерация = полная воронка из <b>3 слайдов</b> + 3 заголовка + SEO-текст</p>
       </div>
 
-      <div class="grid grid-cols-3 gap-3">
-        <div id="planCard5" onclick="selectPlan(5, 50)" class="cursor-pointer rounded-2xl p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
+      <!-- 3 быстрых пакета -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div id="planCard5" onclick="selectPlan(5, 50)" class="cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
           <div>
             <div class="text-[11px] font-semibold text-slate-400">Старт</div>
-            <div class="text-xl font-black text-white mt-1">5 шт</div>
+            <div class="text-xl font-black text-white mt-0.5">5 шт</div>
             <div class="text-[10px] text-slate-400">15 слайдов</div>
           </div>
-          <div class="mt-4 pt-2 border-t border-white/10 text-lg font-extrabold text-indigo-400">50 ₽</div>
+          <div class="mt-3 pt-2 border-t border-white/10 text-base font-extrabold text-indigo-400">50 ₽</div>
         </div>
 
-        <div id="planCard10" onclick="selectPlan(10, 80)" class="cursor-pointer rounded-2xl p-3.5 border-2 border-indigo-500 bg-indigo-500/10 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10">
+        <div id="planCard10" onclick="selectPlan(10, 80)" class="cursor-pointer rounded-2xl p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10">
           <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Хит -20%</span>
           <div>
             <div class="text-[11px] font-semibold text-indigo-300">Селлер</div>
-            <div class="text-xl font-black text-white mt-1">10 шт</div>
+            <div class="text-xl font-black text-white mt-0.5">10 шт</div>
             <div class="text-[10px] text-indigo-200/70">30 слайдов</div>
           </div>
-          <div class="mt-4 pt-2 border-t border-indigo-500/30 text-lg font-extrabold text-emerald-400">80 ₽</div>
+          <div class="mt-3 pt-2 border-t border-indigo-500/30 text-base font-extrabold text-emerald-400">80 ₽</div>
         </div>
 
-        <div id="planCard20" onclick="selectPlan(20, 150)" class="cursor-pointer rounded-2xl p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
+        <div id="planCard20" onclick="selectPlan(20, 150)" class="cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
           <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">PRO -25%</span>
           <div>
             <div class="text-[11px] font-semibold text-slate-400">Магазин</div>
-            <div class="text-xl font-black text-white mt-1">20 шт</div>
+            <div class="text-xl font-black text-white mt-0.5">20 шт</div>
             <div class="text-[10px] text-slate-400">60 слайдов</div>
           </div>
-          <div class="mt-4 pt-2 border-t border-white/10 text-lg font-extrabold text-indigo-400">150 ₽</div>
+          <div class="mt-3 pt-2 border-t border-white/10 text-base font-extrabold text-indigo-400">150 ₽</div>
+        </div>
+      </div>
+
+      <!-- БЛОК ВВОДА СВОЕЙ СУММЫ С АВТО-РАСЧЕТОМ ГЕНЕРАЦИЙ НАПРОТИВ -->
+      <div id="customAmountBox" class="bg-[#070a12] border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-200">💰 Или введите свою сумму (чем больше — тем дешевле):</span>
+          <span id="customDiscountBadge" class="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-md font-bold">Выгода до -50%</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
+          <div class="relative">
+            <input id="customRubInput" type="number" min="50" max="50000" step="10" placeholder="Например: 500" oninput="onCustomAmountInput(this.value)" class="w-full bg-[#0f1423] border border-indigo-500/40 focus:border-emerald-400 rounded-xl pl-3.5 pr-9 py-2.5 text-sm font-black text-white outline-none transition">
+            <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400">₽</span>
+          </div>
+
+          <!-- Динамическое табло напротив поля ввода суммы -->
+          <div class="bg-indigo-500/10 border border-indigo-500/25 rounded-xl px-3.5 py-2 flex items-center justify-between">
+            <div>
+              <div class="text-[10px] text-slate-400">Вы получите:</div>
+              <div id="customCreditsOutput" class="text-base font-black text-emerald-400">⚡ +10 генераций</div>
+            </div>
+            <div class="text-right">
+              <div id="customSlidesOutput" class="text-[11px] font-bold text-indigo-200">30 слайдов</div>
+              <div id="customPerUnitOutput" class="text-[10px] text-slate-400">по 8 ₽/шт</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Быстрые кнопки крупных сумм для активных селлеров и агентств -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span class="text-[10px] text-slate-500 mr-1">Быстрый выбор:</span>
+          <button onclick="setCustomAmountPreset(300)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-slate-300 font-bold transition cursor-pointer">300 ₽ (40 шт)</button>
+          <button onclick="setCustomAmountPreset(500)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-emerald-300 font-bold transition cursor-pointer">🔥 500 ₽ (80 шт)</button>
+          <button onclick="setCustomAmountPreset(1000)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-amber-300 font-bold transition cursor-pointer">👑 1 000 ₽ (200 шт)</button>
+          <button onclick="setCustomAmountPreset(2500)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-purple-300 font-bold transition cursor-pointer">💎 2 500 ₽ (500 шт)</button>
         </div>
       </div>
 
@@ -203,7 +240,6 @@
       </div>
     </div>
 
-    <!-- Кнопки быстрого переключения формата и темы под маркетплейс -->
     <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
       <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🔵 Ozon (3:4)</button>
       <button id="mpBtn_wb" onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition cursor-pointer" title="Вертикальный формат 900×1200 (3:4)">🟣 Wildberries (3:4)</button>
@@ -378,7 +414,6 @@
               </button>
             </div>
 
-            <!-- Блок управления размерами добавляемого фото -->
             <div class="bg-[#070a12] border border-white/10 p-3 rounded-xl space-y-2.5 text-xs">
               <div class="flex justify-between items-center">
                 <span class="font-bold text-indigo-300">📐 Размер фото: <b id="scaleValueLabel">85%</b></span>
@@ -404,7 +439,6 @@
               <p class="text-[10px] text-slate-400">💡 <b>На ПК:</b> тяните за синие уголки или крутите колесико. <b>На телефоне:</b> разводите двумя пальцами по товару!</p>
             </div>
 
-            <!-- Ластик объектов -->
             <div class="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl space-y-2 text-xs">
               <div class="flex items-center justify-between">
                 <span class="font-bold text-indigo-300">🧽 Ластик лишних деталей на фото</span>
@@ -889,7 +923,7 @@
     }
 
     // =========================================================================
-    // АВТОРИЗАЦИЯ, СИНХРОНИЗАЦИЯ МЕЖДУ УСТРОЙСТВАМИ И ЮMONEY (4100119681467569)
+    // АВТОРИЗАЦИЯ, КАЛЬКУЛЯТОР СВОЕЙ СУММЫ И ЮMONEY (4100119681467569)
     // =========================================================================
     const YOOMONEY_RECEIVER = '4100119681467569';
     const DEFAULT_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
@@ -901,6 +935,118 @@
 
     let selectedPlan = { credits: 10, price: 80 };
     let pollInterval = null;
+
+    // Прогрессивная шкала расчета генераций для любой введенной суммы (совпадает с 50/80/150 ₽ и дает оптовую скидку до 50%)
+    function calculateCreditsForCustomRub(rubAmount) {
+      const rub = Math.max(0, Number(rubAmount) || 0);
+      if (rub < 50) {
+        return { credits: 0, rate: 10, discount: 0 };
+      }
+      if (rub < 80) {
+        const credits = Math.floor(rub / 10);
+        return { credits, rate: 10, discount: 0 };
+      }
+      if (rub < 150) {
+        const credits = Math.floor(rub / 8);
+        return { credits, rate: 8, discount: 20 };
+      }
+      if (rub < 500) {
+        const credits = Math.floor(rub / 7.5);
+        return { credits, rate: 7.5, discount: 25 };
+      }
+      if (rub < 1000) {
+        const credits = Math.floor(rub / 6.25);
+        return { credits, rate: 6.25, discount: 38 };
+      }
+      const credits = Math.floor(rub / 5);
+      return { credits, rate: 5, discount: 50 };
+    }
+
+    function updateCustomOutputDisplay(price, credits, rate, discount) {
+      const credEl = document.getElementById('customCreditsOutput');
+      const slidesEl = document.getElementById('customSlidesOutput');
+      const unitEl = document.getElementById('customPerUnitOutput');
+      const discEl = document.getElementById('customDiscountBadge');
+
+      if (credits <= 0) {
+        credEl.textContent = 'Мин. сумма: 50 ₽';
+        slidesEl.textContent = 'от 15 слайдов';
+        unitEl.textContent = '10 ₽/шт';
+        discEl.textContent = 'Введите от 50 ₽';
+        return;
+      }
+
+      credEl.textContent = `⚡ +${credits} генераций`;
+      slidesEl.textContent = `${credits * 3} слайдов`;
+      unitEl.textContent = `по ${rate} ₽/шт`;
+      discEl.textContent = discount > 0 ? `Выгода -${discount}%` : 'Базовый тариф';
+    }
+
+    function selectPlan(credits, price) {
+      selectedPlan = { credits, price };
+      [5, 10, 20].forEach(c => {
+        const el = document.getElementById('planCard' + c);
+        if (!el) return;
+        if (c === credits) {
+          el.className = 'cursor-pointer rounded-2xl p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10';
+        } else {
+          el.className = 'cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
+        }
+      });
+
+      const customBox = document.getElementById('customAmountBox');
+      if (customBox) customBox.className = 'bg-[#070a12] border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition';
+
+      const inputEl = document.getElementById('customRubInput');
+      if (inputEl) inputEl.value = '';
+
+      const rate = +(price / credits).toFixed(2);
+      const discount = Math.round((1 - rate / 10) * 100);
+      updateCustomOutputDisplay(price, credits, rate, discount);
+
+      const btn = document.getElementById('payLinkBtn');
+      btn.disabled = false;
+      btn.textContent = `💳 Оплатить ${price} ₽ и получить +${credits} генераций`;
+    }
+
+    function onCustomAmountInput(rawVal) {
+      const str = String(rawVal || '').trim();
+      if (!str) {
+        selectPlan(10, 80);
+        return;
+      }
+
+      // Снимаем выделение со стандартных карточек и подсвечиваем блок своей суммы
+      [5, 10, 20].forEach(c => {
+        const el = document.getElementById('planCard' + c);
+        if (el) el.className = 'cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
+      });
+
+      const customBox = document.getElementById('customAmountBox');
+      if (customBox) customBox.className = 'bg-[#070a12] border-2 border-emerald-500/70 rounded-2xl p-3.5 space-y-2.5 transition shadow-lg shadow-emerald-500/10';
+
+      const rub = Math.min(50000, Math.max(0, parseInt(str, 10) || 0));
+      const { credits, rate, discount } = calculateCreditsForCustomRub(rub);
+      updateCustomOutputDisplay(rub, credits, rate, discount);
+
+      const btn = document.getElementById('payLinkBtn');
+      if (rub < 50 || credits < 5) {
+        btn.disabled = true;
+        btn.textContent = '⚠️ Минимальная сумма пополнения — 50 ₽ (5 генераций)';
+      } else {
+        btn.disabled = false;
+        selectedPlan = { credits, price: rub };
+        btn.textContent = `💳 Оплатить ${rub} ₽ и получить +${credits} генераций`;
+      }
+    }
+
+    function setCustomAmountPreset(rubVal) {
+      const inputEl = document.getElementById('customRubInput');
+      if (inputEl) {
+        inputEl.value = rubVal;
+        onCustomAmountInput(rubVal);
+      }
+    }
 
     function getHardwareFingerprint() {
       if (deviceFingerprint) return deviceFingerprint;
@@ -1144,19 +1290,6 @@
       openPayModal();
     }
 
-    function selectPlan(credits, price) {
-      selectedPlan = { credits, price };
-      [5, 10, 20].forEach(c => {
-        const el = document.getElementById('planCard' + c);
-        if (c === credits) {
-          el.className = 'cursor-pointer rounded-2xl p-3.5 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10';
-        } else {
-          el.className = 'cursor-pointer rounded-2xl p-3.5 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
-        }
-      });
-      document.getElementById('payLinkBtn').textContent = `💳 Оплатить ${price} ₽ и получить +${credits} генераций`;
-    }
-
     function openPayModal() { document.getElementById('payModal').classList.remove('hidden'); }
     function closePayModal() { document.getElementById('payModal').classList.add('hidden'); }
 
@@ -1168,6 +1301,10 @@
       }
 
       const { credits, price } = selectedPlan;
+      if (!price || price < 50 || !credits || credits < 5) {
+        return showToast('Минимальная сумма пополнения — 50 ₽ (5 генераций)', 'error');
+      }
+
       const shortRand = Math.random().toString(36).substring(2, 6);
       const orderId = `kp_${credits}_${currentUser.id}_${shortRand}`;
 
@@ -1175,7 +1312,7 @@
       payUrl.searchParams.append('receiver', YOOMONEY_RECEIVER);
       payUrl.searchParams.append('quickpay-form', 'button');
       payUrl.searchParams.append('paymentType', 'AC');
-      payUrl.searchParams.append('sum', price.toFixed(2));
+      payUrl.searchParams.append('sum', Number(price).toFixed(2));
       payUrl.searchParams.append('label', orderId);
       payUrl.searchParams.append('targets', `Пакет +${credits} ИИ-генераций на KARD-PRO.RU`);
       payUrl.searchParams.append('successURL', `${window.location.origin}/?paid_order=${orderId}&add_credits=${credits}`);
@@ -1199,11 +1336,12 @@
       }, 3000);
     }
 
+    // Прием любого оплаченного пакета (от 5 до 10 000 генераций) при возврате с ЮMoney
     async function checkReturnedPayment() {
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
       const addCredits = parseInt(params.get('add_credits') || '0', 10);
-      if (paidOrder && [5, 10, 20].includes(addCredits) && currentSessionToken) {
+      if (paidOrder && addCredits >= 1 && addCredits <= 10000 && currentSessionToken) {
         window.history.replaceState({}, document.title, window.location.pathname);
         try {
           const res = await fetch('/api/payment-webhook', {
@@ -1229,7 +1367,7 @@
               saved.session_token = data.session_token;
               localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
             }
-            showToast(`🎉 Баланс пополнен на +${addCredits} генераций!`, 'success');
+            showToast(`🎉 Баланс пополнен на +${data.added || addCredits} генераций!`, 'success');
           }
         } catch (e) {}
       }
@@ -2171,7 +2309,6 @@
       }
     }
 
-    // Надежный загрузчик изображения с таймаутом и защитой от зависания при повторных кликах
     function loadImageElementWithTimeout(srcUrl, timeoutMs = 18000) {
       return new Promise((resolve, reject) => {
         const img = new Image();
@@ -2193,7 +2330,6 @@
       });
     }
 
-    // Полностью исправленная функция многократной генерации ИИ-фона
     async function generateAIBackground() {
       const mode = document.getElementById('bgEngineMode').value;
       const basePrompt = document.getElementById('bgPromptInput').value.trim() || 'Luxury minimalist product podium, studio soft lighting, bokeh, 8k';
@@ -2225,7 +2361,6 @@
 
           let loadedImg = null;
 
-          // Попытка 1: Загрузка через fetch + Blob со сбросом кэша (гарантирует чистоту холста для экспорта)
           try {
             const controller = new AbortController();
             const fTimer = setTimeout(() => controller.abort(), 16000);
@@ -2244,7 +2379,6 @@
             }
           } catch (e) {}
 
-          // Попытка 2: Если fetch был ограничен CORS или очередью — грузим напрямую через Image с запасной моделью
           if (!loadedImg) {
             const fallbackUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${reqW}&height=${reqH}&seed=${seed + 7}&nologo=true&t=${Date.now()}`;
             loadedImg = await loadImageElementWithTimeout(fallbackUrl, 18000);
@@ -2258,14 +2392,12 @@
           status.textContent = '⚠️ Сервер генерации перегружен. Нажмите кнопку ещё раз через 2 секунды.';
           showToast('Сервер фона занят, попробуйте нажать ещё раз!', 'error');
         } finally {
-          // Кнопка ВСЕГДА разблокируется для повторных нажатий!
           btn.disabled = false;
           btn.textContent = '🔄 Сгенерировать другой ИИ-фон';
         }
         return;
       }
 
-      // Режим локального ComfyUI
       const comfyUrl = document.getElementById('comfyUrl').value.trim().replace(/\/$/, '');
       status.textContent = '🔌 Связь с локальным ComfyUI...';
 
@@ -3029,7 +3161,6 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // Динамический 3D-подиум, который масштабируется под размер фотографии товара
       const isPodiumChecked = document.getElementById('showPodium')?.checked !== false;
       if (isPodiumChecked && podiumType !== 'none') {
         const { w: curProdW, h: curProdH } = getProductDimensionsOnCanvas(s, cw, ch);
@@ -3102,7 +3233,6 @@
         ctx.fillText(badge, positions.badge.x + 24, positions.badge.y + 32);
       }
 
-      // Умный перенос заголовка по реальной пиксельной ширине холста
       ctx.fillStyle = textColor;
       ctx.font = `900 ${titleFontSize}px ${fontName}, sans-serif`;
       const maxTitleWidth = cw - positions.title.x - 45;
