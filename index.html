@@ -3,18 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>KARD-PRO — Профессиональная AI-студия товарных карточек и инфографики</title>
-
+  <title>KARD-PRO — Профессиональная AI-студия товарных карточек</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='50%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M32 25h12v22l20-22h15L55 50l25 25H65L44 53v22H32V25z' fill='%23fff'/%3E%3C/svg%3E">
   <meta name="theme-color" content="#06080f">
-  <meta name="description" content="Профессиональный ИИ-генератор продающих карточек и инфографики для Ozon, Wildberries, Яндекс Маркета и Авито.">
+  <meta name="description" content="ИИ-генератор продающих карточек и инфографики для Ozon, Wildberries, Яндекс Маркета и Авито.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kard-pro.ru/">
-  <meta property="og:title" content="KARD-PRO — ИИ-студия воронки карточек для маркетплейсов">
-  <meta property="og:description" content="3 слайда за 1 клик: Обложка + Характеристики + Комплектация, распознавание товара по фото и экспорт Ultra HD.">
+  <meta property="og:title" content="KARD-PRO — ИИ-студия карточек для маркетплейсов">
+  <meta property="og:description" content="3 слайда за 1 клик + встроенный валидатор требований МП.">
   <meta property="og:image" content="https://kard-pro.ru/api/og">
   <meta name="twitter:card" content="summary_large_image">
-
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -24,7 +22,6 @@
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@700&family=Rubik:wght@600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #06080f; color: #f8fafc; overflow-x: hidden; }
@@ -37,78 +34,72 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 99px; }
     input[type="range"] { accent-color: #6366f1; }
+    .inline-editor { position: fixed !important; z-index: 9999 !important; padding: 6px 10px !important; background: #0f1423 !important; border: 2px solid #6366f1 !important; color: #fff !important; border-radius: 8px !important; outline: none !important; font-size: 13px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col select-none" translate="no">
 
   <div id="toastContainer" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- МОДАЛКА ОБРАТНОЙ СВЯЗИ -->
-  <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
-      <button onclick="closeFeedbackModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
-      <div class="text-center space-y-1.5">
-        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">✉️ Прямая связь с автором проекта</div>
-        <h2 class="text-xl font-extrabold text-white">Поддержка KARD-PRO</h2>
-        <p class="text-xs text-slate-400">Вопросы, идеи, сотрудничество — напишите напрямую:</p>
-      </div>
-      <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-2">
-        <div class="text-xs">
-          <span class="text-[10px] text-slate-400 block">Официальная почта:</span>
-          <b id="supportEmailText" class="text-sm text-indigo-300 select-all">vlad.gembar@mail.ru</b>
-        </div>
-        <button onclick="copySupportEmail()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition shrink-0 cursor-pointer">📋 Скопировать</button>
-      </div>
-      <div class="space-y-2">
-        <label class="text-[11px] text-slate-400 font-semibold block">Ваше сообщение:</label>
-        <textarea id="feedbackMessageInput" rows="3" placeholder="Здравствуйте, Влад!..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
-        <button onclick="sendFeedbackMailto()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-xs shadow-lg transition cursor-pointer">🚀 Отправить письмо</button>
-      </div>
+  <!-- ОНБОРДИНГ -->
+  <div id="onboardingOverlay" class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-8 space-y-5 text-center shadow-2xl">
+      <div id="onboardingStep"></div>
+      <button onclick="nextOnboardingStep()" id="onboardingBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-sm cursor-pointer">Далее →</button>
+      <button onclick="skipOnboarding()" class="text-xs text-slate-500 hover:text-white cursor-pointer">Пропустить</button>
     </div>
   </div>
 
-  <!-- МОДАЛКА АВТОРИЗАЦИИ -->
+  <!-- ОБРАТНАЯ СВЯЗЬ -->
+  <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+      <button onclick="closeFeedbackModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">✉️ Связь с автором</div>
+        <h2 class="text-xl font-extrabold text-white">Поддержка KARD-PRO</h2>
+      </div>
+      <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-2">
+        <div class="text-xs"><span class="text-[10px] text-slate-400 block">Почта:</span><b class="text-sm text-indigo-300 select-all">vlad.gembar@mail.ru</b></div>
+        <button onclick="copySupportEmail()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">📋 Копировать</button>
+      </div>
+      <textarea id="feedbackMessageInput" rows="3" placeholder="Здравствуйте, Влад!..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
+      <button onclick="sendFeedbackMailto()" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs cursor-pointer">🚀 Отправить</button>
+    </div>
+  </div>
+
+  <!-- АВТОРИЗАЦИЯ -->
   <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
-      <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
+      <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1">
-        <div class="inline-flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">🎁 +5 бесплатных генераций через Яндекс ID</div>
+        <div class="inline-flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">🎁 +5 генераций через Яндекс ID</div>
         <h2 class="text-xl font-extrabold text-white">Вход в KARD-PRO</h2>
-        <p class="text-[11px] text-slate-400">Баланс синхронизируется между устройствами</p>
       </div>
-      <button onclick="loginWithYandex()" class="w-full py-3.5 px-4 rounded-2xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-xl shadow-[#FC3F1D]/20 transition cursor-pointer">
+      <button onclick="loginWithYandex()" class="w-full py-3.5 px-4 rounded-2xl bg-[#FC3F1D] hover:bg-[#e53515] text-white font-extrabold text-xs flex items-center justify-center gap-2.5 shadow-xl transition cursor-pointer">
         <span class="w-5 h-5 rounded-full bg-white text-[#FC3F1D] font-black flex items-center justify-center text-xs">Я</span>
         <span>Войти через Яндекс ID (+5 генераций)</span>
       </button>
-      <div class="flex items-center gap-3 text-[11px] text-slate-500">
-        <div class="flex-1 h-px bg-white/10"></div><span>или вход по Email</span><div class="flex-1 h-px bg-white/10"></div>
-      </div>
+      <div class="flex items-center gap-3 text-[11px] text-slate-500"><div class="flex-1 h-px bg-white/10"></div><span>или по Email</span><div class="flex-1 h-px bg-white/10"></div></div>
       <div class="space-y-3">
-        <div>
-          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Ваш Email</label>
-          <input id="authEmail" type="email" placeholder="name@yandex.ru" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="text-[11px] text-slate-400 font-semibold block mb-1">Пароль (от 6 символов)</label>
-          <input id="authPassword" type="password" placeholder="••••••••" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
-        </div>
+        <input id="authEmail" type="email" placeholder="name@yandex.ru" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
+        <input id="authPassword" type="password" placeholder="Пароль (≥6 символов)" class="w-full bg-[#070a12] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-indigo-500">
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="handleEmailAuth('login')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs transition cursor-pointer">Войти</button>
-          <button onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs transition cursor-pointer">Создать аккаунт</button>
+          <button onclick="handleEmailAuth('login')" class="py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs cursor-pointer">Войти</button>
+          <button onclick="handleEmailAuth('signup')" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs cursor-pointer">Создать</button>
         </div>
       </div>
       <p id="authStatusMsg" class="text-xs text-center font-semibold hidden"></p>
     </div>
   </div>
 
-  <!-- МОДАЛКА ТАРИФОВ -->
+  <!-- ТАРИФЫ -->
   <div id="payModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative max-h-[94vh] overflow-y-auto">
-      <button onclick="closePayModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
+      <button onclick="closePayModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1">
-        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">⚡ Мгновенное пополнение KARD-PRO AI</div>
-        <h2 class="text-2xl font-extrabold text-white tracking-tight">Пополнение генераций</h2>
-        <p class="text-xs text-slate-400">1 генерация = полная воронка из <b>3 слайдов</b> + 3 заголовка + SEO-текст</p>
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">⚡ Мгновенное пополнение</div>
+        <h2 class="text-2xl font-extrabold text-white">Пополнение генераций</h2>
+        <p class="text-xs text-slate-400">1 генерация = 3 слайда + 3 заголовка + SEO + валидация МП</p>
       </div>
       <div class="grid grid-cols-3 gap-2.5">
         <div id="planCard5" onclick="selectPlan(5, 50)" class="cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
@@ -128,41 +119,33 @@
       </div>
       <div id="customAmountBox" class="bg-[#070a12] border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-200">💰 Или введите свою сумму:</span>
+          <span class="text-xs font-bold text-slate-200">💰 Своя сумма:</span>
           <span id="customDiscountBadge" class="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-md font-bold">Выгода до -50%</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
           <div class="relative">
-            <input id="customRubInput" type="number" min="50" max="50000" step="10" placeholder="Например: 500" oninput="onCustomAmountInput(this.value)" class="w-full bg-[#0f1423] border border-indigo-500/40 focus:border-emerald-400 rounded-xl pl-3.5 pr-9 py-2.5 text-sm font-black text-white outline-none transition">
+            <input id="customRubInput" type="number" min="50" max="50000" step="10" placeholder="500" oninput="onCustomAmountInput(this.value)" class="w-full bg-[#0f1423] border border-indigo-500/40 focus:border-emerald-400 rounded-xl pl-3.5 pr-9 py-2.5 text-sm font-black text-white outline-none">
             <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400">₽</span>
           </div>
           <div class="bg-indigo-500/10 border border-indigo-500/25 rounded-xl px-3.5 py-2 flex items-center justify-between">
-            <div>
-              <div class="text-[10px] text-slate-400">Вы получите:</div>
-              <div id="customCreditsOutput" class="text-base font-black text-emerald-400">⚡ +10 генераций</div>
-            </div>
-            <div class="text-right">
-              <div id="customSlidesOutput" class="text-[11px] font-bold text-indigo-200">30 слайдов</div>
-              <div id="customPerUnitOutput" class="text-[10px] text-slate-400">по 8 ₽/шт</div>
-            </div>
+            <div><div class="text-[10px] text-slate-400">Вы получите:</div><div id="customCreditsOutput" class="text-base font-black text-emerald-400">⚡ +10</div></div>
+            <div class="text-right"><div id="customSlidesOutput" class="text-[11px] font-bold text-indigo-200">30 слайдов</div><div id="customPerUnitOutput" class="text-[10px] text-slate-400">по 8 ₽/шт</div></div>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span class="text-[10px] text-slate-500 mr-1">Быстрый выбор:</span>
-          <button onclick="setCustomAmountPreset(300)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-slate-300 font-bold transition cursor-pointer">300 ₽ (40 шт)</button>
-          <button onclick="setCustomAmountPreset(500)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-emerald-300 font-bold transition cursor-pointer">🔥 500 ₽ (80 шт)</button>
-          <button onclick="setCustomAmountPreset(1000)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-amber-300 font-bold transition cursor-pointer">👑 1 000 ₽ (200 шт)</button>
-          <button onclick="setCustomAmountPreset(2500)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/40 px-2 py-1 rounded-lg text-purple-300 font-bold transition cursor-pointer">💎 2 500 ₽ (500 шт)</button>
+          <span class="text-[10px] text-slate-500 mr-1">Быстро:</span>
+          <button onclick="setCustomAmountPreset(300)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 px-2 py-1 rounded-lg text-slate-300 font-bold cursor-pointer">300 ₽ (40)</button>
+          <button onclick="setCustomAmountPreset(500)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 px-2 py-1 rounded-lg text-emerald-300 font-bold cursor-pointer">🔥 500 ₽ (80)</button>
+          <button onclick="setCustomAmountPreset(1000)" class="text-[10px] bg-white/5 hover:bg-indigo-500/20 border border-white/10 px-2 py-1 rounded-lg text-amber-300 font-bold cursor-pointer">👑 1000 ₽ (200)</button>
         </div>
       </div>
-      <button id="payLinkBtn" onclick="payWithYooMoney()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/20 transition cursor-pointer">💳 Оплатить 80 ₽ и получить +10 генераций</button>
+      <button id="payLinkBtn" onclick="payWithYooMoney()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl cursor-pointer">💳 Оплатить 80 ₽ и получить +10</button>
       <div id="payWaitBox" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center space-y-1">
-        <p class="text-xs text-amber-300 font-semibold animate-pulse">⏳ Ожидаем подтверждение оплаты от ЮMoney...</p>
-        <p class="text-[11px] text-slate-400">Генерации зачислятся автоматически.</p>
+        <p class="text-xs text-amber-300 font-semibold animate-pulse">⏳ Ожидаем подтверждение оплаты...</p>
       </div>
       <div class="border-t border-white/10 pt-3 flex items-center gap-2">
         <input id="promoCodeInput" type="text" placeholder="Промокод..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs uppercase outline-none focus:border-indigo-500 text-white">
-        <button onclick="activatePromoCode()" class="bg-white/10 hover:bg-white/15 text-white font-bold px-4 py-2 rounded-xl text-xs transition shrink-0 cursor-pointer">Применить</button>
+        <button onclick="activatePromoCode()" class="bg-white/10 hover:bg-white/15 text-white font-bold px-4 py-2 rounded-xl text-xs shrink-0 cursor-pointer">Применить</button>
       </div>
     </div>
   </div>
@@ -170,26 +153,26 @@
   <!-- ШАПКА -->
   <header class="h-14 border-b border-white/10 bg-[#0b0f19]/90 backdrop-blur-xl px-3 lg:px-6 flex items-center justify-between sticky top-0 z-30">
     <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-indigo-500/25">K</div>
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-black text-white text-sm shadow-lg">K</div>
       <div>
         <div class="flex items-center gap-1.5">
-          <span id="appTitle" class="font-extrabold text-sm tracking-tight text-white">KARD-PRO</span>
-          <span class="text-[9px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold" title="Изменения макета автоматически сохраняются">🛡️ Автосейв</span>
+          <span class="font-extrabold text-sm tracking-tight text-white">KARD-PRO</span>
+          <span class="text-[9px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">🛡️ Автосейв</span>
         </div>
-        <p class="text-[10px] text-slate-400 hidden sm:block">Ozon • Wildberries • Яндекс Маркет • Авито</p>
+        <p class="text-[10px] text-slate-400 hidden sm:block">Ozon • WB • Яндекс • Авито</p>
       </div>
     </div>
     <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
-      <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold transition cursor-pointer">🔵 Ozon (3:4)</button>
-      <button id="mpBtn_wb" onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold transition cursor-pointer">🟣 Wildberries (3:4)</button>
-      <button id="mpBtn_ym" onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold transition cursor-pointer">🟡 Яндекс (1:1)</button>
-      <button id="mpBtn_avito" onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold transition cursor-pointer">🟢 Авито (4:3)</button>
+      <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold cursor-pointer">🔵 Ozon (3:4)</button>
+      <button id="mpBtn_wb" onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold cursor-pointer">🟣 WB (3:4)</button>
+      <button id="mpBtn_ym" onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold cursor-pointer">🟡 Яндекс (1:1)</button>
+      <button id="mpBtn_avito" onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold cursor-pointer">🟢 Авито (4:3)</button>
     </div>
     <div class="flex items-center gap-1.5 sm:gap-2">
-      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold transition items-center gap-1 cursor-pointer"><span>✉️ Связь</span></button>
-      <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"><span id="authNavText">👤 Войти</span></button>
-      <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-xl text-xs font-bold transition" title="Выйти">🚪</button>
-      <button onclick="handleTopUpClick()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition cursor-pointer">
+      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">✉️ Связь</button>
+      <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"><span id="authNavText">👤 Войти</span></button>
+      <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-xl text-xs font-bold">🚪</button>
+      <button onclick="handleTopUpClick()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer">
         <span class="text-xs font-semibold text-slate-300">⚡ <b id="creditsCount" class="text-white">0</b></span>
         <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-lg">+</span>
       </button>
@@ -199,17 +182,17 @@
         <option value="png_1x">Стандарт 1x (PNG)</option>
         <option value="webp_1x">Стандарт 1x (WebP)</option>
       </select>
-      <button onclick="downloadAllSlides()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition flex items-center gap-1 cursor-pointer"><span>📦 Скачать 3</span></button>
+      <button onclick="downloadAllSlides()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-lg cursor-pointer">📦 Скачать 3</button>
     </div>
   </header>
 
   <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
     <aside class="w-full lg:w-[480px] bg-[#0b0f19] border-r border-white/10 flex flex-col lg:h-[calc(100vh-3.5rem)] order-2 lg:order-1">
       <div class="grid grid-cols-5 gap-1 p-2 bg-[#070a12] border-b border-white/10 text-[10px] font-bold sticky top-0 z-20">
-        <button id="tabBtn_ai" onclick="switchTab('ai')" class="py-2 rounded-xl bg-indigo-600 text-white transition flex flex-col items-center gap-0.5 shadow"><span>✨ 1. ИИ-Старт</span></button>
-        <button id="tabBtn_media" onclick="switchTab('media')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>📸 2. Фото/Фон</span></button>
-        <button id="tabBtn_style" onclick="switchTab('style')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>🎨 3. Графика</span></button>
-        <button id="tabBtn_text" onclick="switchTab('text')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>📝 4. Тексты</span></button>
+        <button id="tabBtn_ai" onclick="switchTab('ai')" class="py-2 rounded-xl bg-indigo-600 text-white transition flex flex-col items-center gap-0.5 shadow"><span>✨ 1. ИИ</span></button>
+        <button id="tabBtn_media" onclick="switchTab('media')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>📸 2. Фото</span></button>
+        <button id="tabBtn_style" onclick="switchTab('style')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>🎨 3. Стиль</span></button>
+        <button id="tabBtn_text" onclick="switchTab('text')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>📝 4. Текст</span></button>
         <button id="tabBtn_layers" onclick="switchTab('layers')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>🗂️ 5. Слои</span></button>
       </div>
 
@@ -229,26 +212,49 @@
             <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар или загрузите фото и нажмите «Распознать»..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
             <div class="flex flex-wrap gap-1.5">
               <span class="text-[10px] text-slate-500 self-center mr-1">Примеры:</span>
-              <button onclick="fillSamplePrompt('Беспроводные наушники с ANC, 40 часов работы, чехол и кабель Type-C в комплекте')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🎧 Наушники</button>
-              <button onclick="fillSamplePrompt('Термокружка автомобильная 500 мл из нержавеющей стали, держит тепло 12 часов')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">☕ Термокружка</button>
-              <button onclick="fillSamplePrompt('Кашпо с автополивом для домашних цветов и суккулентов, геометрический дизайн')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🪴 Кашпо</button>
+              <button onclick="fillSamplePrompt('Беспроводные наушники с ANC, 40 часов работы, чехол и кабель Type-C')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🎧 Наушники</button>
+              <button onclick="fillSamplePrompt('Термокружка автомобильная 500 мл, нержавеющая сталь, держит тепло 12 часов')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">☕ Термокружка</button>
+              <button onclick="fillSamplePrompt('Кашпо с автополивом для домашних растений, геометрический дизайн')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🪴 Кашпо</button>
             </div>
             <div class="flex items-center justify-between text-[11px] text-slate-300 pt-0.5">
-              <label class="flex items-center gap-1.5 cursor-pointer"><input id="autoAiPaletteToggle" type="checkbox" checked class="accent-indigo-500"> 🎨 Авто-подбор цвета</label>
-              <button onclick="generateAutonomousTemplate()" class="text-[10px] text-amber-300 hover:underline font-semibold" title="Создать структуру 3 слайдов без ИИ и списания">⚡ Быстрый шаблон</button>
+              <label class="flex items-center gap-1.5 cursor-pointer"><input id="autoAiPaletteToggle" type="checkbox" checked class="accent-indigo-500"> 🎨 Авто-палитра</label>
+              <button onclick="generateAutonomousTemplate()" class="text-[10px] text-amber-300 hover:underline font-semibold">⚡ Быстрый шаблон</button>
             </div>
             <div class="grid grid-cols-1 gap-2">
-              <button id="aiBtn" onclick="generateWithAI(false)" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer"><span>🤖 Сгенерировать воронку + SEO</span></button>
+              <button id="aiBtn" onclick="generateWithAI(false)" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"><span>🤖 Сгенерировать воронку + SEO</span></button>
               <button id="aiVisionBtn" onclick="generateWithAI(true)" class="w-full py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-indigo-500/30 text-indigo-200 font-bold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer"><span>👁️ Распознать по фото (Vision)</span></button>
             </div>
             <div id="titleVariantsBox" class="hidden pt-2 border-t border-white/10 space-y-1.5">
-              <span class="text-[10px] text-indigo-300 font-bold block">🎯 Выберите заголовок:</span>
+              <span class="text-[10px] text-indigo-300 font-bold block">🎯 Заголовки от ИИ:</span>
               <div id="titleVariantsList" class="flex flex-col gap-1"></div>
             </div>
           </div>
+
+          <!-- 🆕 ВАЛИДАТОР -->
+          <div id="validationPanel" class="bg-[#0b0f19] border border-white/10 rounded-2xl p-4 space-y-2 hidden">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-white">🛡️ Готовность к публикации</span>
+              <button onclick="runValidationNow()" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300 font-bold cursor-pointer">🔄 Проверить</button>
+            </div>
+            <div id="validationBadge" class="text-[11px] px-2 py-1 rounded-lg font-bold bg-slate-500/20 text-slate-300 text-center">Не проверено</div>
+            <div id="validationList" class="space-y-1.5 text-[11px] max-h-48 overflow-y-auto"></div>
+          </div>
+
+          <!-- 🆕 BRAND PROFILE -->
+          <div class="bg-purple-500/10 p-4 rounded-2xl border border-purple-500/30 space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-purple-300">🎨 Бренд-профиль</span>
+              <span class="text-[10px] text-slate-400">Сохранить стиль для будущих товаров</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="saveBrandProfile()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-xl text-[11px] cursor-pointer">💾 Сохранить бренд</button>
+              <button onclick="loadBrandProfile()" class="bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 font-bold py-2 rounded-xl text-[11px] cursor-pointer">📂 Загрузить</button>
+            </div>
+          </div>
+
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
-              <label class="font-bold text-slate-200">🧩 Формат карточки</label>
+              <label class="font-bold text-slate-200">🧩 Формат</label>
               <select id="canvasFormat" onchange="changeCanvasFormat(true)" class="bg-[#070a12] border border-white/10 rounded-lg px-2 py-1 text-[11px] text-indigo-300 font-semibold outline-none">
                 <option value="ozon">Ozon/WB (900×1200)</option>
                 <option value="square">Яндекс (1000×1000)</option>
@@ -257,26 +263,27 @@
               </select>
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <button onclick="applyLayoutPreset('left')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">◧ Колонка слева</button>
-              <button onclick="applyLayoutPreset('right')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">◨ Колонка справа</button>
-              <button onclick="applyLayoutPreset('grid')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">⊞ Плитка 2×N</button>
-              <button onclick="applyLayoutPreset('split')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">Split по бокам</button>
+              <button onclick="applyLayoutPreset('left')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">◧ Слева</button>
+              <button onclick="applyLayoutPreset('right')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">◨ Справа</button>
+              <button onclick="applyLayoutPreset('grid')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">⊞ Плитка</button>
+              <button onclick="applyLayoutPreset('split')" class="bg-white/5 hover:bg-indigo-600/20 border border-white/10 hover:border-indigo-500/40 py-2 px-2.5 rounded-xl text-[11px] font-semibold text-left transition">Split</button>
             </div>
             <div class="flex items-center justify-between pt-1 border-t border-white/10">
               <label class="flex items-center gap-2 cursor-pointer text-[11px] text-amber-300 font-medium"><input id="safeZoneToggle" type="checkbox" onchange="drawCard()" class="accent-amber-400 rounded"> 🛡️ Слепые зоны</label>
               <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300 font-medium"><input id="snapGridToggle" type="checkbox" checked class="accent-indigo-500 rounded"> 🧲 Магнит</label>
             </div>
           </div>
+
           <div id="seoBox" class="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 space-y-2">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-emerald-400">📋 SEO-описание</span>
-              <button onclick="copySeoText()" class="text-[11px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg font-bold transition">Скопировать</button>
+              <button onclick="copySeoText()" class="text-[11px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg font-bold">Скопировать</button>
             </div>
             <textarea id="seoResult" rows="4" placeholder="Здесь появится SEO..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none"></textarea>
           </div>
         </div>
 
-        <!-- ВКЛАДКА ФОТО/ФОН -->
+        <!-- ВКЛАДКА ФОТО -->
         <div id="tab_media" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3">
             <div class="flex justify-between items-center">
@@ -285,8 +292,8 @@
             </div>
             <input id="imgUpload" type="file" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
             <div class="grid grid-cols-2 gap-2">
-              <button id="aiBgRemoveBtn" onclick="removeProductBgAI()" class="bg-purple-600 hover:bg-purple-500 text-xs font-bold py-2 px-3 rounded-xl text-white transition shadow cursor-pointer">🧠 Удалить фон (ИИ)</button>
-              <button onclick="removeWhiteBg('product')" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2 px-3 rounded-xl text-slate-200 transition cursor-pointer">🪄 Убрать белый</button>
+              <button id="aiBgRemoveBtn" onclick="removeProductBgAI()" class="bg-purple-600 hover:bg-purple-500 text-xs font-bold py-2 px-3 rounded-xl text-white cursor-pointer">🧠 Удалить фон (ИИ)</button>
+              <button onclick="removeWhiteBg('product')" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2 px-3 rounded-xl text-slate-200 cursor-pointer">🪄 Убрать белый</button>
             </div>
             <div class="bg-[#070a12] border border-white/10 p-3 rounded-xl space-y-2.5 text-xs">
               <div class="flex justify-between items-center">
@@ -300,8 +307,8 @@
               </div>
               <input id="imgScale" type="range" min="15" max="260" value="85" class="w-full" oninput="updateProductScaleFromSlider(this.value)">
               <div class="grid grid-cols-2 gap-3 pt-1">
-                <div><span class="text-[10px] text-slate-400">↔ Ширина (%):</span><input id="imgStretchX" type="range" min="50" max="160" value="100" class="w-full" oninput="drawCard()"></div>
-                <div><span class="text-[10px] text-slate-400">↕ Высота (%):</span><input id="imgStretchY" type="range" min="50" max="160" value="100" class="w-full" oninput="drawCard()"></div>
+                <div><span class="text-[10px] text-slate-400">↔ Ширина:</span><input id="imgStretchX" type="range" min="50" max="160" value="100" class="w-full" oninput="drawCard()"></div>
+                <div><span class="text-[10px] text-slate-400">↕ Высота:</span><input id="imgStretchY" type="range" min="50" max="160" value="100" class="w-full" oninput="drawCard()"></div>
               </div>
             </div>
             <div class="bg-indigo-500/10 border border-indigo-500/30 p-3 rounded-xl space-y-2 text-xs">
@@ -318,13 +325,13 @@
               </div>
             </div>
             <div class="grid grid-cols-3 gap-2 pt-1 text-xs">
-              <div><span class="text-[10px] text-slate-400">Поворот (°)</span><input id="imgRotate" type="range" min="-45" max="45" value="0" class="w-full" oninput="drawCard()"></div>
+              <div><span class="text-[10px] text-slate-400">Поворот</span><input id="imgRotate" type="range" min="-45" max="45" value="0" class="w-full" oninput="drawCard()"></div>
               <div><span class="text-[10px] text-slate-400">Яркость</span><input id="imgBrightness" type="range" min="60" max="150" value="100" class="w-full" oninput="drawCard()"></div>
               <div><span class="text-[10px] text-slate-400">Контраст</span><input id="imgContrast" type="range" min="60" max="160" value="106" class="w-full" oninput="drawCard()"></div>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
-              <button onclick="enhanceProductSharpness()" class="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">✨ Резкость HD</button>
-              <button onclick="flipProductHorizontal()" class="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer">⇄ Отзеркалить</button>
+              <button onclick="enhanceProductSharpness()" class="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">✨ Резкость HD</button>
+              <button onclick="flipProductHorizontal()" class="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer">⇄ Отзеркалить</button>
               <label class="flex items-center gap-1 cursor-pointer text-slate-300"><input id="showPodium" type="checkbox" checked onchange="drawCard()"> 🛸 Подиум</label>
               <label class="flex items-center gap-1 cursor-pointer text-slate-300"><input id="showReflection" type="checkbox" onchange="drawCard()"> 🪞 Отражение</label>
             </div>
@@ -332,59 +339,56 @@
 
           <div class="bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/25 space-y-3">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-emerald-400">🌄 2. Студийный фон и цветовая атмосфера</span>
-              <button onclick="toggleComfySettings()" class="text-[11px] text-slate-400 hover:text-white underline">⚙️ Движок</button>
+              <span class="text-xs font-bold text-emerald-400">🌄 2. Студийный фон</span>
+              <button onclick="toggleComfySettings()" class="text-[11px] text-slate-400 hover:text-white underline">⚙️</button>
             </div>
             <div id="comfySettingsBox" class="hidden bg-[#070a12] p-3 rounded-xl border border-white/10 space-y-2 text-xs">
               <div class="flex items-center justify-between">
                 <span class="text-slate-400 text-[11px]">Режим:</span>
                 <select id="bgEngineMode" class="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-emerald-300">
-                  <option value="cloud">⚡ Гибрид 3D + Облачный Flux AI</option>
-                  <option value="procedural">🎨 Мгновенная 3D-студия (0.01 сек)</option>
-                  <option value="comfy">🖥️ Локальный ComfyUI</option>
+                  <option value="cloud">⚡ Гибрид 3D + Flux AI</option>
+                  <option value="procedural">🎨 Мгновенная 3D-студия</option>
+                  <option value="comfy">🖥️ ComfyUI</option>
                 </select>
               </div>
               <input id="comfyUrl" type="text" placeholder="http://127.0.0.1:8188" oninput="saveComfyUrl()" class="w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-emerald-300 outline-none">
             </div>
             <div>
-              <span class="text-[10px] text-slate-400 block mb-1.5">Готовая студийная сцена (цвета + фон):</span>
+              <span class="text-[10px] text-slate-400 block mb-1.5">Студийная сцена:</span>
               <div class="grid grid-cols-2 gap-1.5">
-                <button onclick="selectStudioScenePreset('marble')" class="text-[11px] bg-[#141418] hover:bg-white/10 border border-amber-500/30 px-2.5 py-1.5 rounded-xl text-amber-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span><span>✨ Мрамор и Золото</span></button>
-                <button onclick="selectStudioScenePreset('eco')" class="text-[11px] bg-[#08221b] hover:bg-white/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-emerald-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span><span>🌿 Эко-Дерево</span></button>
-                <button onclick="selectStudioScenePreset('cyber')" class="text-[11px] bg-[#131633] hover:bg-white/10 border border-cyan-500/30 px-2.5 py-1.5 rounded-xl text-cyan-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0"></span><span>🔮 Кибер-Неон</span></button>
-                <button onclick="selectStudioScenePreset('white')" class="text-[11px] bg-slate-200 hover:bg-white border border-slate-300 px-2.5 py-1.5 rounded-xl text-slate-900 font-bold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span><span>🤍 Белый Студио</span></button>
-                <button onclick="selectStudioScenePreset('wb_velvet')" class="text-[11px] bg-[#2a0a38] hover:bg-white/10 border border-fuchsia-500/30 px-2.5 py-1.5 rounded-xl text-fuchsia-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-fuchsia-400 shrink-0"></span><span>🟣 Бархат WB</span></button>
-                <button onclick="selectStudioScenePreset('ozon_tech')" class="text-[11px] bg-[#081b4d] hover:bg-white/10 border border-blue-500/30 px-2.5 py-1.5 rounded-xl text-blue-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-blue-400 shrink-0"></span><span>🔵 Синий Ozon 3D</span></button>
-                <button onclick="selectStudioScenePreset('beige_cosmetics')" class="text-[11px] bg-[#29231e] hover:bg-white/10 border border-orange-300/30 px-2.5 py-1.5 rounded-xl text-orange-100 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-orange-300 shrink-0"></span><span>☕ Тёплый Беж</span></button>
-                <button onclick="selectStudioScenePreset('fire_sale')" class="text-[11px] bg-[#330814] hover:bg-white/10 border border-rose-500/30 px-2.5 py-1.5 rounded-xl text-rose-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer transition"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span><span>🔥 Огненный Хит</span></button>
+                <button onclick="selectStudioScenePreset('marble')" class="text-[11px] bg-[#141418] hover:bg-white/10 border border-amber-500/30 px-2.5 py-1.5 rounded-xl text-amber-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span><span>✨ Мрамор</span></button>
+                <button onclick="selectStudioScenePreset('eco')" class="text-[11px] bg-[#08221b] hover:bg-white/10 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-emerald-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span><span>🌿 Эко</span></button>
+                <button onclick="selectStudioScenePreset('cyber')" class="text-[11px] bg-[#131633] hover:bg-white/10 border border-cyan-500/30 px-2.5 py-1.5 rounded-xl text-cyan-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0"></span><span>🔮 Неон</span></button>
+                <button onclick="selectStudioScenePreset('white')" class="text-[11px] bg-slate-200 hover:bg-white border border-slate-300 px-2.5 py-1.5 rounded-xl text-slate-900 font-bold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span><span>🤍 Белый</span></button>
+                <button onclick="selectStudioScenePreset('wb_velvet')" class="text-[11px] bg-[#2a0a38] hover:bg-white/10 border border-fuchsia-500/30 px-2.5 py-1.5 rounded-xl text-fuchsia-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-fuchsia-400 shrink-0"></span><span>🟣 Бархат</span></button>
+                <button onclick="selectStudioScenePreset('ozon_tech')" class="text-[11px] bg-[#081b4d] hover:bg-white/10 border border-blue-500/30 px-2.5 py-1.5 rounded-xl text-blue-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-blue-400 shrink-0"></span><span>🔵 Ozon 3D</span></button>
+                <button onclick="selectStudioScenePreset('beige_cosmetics')" class="text-[11px] bg-[#29231e] hover:bg-white/10 border border-orange-300/30 px-2.5 py-1.5 rounded-xl text-orange-100 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-orange-300 shrink-0"></span><span>☕ Беж</span></button>
+                <button onclick="selectStudioScenePreset('fire_sale')" class="text-[11px] bg-[#330814] hover:bg-white/10 border border-rose-500/30 px-2.5 py-1.5 rounded-xl text-rose-200 font-semibold text-left flex items-center gap-1.5 cursor-pointer"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span><span>🔥 Огонь</span></button>
               </div>
             </div>
             <div class="flex items-center justify-between text-[11px] text-slate-300 pt-1">
-              <label class="flex items-center gap-1.5 cursor-pointer"><input id="syncBgColorsToggle" type="checkbox" checked class="accent-emerald-500"> 🎨 Учитывать цвета карточки</label>
-              <button onclick="randomizeStudioColorsAndBg()" class="text-[10px] text-emerald-300 hover:underline font-bold cursor-pointer">🎲 Случайный цвет + фон</button>
+              <label class="flex items-center gap-1.5 cursor-pointer"><input id="syncBgColorsToggle" type="checkbox" checked class="accent-emerald-500"> 🎨 Учитывать цвета</label>
+              <button onclick="randomizeStudioColorsAndBg()" class="text-[10px] text-emerald-300 hover:underline font-bold">🎲 Случайно</button>
             </div>
-            <textarea id="bgPromptInput" rows="2" placeholder="Промпт фона..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500">Luxury dark marble podium with warm golden bokeh lights, studio product lighting, 8k</textarea>
+            <textarea id="bgPromptInput" rows="2" class="w-full bg-[#070a12] border border-white/10 rounded-xl p-2.5 text-xs text-slate-200 outline-none focus:border-emerald-500">Luxury dark marble podium with warm golden bokeh lights, studio product lighting, 8k</textarea>
             <div class="grid grid-cols-3 gap-2">
-              <button id="comfyGenBtn" onclick="generateAIBackground()" class="col-span-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold py-2.5 px-3 rounded-xl transition shadow-lg shadow-emerald-500/20 cursor-pointer">🚀 Сгенерировать ИИ-фон</button>
-              <button onclick="clearCustomBg()" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2.5 px-2 rounded-xl text-slate-200 transition cursor-pointer">🔄 Сброс</button>
+              <button id="comfyGenBtn" onclick="generateAIBackground()" class="col-span-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold py-2.5 px-3 rounded-xl cursor-pointer">🚀 Сгенерировать</button>
+              <button onclick="clearCustomBg()" class="bg-white/10 hover:bg-white/15 text-xs font-bold py-2.5 px-2 rounded-xl text-slate-200 cursor-pointer">🔄</button>
             </div>
-            <div>
-              <span class="text-[10px] text-slate-400 block mb-1">Или загрузите свой фон:</span>
-              <input id="bgFileUpload" type="file" accept="image/*" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-emerald-600 file:text-white cursor-pointer">
-            </div>
+            <input id="bgFileUpload" type="file" accept="image/*" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-emerald-600 file:text-white cursor-pointer">
             <p id="bgStatus" class="text-[11px] text-amber-300 hidden"></p>
           </div>
         </div>
 
-        <!-- ВКЛАДКА ГРАФИКА -->
+        <!-- ВКЛАДКА СТИЛЬ -->
         <div id="tab_style" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
-            <label class="block font-bold text-indigo-300">🌟 Шаблоны (1 клик)</label>
+            <label class="block font-bold text-indigo-300">🌟 Шаблоны</label>
             <div class="grid grid-cols-2 gap-2">
-              <button onclick="applyMasterTemplate('cyber')" class="p-2.5 rounded-xl bg-gradient-to-r from-blue-900/60 to-indigo-900/60 border border-blue-500/40 text-left hover:border-blue-400 transition cursor-pointer"><div class="font-extrabold text-white text-xs">⚡ Техно</div><div class="text-[10px] text-blue-200">Электроника</div></button>
-              <button onclick="applyMasterTemplate('luxury')" class="p-2.5 rounded-xl bg-gradient-to-r from-zinc-900 to-stone-900 border border-amber-500/40 text-left hover:border-amber-400 transition cursor-pointer"><div class="font-extrabold text-amber-300 text-xs">👑 Голд</div><div class="text-[10px] text-stone-300">Подарки</div></button>
-              <button onclick="applyMasterTemplate('eco')" class="p-2.5 rounded-xl bg-gradient-to-r from-emerald-950 to-teal-900 border border-emerald-500/40 text-left hover:border-emerald-400 transition cursor-pointer"><div class="font-extrabold text-emerald-300 text-xs">🌿 Эко</div><div class="text-[10px] text-emerald-100">Дом, сад</div></button>
-              <button onclick="applyMasterTemplate('clean')" class="p-2.5 rounded-xl bg-gradient-to-r from-slate-200 to-white border border-slate-300 text-left hover:border-indigo-500 transition cursor-pointer"><div class="font-extrabold text-slate-900 text-xs">🤍 Свет</div><div class="text-[10px] text-slate-600">Минимализм</div></button>
+              <button onclick="applyMasterTemplate('cyber')" class="p-2.5 rounded-xl bg-gradient-to-r from-blue-900/60 to-indigo-900/60 border border-blue-500/40 text-left hover:border-blue-400 cursor-pointer"><div class="font-extrabold text-white text-xs">⚡ Техно</div><div class="text-[10px] text-blue-200">Электроника</div></button>
+              <button onclick="applyMasterTemplate('luxury')" class="p-2.5 rounded-xl bg-gradient-to-r from-zinc-900 to-stone-900 border border-amber-500/40 text-left hover:border-amber-400 cursor-pointer"><div class="font-extrabold text-amber-300 text-xs">👑 Голд</div><div class="text-[10px] text-stone-300">Подарки</div></button>
+              <button onclick="applyMasterTemplate('eco')" class="p-2.5 rounded-xl bg-gradient-to-r from-emerald-950 to-teal-900 border border-emerald-500/40 text-left hover:border-emerald-400 cursor-pointer"><div class="font-extrabold text-emerald-300 text-xs">🌿 Эко</div><div class="text-[10px] text-emerald-100">Дом, сад</div></button>
+              <button onclick="applyMasterTemplate('clean')" class="p-2.5 rounded-xl bg-gradient-to-r from-slate-200 to-white border border-slate-300 text-left hover:border-indigo-500 cursor-pointer"><div class="font-extrabold text-slate-900 text-xs">🤍 Свет</div><div class="text-[10px] text-slate-600">Минимализм</div></button>
             </div>
           </div>
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
@@ -461,7 +465,7 @@
           </div>
         </div>
 
-        <!-- ВКЛАДКА ТЕКСТЫ -->
+        <!-- ВКЛАДКА ТЕКСТ -->
         <div id="tab_text" class="hidden space-y-4">
           <div class="bg-white/[0.03] p-4 rounded-2xl border border-white/10 space-y-3 text-xs">
             <div class="flex justify-between items-center">
@@ -473,6 +477,7 @@
                 <option value="Oswald">Oswald</option>
               </select>
             </div>
+            <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-2 text-[10px] text-indigo-200">💡 Двойной клик на холсте → редактирование текста</div>
             <div class="grid grid-cols-3 gap-2">
               <div class="col-span-2">
                 <span class="text-[11px] text-slate-400">Бейдж</span>
@@ -522,11 +527,11 @@
               <input id="productOnTopToggle" type="checkbox" onchange="drawCard()" class="accent-indigo-500">
             </div>
             <div class="flex items-center justify-between bg-[#070a12] p-3 rounded-xl border border-white/10">
-              <span>🟦 Синие уголки размера</span>
+              <span>🟦 Синие уголки</span>
               <input id="showResizeHandlesToggle" type="checkbox" checked onchange="drawCard()" class="accent-indigo-500">
             </div>
             <div class="space-y-2">
-              <div class="flex items-center justify-between bg-[#070a12] p-2.5 rounded-xl border border-white/10"><span class="font-semibold text-slate-200">📦 Фото товара</span><label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer"><input id="lock_product" type="checkbox"> 🔒</label></div>
+              <div class="flex items-center justify-between bg-[#070a12] p-2.5 rounded-xl border border-white/10"><span class="font-semibold text-slate-200">📦 Фото</span><label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer"><input id="lock_product" type="checkbox"> 🔒</label></div>
               <div class="flex items-center justify-between bg-[#070a12] p-2.5 rounded-xl border border-white/10"><span class="font-semibold text-slate-200">🔤 Заголовок</span><label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer"><input id="lock_title" type="checkbox"> 🔒</label></div>
               <div class="flex items-center justify-between bg-[#070a12] p-2.5 rounded-xl border border-white/10"><span class="font-semibold text-slate-200">📋 Плашки</span><label class="flex items-center gap-1.5 text-[11px] text-amber-300 cursor-pointer"><input id="lock_bullet" type="checkbox"> 🔒</label></div>
               <div class="flex items-center justify-between bg-[#070a12] p-2.5 rounded-xl border border-white/10">
@@ -557,12 +562,12 @@
                 <span class="font-bold text-purple-300">🛡️ Логотип</span>
                 <button onclick="removeLogo()" class="text-[11px] text-rose-400 hover:underline">Удалить</button>
               </div>
-              <input id="logoUpload" type="file" accept="image/*" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
+              <input id="logoUpload" type="file" accept="image/*" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-600 file:text-white cursor-pointer">
               <input id="logoScale" type="range" min="20" max="350" value="130" class="w-full" oninput="drawCard()">
             </div>
             <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
               <div><span class="text-[11px] text-slate-400 block mb-1">Затемнение</span><input id="bgDimmer" type="range" min="0" max="80" value="10" oninput="drawCard()" class="w-full"></div>
-              <div class="flex items-center pt-4"><label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300"><input id="showGlow" type="checkbox" checked onchange="drawCard()"> ✨ Неон сзади</label></div>
+              <div class="flex items-center pt-4"><label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300"><input id="showGlow" type="checkbox" checked onchange="drawCard()"> ✨ Неон</label></div>
             </div>
           </div>
         </div>
@@ -570,12 +575,12 @@
 
       <div class="p-3 border-t border-white/10 bg-[#070a12] space-y-2 text-xs">
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300 transition">💾 Сохранить</button>
-          <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300 transition">📂 Открыть</button>
+          <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300">💾 Сохранить</button>
+          <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300">📂 Открыть</button>
         </div>
         <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/5 px-1">
           <span>Связь:</span>
-          <button onclick="openFeedbackModal()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">✉️ vlad.gembar@mail.ru</button>
+          <button onclick="openFeedbackModal()" class="text-indigo-400 hover:text-indigo-300 font-bold underline">✉️ vlad.gembar@mail.ru</button>
         </div>
       </div>
     </aside>
@@ -594,8 +599,8 @@
           <button onclick="stepProductScale(10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center cursor-pointer">+</button>
           <span id="quickScaleText" class="text-[10px] font-bold text-indigo-300 w-8 text-right">85%</span>
         </div>
-        <button onclick="undoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer" title="Отменить (Ctrl+Z)">↶</button>
-        <button onclick="redoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer" title="Повторить (Ctrl+Y)">↷</button>
+        <button onclick="undoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer" title="Ctrl+Z">↶</button>
+        <button onclick="redoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer" title="Ctrl+Y">↷</button>
       </div>
 
       <div class="my-auto flex items-center justify-center py-2 w-full">
@@ -603,7 +608,7 @@
       </div>
 
       <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-md">
-        <span>📐 Размер фото: тяните за <b>синие уголки</b>, крутите <b>колесико</b> или <b>2 пальцами</b></span>
+        <span>📐 <b>Двойной клик</b> на тексте = редактирование</span>
         <span class="text-white/20">•</span>
         <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">Скачать слайд</button>
         <span class="text-white/20">•</span>
@@ -613,7 +618,6 @@
   </div>
 
   <script>
-    // ================== ЯНДЕКС TOKEN ==================
     let pendingYandexToken = null;
     if (window.location.hash && window.location.hash.includes('access_token=')) {
       const hp = new URLSearchParams(window.location.hash.substring(1));
@@ -642,37 +646,70 @@
       }, 3800);
     }
 
+    // ================== ОНБОРДИНГ ==================
+    const ONBOARDING_STEPS = [
+      { icon: '📸', title: 'Загрузите фото товара', text: 'Перетащите фото в центр или нажмите "Загрузить" на вкладке "Фото"' },
+      { icon: '🎨', title: 'Выберите стиль', text: 'На вкладке "Стиль" выберите шаблон: Техно, Голд, Эко или Свет' },
+      { icon: '🤖', title: 'Сгенерируйте', text: 'Опишите товар на вкладке "ИИ" и нажмите "Сгенерировать"' },
+      { icon: '⬇️', title: 'Скачайте', text: 'Нажмите "Скачать 3" — получите ZIP с 3 слайдами' }
+    ];
+    let onboardingIdx = 0;
+
+    function showOnboarding() {
+      if (localStorage.getItem('kardpro_onboarding_done')) return;
+      onboardingIdx = 0;
+      renderOnboardingStep();
+      const o = document.getElementById('onboardingOverlay');
+      o.classList.remove('hidden');
+      o.classList.add('flex');
+    }
+    function renderOnboardingStep() {
+      const step = ONBOARDING_STEPS[onboardingIdx];
+      document.getElementById('onboardingStep').innerHTML = `
+        <div class="text-6xl mb-3">${step.icon}</div>
+        <div class="text-xs text-indigo-300 font-bold uppercase tracking-wider mb-2">Шаг ${onboardingIdx + 1} из ${ONBOARDING_STEPS.length}</div>
+        <h2 class="text-2xl font-extrabold text-white mb-2">${step.title}</h2>
+        <p class="text-slate-300 text-sm">${step.text}</p>`;
+      const btn = document.getElementById('onboardingBtn');
+      btn.textContent = onboardingIdx === ONBOARDING_STEPS.length - 1 ? '🎉 Начать работу' : 'Далее →';
+    }
+    function nextOnboardingStep() {
+      if (onboardingIdx < ONBOARDING_STEPS.length - 1) { onboardingIdx++; renderOnboardingStep(); }
+      else skipOnboarding();
+    }
+    function skipOnboarding() {
+      localStorage.setItem('kardpro_onboarding_done', '1');
+      const o = document.getElementById('onboardingOverlay');
+      o.classList.add('hidden');
+      o.classList.remove('flex');
+    }
+
     // ================== ОБРАТНАЯ СВЯЗЬ ==================
     const SUPPORT_EMAIL = 'vlad.gembar@mail.ru';
     function openFeedbackModal() { document.getElementById('feedbackModal').classList.remove('hidden'); }
     function closeFeedbackModal() { document.getElementById('feedbackModal').classList.add('hidden'); }
     function copySupportEmail() {
-      const done = () => showToast('📋 Почта скопирована!', 'success');
+      const done = () => showToast('📋 Скопировано!', 'success');
       const fail = () => showToast('⚠️ Скопируйте вручную: ' + SUPPORT_EMAIL, 'error');
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(SUPPORT_EMAIL).then(done).catch(fail);
       } else {
         try {
           const ta = document.createElement('textarea');
-          ta.value = SUPPORT_EMAIL;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          done();
+          ta.value = SUPPORT_EMAIL; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+          document.body.removeChild(ta); done();
         } catch (e) { fail(); }
       }
     }
     function sendFeedbackMailto() {
       const msg = document.getElementById('feedbackMessageInput').value.trim();
-      const subject = encodeURIComponent('Обратная связь по сайту KARD-PRO.RU');
-      const body = encodeURIComponent(msg || 'Здравствуйте, Влад! Пишу вам по поводу сервиса KARD-PRO:');
+      const subject = encodeURIComponent('Обратная связь KARD-PRO.RU');
+      const body = encodeURIComponent(msg || 'Здравствуйте, Влад! Пишу по поводу KARD-PRO:');
       window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
     }
 
-    // ================== ОПЛАТА / АККАУНТ ==================
+    // ================== АВТОРИЗАЦИЯ ==================
     const YOOMONEY_RECEIVER = '4100119681467569';
     const DEFAULT_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
     let currentUser = null;
@@ -699,13 +736,13 @@
       const unitEl = document.getElementById('customPerUnitOutput');
       const discEl = document.getElementById('customDiscountBadge');
       if (credits <= 0) {
-        credEl.textContent = 'Мин. сумма: 50 ₽';
+        credEl.textContent = 'Мин. 50 ₽';
         slidesEl.textContent = 'от 15 слайдов';
         unitEl.textContent = '10 ₽/шт';
         discEl.textContent = 'Введите от 50 ₽';
         return;
       }
-      credEl.textContent = `⚡ +${credits} генераций`;
+      credEl.textContent = `⚡ +${credits}`;
       slidesEl.textContent = `${credits * 3} слайдов`;
       unitEl.textContent = `по ${rate} ₽/шт`;
       discEl.textContent = discount > 0 ? `Выгода -${discount}%` : 'Базовый тариф';
@@ -716,11 +753,8 @@
       [5, 10, 20].forEach(c => {
         const el = document.getElementById('planCard' + c);
         if (!el) return;
-        if (c === credits) {
-          el.className = 'cursor-pointer rounded-2xl p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10';
-        } else {
-          el.className = 'cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
-        }
+        if (c === credits) el.className = 'cursor-pointer rounded-2xl p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg shadow-indigo-500/10';
+        else el.className = 'cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
       });
       const customBox = document.getElementById('customAmountBox');
       if (customBox) customBox.className = 'bg-[#070a12] border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition';
@@ -731,7 +765,7 @@
       updateCustomOutputDisplay(price, credits, rate, discount);
       const btn = document.getElementById('payLinkBtn');
       btn.disabled = false;
-      btn.textContent = `💳 Оплатить ${price} ₽ и получить +${credits} генераций`;
+      btn.textContent = `💳 Оплатить ${price} ₽ → +${credits} генераций`;
     }
 
     function onCustomAmountInput(rawVal) {
@@ -753,7 +787,7 @@
       } else {
         btn.disabled = false;
         selectedPlan = { credits, price: rub };
-        btn.textContent = `💳 Оплатить ${rub} ₽ и получить +${credits} генераций`;
+        btn.textContent = `💳 Оплатить ${rub} ₽ → +${credits} генераций`;
       }
     }
 
@@ -809,11 +843,11 @@
         showToast('⏳ Синхронизация Яндекс ID...', 'info');
         let clientProfile = null;
         try {
-          const directRes = await fetch(`https://login.yandex.ru/info?format=json&oauth_token=${encodeURIComponent(accessToken)}`);
-          if (directRes.ok) {
-            const yaInfo = await directRes.json();
-            const email = yaInfo.default_email || (Array.isArray(yaInfo.emails) && yaInfo.emails[0]) || `${yaInfo.login || yaInfo.id}@yandex.ru`;
-            clientProfile = { email, name: yaInfo.display_name || yaInfo.real_name || yaInfo.login || email.split('@')[0] };
+          const r = await fetch(`https://login.yandex.ru/info?format=json&oauth_token=${encodeURIComponent(accessToken)}`);
+          if (r.ok) {
+            const info = await r.json();
+            const email = info.default_email || (Array.isArray(info.emails) && info.emails[0]) || `${info.login || info.id}@yandex.ru`;
+            clientProfile = { email, name: info.display_name || info.real_name || info.login || email.split('@')[0] };
           }
         } catch (e) {}
         const res = await fetch('/api/payment-webhook', {
@@ -824,21 +858,14 @@
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка входа');
         applyServerUserSession({ id: data.id, email: data.email, name: data.name || data.email.split('@')[0], credits: typeof data.credits === 'number' ? data.credits : 5, session_token: data.session_token });
         showToast(`🎉 Вы вошли как ${data.name}! Генераций: ${data.credits}`, 'success');
-      } catch (e) {
-        showToast('Ошибка Яндекс ID: ' + e.message, 'error');
-      }
+      } catch (e) { showToast('Ошибка Яндекс ID: ' + e.message, 'error'); }
     }
 
     async function initAuthSystem() {
       getHardwareFingerprint();
       try {
-        const savedUser = localStorage.getItem('kardpro_auth_user');
-        if (savedUser) {
-          try {
-            const parsed = JSON.parse(savedUser);
-            if (parsed && parsed.session_token) applyServerUserSession(parsed);
-          } catch (e) {}
-        }
+        const saved = localStorage.getItem('kardpro_auth_user');
+        if (saved) { try { const p = JSON.parse(saved); if (p && p.session_token) applyServerUserSession(p); } catch (e) {} }
         if (pendingYandexToken) await processYandexToken(pendingYandexToken);
         const res = await fetch('/api/payment-webhook?action=config');
         const cfg = await res.json();
@@ -862,15 +889,12 @@
           const data = await res.json();
           if (typeof data.credits === 'number') {
             updateCreditsUI(data.credits);
-            const saved = localStorage.getItem('kardpro_auth_user');
-            if (saved) {
-              try {
-                const parsed = JSON.parse(saved);
-                parsed.credits = data.credits;
-                if (data.session_token) { parsed.session_token = data.session_token; currentSessionToken = data.session_token; }
-                localStorage.setItem('kardpro_auth_user', JSON.stringify(parsed));
-              } catch (e) {}
-            }
+            try {
+              const saved = JSON.parse(localStorage.getItem('kardpro_auth_user') || '{}');
+              saved.credits = data.credits;
+              if (data.session_token) { saved.session_token = data.session_token; currentSessionToken = data.session_token; }
+              localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
+            } catch (e) {}
           }
         }
       } catch (e) {}
@@ -880,7 +904,6 @@
 
     function openAuthModal() { if (currentUser) return; document.getElementById('authModal').classList.remove('hidden'); }
     function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
-
     function showAuthStatus(msg, isError = false) {
       const el = document.getElementById('authStatusMsg');
       el.classList.remove('hidden');
@@ -930,19 +953,16 @@
       document.getElementById('payModal').classList.remove('hidden');
       document.getElementById('payWaitBox').classList.add('hidden');
     }
-
     function closePayModal() {
       document.getElementById('payModal').classList.add('hidden');
-      // Останавливаем polling, чтобы не висел вечно
       if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
       document.getElementById('payWaitBox').classList.add('hidden');
     }
 
-    // 🔴 Оплата через ЮMoney + polling через Supabase check_payment
     function payWithYooMoney() {
       if (!currentUser || !currentSessionToken) { closePayModal(); openAuthModal(); return; }
       const { credits, price } = selectedPlan;
-      if (!price || price < 50 || !credits || credits < 5) return showToast('Минимальная сумма — 50 ₽ (5 генераций)', 'error');
+      if (!price || price < 50 || !credits || credits < 5) return showToast('Минимальная сумма — 50 ₽', 'error');
 
       const orderId = `kp_${credits}_${currentUser.id}_${Math.random().toString(36).substring(2, 6)}`;
       const payUrl = new URL('https://yoomoney.ru/quickpay/confirm.xml');
@@ -952,23 +972,17 @@
       payUrl.searchParams.append('sum', Number(price).toFixed(2));
       payUrl.searchParams.append('label', orderId);
       payUrl.searchParams.append('targets', `Пакет +${credits} ИИ-генераций на KARD-PRO.RU`);
-      // 🔴 Убрали add_credits — начисление только сервером через ЮMoney-вебхук
       payUrl.searchParams.append('successURL', `${window.location.origin}/?paid_order=${orderId}`);
 
       const opened = window.open(payUrl.toString(), '_blank', 'noopener');
-      if (!opened) {
-        showToast('⚠️ Разрешите всплывающие окна для оплаты', 'error');
-        return;
-      }
+      if (!opened) { showToast('⚠️ Разрешите всплывающие окна для оплаты', 'error'); return; }
       document.getElementById('payWaitBox').classList.remove('hidden');
 
       if (pollInterval) clearInterval(pollInterval);
       let attempts = 0;
-      const maxAttempts = 40; // 2 минуты
       pollInterval = setInterval(async () => {
         attempts++;
         try {
-          // 🔴 check_payment читает из Supabase — работает между инстансами Vercel
           const res = await fetch(`/api/payment-webhook?action=check_payment&label=${encodeURIComponent(orderId)}`, {
             headers: { 'Authorization': `Bearer ${currentSessionToken}` }
           });
@@ -984,7 +998,7 @@
             }
           }
         } catch (e) {}
-        if (attempts >= maxAttempts) {
+        if (attempts >= 40) {
           clearInterval(pollInterval); pollInterval = null;
           document.getElementById('payWaitBox').classList.add('hidden');
           showToast('⏳ Оплата ещё не подтверждена. Проверьте баланс позже.', 'info');
@@ -992,13 +1006,10 @@
       }, 3000);
     }
 
-    // 🔴 При возврате с оплаты — проверяем статус через Supabase, НЕ начисляем кредиты на клиенте
     async function checkReturnedPayment() {
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
-      // add_credits из URL ИГНОРИРУЕМ — начисление только через ЮMoney-вебхук на сервере
       if (!paidOrder || !currentSessionToken) return;
-
       window.history.replaceState({}, document.title, window.location.pathname);
 
       const tryCheck = async () => {
@@ -1018,7 +1029,6 @@
       };
 
       if (await tryCheck()) return;
-
       showToast('⏳ Проверяем статус оплаты...', 'info');
       let attempts = 0;
       if (pollInterval) clearInterval(pollInterval);
@@ -1049,8 +1059,7 @@
         if (data.session_token) {
           currentSessionToken = data.session_token;
           const saved = JSON.parse(localStorage.getItem('kardpro_auth_user') || '{}');
-          saved.credits = data.credits;
-          saved.session_token = data.session_token;
+          saved.credits = data.credits; saved.session_token = data.session_token;
           localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
         }
         closePayModal();
@@ -1060,7 +1069,6 @@
 
     initAuthSystem();
 
-    // ================== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==================
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text', 'layers'].forEach(id => {
         document.getElementById('tab_' + id).classList.toggle('hidden', id !== tabId);
@@ -1072,16 +1080,16 @@
 
     function fillSamplePrompt(txt) { document.getElementById('aiPrompt').value = txt; }
 
-    // ================== 8 СТУДИЙНЫХ ПРЕСЕТОВ ==================
+    // ================== СТУДИЙНЫЕ ПРЕСЕТЫ ==================
     const STUDIO_SCENE_PRESETS = {
-      marble: { name: '✨ Мрамор и Золото', bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', pillBg: '#18181b', text: '#ffffff', podium: 'gold_stage', pattern: 'Bokeh', prompt: 'Luxury black marble studio podium with warm golden bokeh lights, dramatic rim lighting, 8k photorealistic' },
-      eco: { name: '🌿 Эко-Дерево и Листва', bg1: '#064e3b', bg2: '#041f18', accent: '#10b981', badge: '#059669', pillBg: '#062c22', text: '#ffffff', podium: 'glass_plate', pattern: 'rays', prompt: 'Natural wooden podium surrounded by fresh green tropical leaves and warm morning sunlight, eco organic studio, 8k' },
-      cyber: { name: '🔮 Кибер-Неон', bg1: '#1e1b4b', bg2: '#06080f', accent: '#38bdf8', badge: '#f43f5e', pillBg: '#0f172a', text: '#ffffff', podium: 'neon_ring', pattern: 'grid', prompt: 'Futuristic cyber neon studio podium with electric cyan and magenta rim lighting, dark glossy floor reflections, 8k' },
-      white: { name: '🤍 Белый Студио', bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff', text: '#0f172a', podium: 'glass_plate', pattern: 'rays', prompt: 'Clean white minimalist Apple style studio podium with soft natural window shadows, bright commercial photography, 8k' },
-      wb_velvet: { name: '🟣 Бархат WB', bg1: '#701a75', bg2: '#180628', accent: '#e879f9', badge: '#ff007f', pillBg: '#2e1065', text: '#ffffff', podium: 'neon_ring', pattern: 'Bokeh', prompt: 'Luxury purple velvet and magenta neon studio podium, soft fashion lighting, glossy violet background, 8k' },
-      ozon_tech: { name: '🔵 Синий Ozon 3D', bg1: '#003399', bg2: '#070b19', accent: '#3b82f6', badge: '#f91155', pillBg: '#0f172a', text: '#ffffff', podium: 'neon_ring', pattern: 'rays', prompt: 'Modern deep royal blue 3D studio podium with bright azure volumetric spotlight, clean tech background, 8k' },
-      beige_cosmetics: { name: '☕ Тёплый Беж', bg1: '#574c43', bg2: '#1c1815', accent: '#fbbf24', badge: '#e11d48', pillBg: '#29231e', text: '#ffffff', podium: 'gold_stage', pattern: 'rays', prompt: 'Warm beige travertine stone podium with soft cream silk drapes and golden hour sunlight, cosmetics studio, 8k' },
-      fire_sale: { name: '🔥 Огненный Хит', bg1: '#9f1239', bg2: '#1f040d', accent: '#fb7185', badge: '#facc15', pillBg: '#4c0519', text: '#ffffff', podium: 'neon_ring', pattern: 'Bokeh', prompt: 'Dynamic ruby red studio podium with warm fiery sparks bokeh and dramatic spotlight, hot sale commercial background, 8k' }
+      marble: { name: '✨ Мрамор и Золото', bg1: '#27272a', bg2: '#09090b', accent: '#f59e0b', badge: '#eab308', pillBg: '#18181b', text: '#ffffff', podium: 'gold_stage', pattern: 'Bokeh', prompt: 'Luxury black marble studio podium with warm golden bokeh lights, dramatic rim lighting, 8k' },
+      eco: { name: '🌿 Эко', bg1: '#064e3b', bg2: '#041f18', accent: '#10b981', badge: '#059669', pillBg: '#062c22', text: '#ffffff', podium: 'glass_plate', pattern: 'rays', prompt: 'Natural wooden podium surrounded by green tropical leaves, eco organic studio, 8k' },
+      cyber: { name: '🔮 Кибер-Неон', bg1: '#1e1b4b', bg2: '#06080f', accent: '#38bdf8', badge: '#f43f5e', pillBg: '#0f172a', text: '#ffffff', podium: 'neon_ring', pattern: 'grid', prompt: 'Futuristic cyber neon studio podium with cyan and magenta rim lighting, 8k' },
+      white: { name: '🤍 Белый', bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff', text: '#0f172a', podium: 'glass_plate', pattern: 'rays', prompt: 'Clean white minimalist Apple style studio podium, bright commercial photography, 8k' },
+      wb_velvet: { name: '🟣 Бархат WB', bg1: '#701a75', bg2: '#180628', accent: '#e879f9', badge: '#ff007f', pillBg: '#2e1065', text: '#ffffff', podium: 'neon_ring', pattern: 'Bokeh', prompt: 'Luxury purple velvet and magenta neon studio podium, soft fashion lighting, 8k' },
+      ozon_tech: { name: '🔵 Ozon 3D', bg1: '#003399', bg2: '#070b19', accent: '#3b82f6', badge: '#f91155', pillBg: '#0f172a', text: '#ffffff', podium: 'neon_ring', pattern: 'rays', prompt: 'Modern deep royal blue 3D studio podium with azure spotlight, 8k' },
+      beige_cosmetics: { name: '☕ Тёплый Беж', bg1: '#574c43', bg2: '#1c1815', accent: '#fbbf24', badge: '#e11d48', pillBg: '#29231e', text: '#ffffff', podium: 'gold_stage', pattern: 'rays', prompt: 'Warm beige travertine stone podium with soft cream silk drapes, cosmetics studio, 8k' },
+      fire_sale: { name: '🔥 Огонь', bg1: '#9f1239', bg2: '#1f040d', accent: '#fb7185', badge: '#facc15', pillBg: '#4c0519', text: '#ffffff', podium: 'neon_ring', pattern: 'Bokeh', prompt: 'Dynamic ruby red studio podium with fiery sparks bokeh, hot sale commercial, 8k' }
     };
 
     function hexToEnglishColorName(hex) {
@@ -1089,9 +1097,7 @@
       const r = parseInt(clean.substring(0, 2), 16) || 0;
       const g = parseInt(clean.substring(2, 4), 16) || 0;
       const b = parseInt(clean.substring(4, 6), 16) || 0;
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const lum = (max + min) / 2;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), lum = (max + min) / 2;
       if (lum > 220) return 'clean bright white and silver';
       if (lum < 32) return 'deep matte black and charcoal';
       if (max - min < 25) return lum > 130 ? 'light neutral gray' : 'dark slate gray';
@@ -1117,15 +1123,14 @@
     let logoImg = null;
     let customBgImg = null;
     let currentFileBlob = null;
-
     let isEraserActive = false;
     let isErasingNow = false;
     let isExportingNow = false;
     let pinchStartDist = null;
     let pinchStartScale = 85;
     let bgGenerationCounter = 0;
-
     let currentSlideIndex = 0;
+
     const SLIDE_NAMES = ['🔤 Слайд 1: Главная обложка (УТП)', '📐 Слайд 2: Характеристики и габариты', '📦 Слайд 3: Комплектация набора'];
 
     const DEFAULT_SLIDES = [
@@ -1170,9 +1175,8 @@
     let historyStack = [];
     let redoStack = [];
 
-    // ================== АВТОСЕЙВ ==================
-    const AUTOSAVE_KEY = 'kardpro_autosave_v6';
-    const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v5';
+    const AUTOSAVE_KEY = 'kardpro_autosave_v7';
+    const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v6';
     let autosaveTimer = null;
 
     const GLOBAL_PERSIST_IDS = [
@@ -1190,7 +1194,6 @@
       if (autosaveTimer) clearTimeout(autosaveTimer);
       autosaveTimer = setTimeout(doAutoSave, 350);
     }
-
     function doAutoSave() {
       try {
         const globals = {};
@@ -1199,10 +1202,9 @@
           if (!el) return;
           globals[id] = el.type === 'checkbox' ? el.checked : el.value;
         });
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ slidesState, globals, seo: document.getElementById('seoResult').value, version: 6 }));
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ slidesState, globals, seo: document.getElementById('seoResult').value, version: 7 }));
       } catch (e) {}
     }
-
     window.addEventListener('beforeunload', () => {
       if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; doAutoSave(); }
     });
@@ -1220,7 +1222,6 @@
           return;
         }
         const parsed = JSON.parse(raw);
-
         if (Array.isArray(parsed.slidesState) && parsed.slidesState.length === 3) {
           slidesState = parsed.slidesState;
           slidesState.forEach(s => {
@@ -1230,12 +1231,10 @@
             if (!s.ratingText) s.ratingText = '★ 4.9 • Выбор покупателей';
           });
         }
-
         if (parsed.globals && parsed.globals.canvasFormat) {
           document.getElementById('canvasFormat').value = parsed.globals.canvasFormat;
           changeCanvasFormat(false);
         }
-
         if (parsed.globals) {
           Object.keys(parsed.globals).forEach(id => {
             if (id === 'canvasFormat') return;
@@ -1245,18 +1244,13 @@
             else el.value = parsed.globals[id];
           });
         }
-
         if (parsed.seo) document.getElementById('seoResult').value = parsed.seo;
-
         const savedImg = localStorage.getItem('kardpro_autosave_product_img');
         if (savedImg && savedImg.startsWith('data:image/')) {
           const img = new Image();
           img.onload = () => {
-            productImg = img;
-            originalProductImg = img;
-            initProductEditCanvas(img);
-            syncUIFromCurrentSlide();
-            drawCard();
+            productImg = img; originalProductImg = img; initProductEditCanvas(img);
+            syncUIFromCurrentSlide(); drawCard();
           };
           img.src = savedImg;
         } else {
@@ -1285,7 +1279,6 @@
       if (historyStack.length > 25) historyStack.shift();
       redoStack = [];
     }
-
     function undoAction() {
       if (historyStack.length === 0) return showToast('Нет действий для отмены', 'info');
       redoStack.push(JSON.stringify(slidesState));
@@ -1294,7 +1287,6 @@
       drawCard();
       showToast('↶ Отменено', 'info');
     }
-
     function redoAction() {
       if (redoStack.length === 0) return;
       historyStack.push(JSON.stringify(slidesState));
@@ -1303,7 +1295,6 @@
       drawCard();
       showToast('↷ Возвращено', 'info');
     }
-
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
@@ -1327,23 +1318,19 @@
       drawCard();
       triggerAutoSave();
     }
-
     function stepProductScale(delta) { updateProductScaleFromSlider((getActiveSlide().productScale || 85) + delta); }
-
     function setQuickProductScale(val) {
       document.getElementById('imgStretchX').value = 100;
       document.getElementById('imgStretchY').value = 100;
       updateProductScaleFromSlider(val);
     }
-
     function centerProductOnCanvas() {
       pushHistoryState();
       getActiveSlide().positions.product = { x: Math.round(canvas.width / 2), y: Math.round(canvas.height * 0.48) };
       drawCard();
       triggerAutoSave();
-      showToast('🎯 Товар по центру', 'info');
+      showToast('🎯 По центру', 'info');
     }
-
     function flipProductHorizontal() {
       if (!productImg) return showToast('Сначала загрузите фото!', 'error');
       const off = document.createElement('canvas');
@@ -1352,12 +1339,7 @@
       oCtx.translate(off.width, 0); oCtx.scale(-1, 1);
       oCtx.drawImage(productImg, 0, 0);
       const flipped = new Image();
-      flipped.onload = () => {
-        productImg = flipped;
-        initProductEditCanvas(flipped);
-        drawCard();
-        showToast('⇄ Отражено!', 'success');
-      };
+      flipped.onload = () => { productImg = flipped; initProductEditCanvas(flipped); drawCard(); showToast('⇄ Отражено!', 'success'); };
       flipped.src = off.toDataURL();
     }
 
@@ -1398,7 +1380,6 @@
       getActiveSlide().showDimensions = document.getElementById('showDimensions').checked;
       drawCard(); triggerAutoSave();
     }
-
     function updateDimensionsText() {
       const s = getActiveSlide();
       s.dimWidth = document.getElementById('dimWidthInput').value;
@@ -1414,7 +1395,7 @@
         s.productScale = cur.productScale || 85;
       });
       triggerAutoSave();
-      showToast('Позиция и размер скопированы на все слайды!', 'success');
+      showToast('Позиция и размер на всех слайдах!', 'success');
     }
 
     function switchSlide(idx) {
@@ -1550,24 +1531,42 @@
     }
 
     function applyMasterTemplate(tpl) {
-      if (tpl === 'cyber') {
-        selectStudioScenePreset('cyber');
-        document.getElementById('pillStyleSelect').value = 'neon';
-        document.getElementById('fontFamilySelect').value = 'Unbounded';
-      } else if (tpl === 'luxury') {
-        selectStudioScenePreset('marble');
-        document.getElementById('pillStyleSelect').value = 'leftbar';
-        document.getElementById('fontFamilySelect').value = 'Montserrat';
-      } else if (tpl === 'eco') {
-        selectStudioScenePreset('eco');
-        document.getElementById('pillStyleSelect').value = 'glass';
-        document.getElementById('fontFamilySelect').value = 'Rubik';
-      } else if (tpl === 'clean') {
-        selectStudioScenePreset('white');
-        document.getElementById('pillStyleSelect').value = 'leftbar';
-        document.getElementById('fontFamilySelect').value = 'Montserrat';
-      }
+      if (tpl === 'cyber') { selectStudioScenePreset('cyber'); document.getElementById('pillStyleSelect').value = 'neon'; document.getElementById('fontFamilySelect').value = 'Unbounded'; }
+      else if (tpl === 'luxury') { selectStudioScenePreset('marble'); document.getElementById('pillStyleSelect').value = 'leftbar'; document.getElementById('fontFamilySelect').value = 'Montserrat'; }
+      else if (tpl === 'eco') { selectStudioScenePreset('eco'); document.getElementById('pillStyleSelect').value = 'glass'; document.getElementById('fontFamilySelect').value = 'Rubik'; }
+      else if (tpl === 'clean') { selectStudioScenePreset('white'); document.getElementById('pillStyleSelect').value = 'leftbar'; document.getElementById('fontFamilySelect').value = 'Montserrat'; }
       triggerAutoSave();
+    }
+
+    // ================== БРЕНД-ПРОФИЛЬ ==================
+    const BRAND_PROFILE_KEY = 'kardpro_brand_profile';
+
+    function saveBrandProfile() {
+      try {
+        const brand = {};
+        ['customBg1', 'customBg2', 'customAccent', 'customBadge', 'pillBgColor', 'customTextColor', 'fontFamilySelect', 'pillStyleSelect', 'podiumTypeSelect', 'bgPatternSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) brand[id] = el.value;
+        });
+        localStorage.setItem(BRAND_PROFILE_KEY, JSON.stringify(brand));
+        showToast('💾 Бренд-профиль сохранён!', 'success');
+      } catch (e) { showToast('Ошибка сохранения бренда', 'error'); }
+    }
+
+    function loadBrandProfile() {
+      try {
+        const raw = localStorage.getItem(BRAND_PROFILE_KEY);
+        if (!raw) return showToast('Сначала сохраните бренд-профиль', 'info');
+        const brand = JSON.parse(raw);
+        Object.keys(brand).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = brand[id];
+        });
+        customBgImg = null;
+        drawCard();
+        triggerAutoSave();
+        showToast('🎨 Бренд-профиль загружен!', 'success');
+      } catch (e) { showToast('Ошибка загрузки бренда', 'error'); }
     }
 
     let draggingItem = null;
@@ -1584,7 +1583,7 @@
       const status = document.getElementById('bgStatus');
       if (status) status.classList.add('hidden');
       const btn = document.getElementById('comfyGenBtn');
-      if (btn) { btn.disabled = false; btn.textContent = '🚀 Сгенерировать ИИ-фон'; }
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 Сгенерировать'; }
       drawCard();
       showToast('🔄 Фон сброшен', 'info');
     }
@@ -1596,7 +1595,6 @@
     }
 
     function removeLogo() { logoImg = null; document.getElementById('logoUpload').value = ''; drawCard(); }
-
     function replaceBulletIcons(icon) {
       pushHistoryState();
       getActiveSlide().bullets.forEach(b => { b.text = b.text.replace(/^([✓🔥⚡💎★•]\s*)?/, icon + ' '); });
@@ -1604,7 +1602,6 @@
       drawCard();
       triggerAutoSave();
     }
-
     function copySeoText() {
       const el = document.getElementById('seoResult');
       el.select();
@@ -1631,8 +1628,8 @@
       ['ozon', 'wb', 'ym', 'avito'].forEach(id => {
         const btn = document.getElementById('mpBtn_' + id);
         if (!btn) return;
-        if (id === mp) btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold transition cursor-pointer';
-        else btn.className = 'px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-semibold transition cursor-pointer';
+        if (id === mp) btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold cursor-pointer';
+        else btn.className = 'px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-semibold cursor-pointer';
       });
       applyThemePreset(false, true);
       changeCanvasFormat(true);
@@ -1783,10 +1780,86 @@
           if (currentSlideIndex === 0) document.getElementById('titleText').value = vText;
           drawCard();
           triggerAutoSave();
+          runValidationNow();
           showToast('🎯 Заголовок обновлен!', 'info');
         };
         list.appendChild(btn);
       });
+    }
+
+    // ================== ВАЛИДАТОР (локальный) ==================
+    function runLocalValidation() {
+      const s = getActiveSlide();
+      const issues = [];
+      const warnings = [];
+      const patterns = [
+        { re: /\b(?:8[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2})\b/i, label: 'номер телефона', severity: 'error' },
+        { re: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i, label: 'email', severity: 'error' },
+        { re: /\b(?:vk\.com|instagram|t\.me|wa\.me|whatsapp|telegram)\b/i, label: 'ссылка на соцсеть', severity: 'error' },
+        { re: /(?:скидк[аи]|акция|распродажа|черная пятница|black friday)/i, label: 'акция/скидка', severity: 'warning' },
+        { re: /\b(?:самый лучший|№\s*1|номер\s*1|лидер рынка)\b/i, label: 'недоказуемое превосходство', severity: 'warning' },
+        { re: /\b(?:qr[\s\-]?код)\b/i, label: 'QR-код', severity: 'warning' }
+      ];
+      const texts = [
+        { field: 'Заголовок', text: s.title || '' },
+        { field: 'Подзаголовок', text: s.subtitle || '' },
+        { field: 'Бейдж', text: s.badge || '' },
+        { field: 'Стикер', text: s.sticker || '' },
+        ...s.bullets.map((b, i) => ({ field: `Пункт ${i + 1}`, text: b.text || '' }))
+      ];
+      texts.forEach(({ field, text }) => {
+        patterns.forEach(({ re, label, severity }) => {
+          if (re.test(text)) {
+            (severity === 'error' ? issues : warnings).push({ field, label, snippet: text.substring(0, 50) });
+          }
+        });
+      });
+      if (s.title && s.title.length > 55) warnings.push({ field: 'Заголовок', label: `длинный (${s.title.length} симв)`, snippet: s.title.substring(0, 50) });
+      return { issues, warnings };
+    }
+
+    function updateValidationPanel(data) {
+      const panel = document.getElementById('validationPanel');
+      const badge = document.getElementById('validationBadge');
+      const list = document.getElementById('validationList');
+      if (!panel || !badge || !list) return;
+      panel.classList.remove('hidden');
+
+      const local = runLocalValidation();
+      const allIssues = [...(data?.issues || []), ...local.issues];
+      const allWarnings = [...(data?.warnings || []), ...local.warnings];
+
+      list.innerHTML = '';
+      if (allIssues.length === 0 && allWarnings.length === 0) {
+        badge.textContent = '✅ Готово к публикации';
+        badge.className = 'text-[11px] px-2 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-300 text-center';
+        list.innerHTML = '<p class="text-emerald-300 text-center py-2">Нарушений не найдено</p>';
+        return;
+      }
+      if (allIssues.length > 0) {
+        badge.textContent = `❌ ${allIssues.length} ошибок`;
+        badge.className = 'text-[11px] px-2 py-1 rounded-lg font-bold bg-rose-500/20 text-rose-300 text-center';
+      } else {
+        badge.textContent = `⚠️ ${allWarnings.length} предупр.`;
+        badge.className = 'text-[11px] px-2 py-1 rounded-lg font-bold bg-amber-500/20 text-amber-300 text-center';
+      }
+      allIssues.forEach(i => {
+        const el = document.createElement('div');
+        el.className = 'bg-rose-500/10 border border-rose-500/30 rounded-lg p-2 text-rose-200';
+        el.innerHTML = `<b>❌ ${i.field}:</b> ${i.label}${i.snippet ? `<br><span class="text-[10px] opacity-70">${i.snippet}</span>` : ''}`;
+        list.appendChild(el);
+      });
+      allWarnings.forEach(w => {
+        const el = document.createElement('div');
+        el.className = 'bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 text-amber-200';
+        el.innerHTML = `<b>⚠️ ${w.field}:</b> ${w.label}`;
+        list.appendChild(el);
+      });
+    }
+
+    function runValidationNow() {
+      updateValidationPanel(null);
+      showToast('🛡️ Проверка завершена', 'info');
     }
 
     async function generateWithAI(useVision = false) {
@@ -1828,12 +1901,14 @@
           body: JSON.stringify({ product: prompt, tone, imageBase64 })
         });
         const data = await res.json();
+
         if (res.status === 401 || data.error === 'AUTH_REQUIRED') { openAuthModal(); throw new Error(data.message || 'Войдите'); }
         if (res.status === 402 || data.error === 'NO_CREDITS') { openPayModal(); throw new Error(data.message || 'Лимит'); }
         if (data.error) throw new Error(data.error);
+
         if (data.recognized_product) {
           promptEl.value = data.recognized_product;
-          showToast(`👁️ Распознан товар: ${data.recognized_product.slice(0, 65)}...`, 'info');
+          showToast(`👁️ Распознан: ${data.recognized_product.slice(0, 60)}...`, 'info');
         }
         if (typeof data.remaining_credits === 'number') {
           updateCreditsUI(data.remaining_credits);
@@ -1875,9 +1950,14 @@
         autoArrangeAllSlides();
         switchSlide(0);
         triggerAutoSave();
-        showToast('🎉 Воронка из 3 слайдов готова!', 'success');
+
+        if (data.validation) updateValidationPanel(data.validation);
+
+        showToast(`🎉 Воронка готова! ${data.validation?.issues?.length > 0 ? '⚠️ Есть замечания валидатора' : ''}`, data.validation?.issues?.length > 0 ? 'info' : 'success');
       } catch (e) {
-        showToast(e.message, 'error');
+        const isCreditError = e.message && (e.message.includes('Лимит') || e.message.includes('AUTH'));
+        if (!isCreditError) showToast(e.message + ' 💡 Кредит не списан', 'error');
+        else showToast(e.message, 'error');
       } finally {
         btn.textContent = '🤖 Сгенерировать воронку + SEO';
         btn.disabled = false;
@@ -1892,17 +1972,13 @@
       const off = document.createElement('canvas');
       off.width = w; off.height = h;
       const oCtx = off.getContext('2d');
-
       const bg1 = document.getElementById('customBg1').value;
       const bg2 = document.getElementById('customBg2').value;
       const accent = document.getElementById('customAccent').value;
 
       const angleMode = variantSeed % 4;
       const gx1 = angleMode === 0 ? 0 : (angleMode === 1 ? w : w * 0.5);
-      const gy1 = 0;
-      const gx2 = angleMode === 2 ? 0 : w * 0.5;
-      const gy2 = h;
-
+      const gy1 = 0, gx2 = angleMode === 2 ? 0 : w * 0.5, gy2 = h;
       const wallGrad = oCtx.createLinearGradient(gx1, gy1, gx2, gy2);
       wallGrad.addColorStop(0, bg1); wallGrad.addColorStop(0.62, bg2); wallGrad.addColorStop(1, '#04060b');
       oCtx.fillStyle = wallGrad; oCtx.fillRect(0, 0, w, h);
@@ -1919,8 +1995,7 @@
       oCtx.fillStyle = floorGrad; oCtx.fillRect(0, horizonY, w, h - horizonY);
 
       oCtx.save();
-      oCtx.strokeStyle = accent + '66'; oCtx.lineWidth = 2;
-      oCtx.shadowColor = accent; oCtx.shadowBlur = 20;
+      oCtx.strokeStyle = accent + '66'; oCtx.lineWidth = 2; oCtx.shadowColor = accent; oCtx.shadowBlur = 20;
       oCtx.beginPath(); oCtx.moveTo(0, horizonY); oCtx.lineTo(w, horizonY); oCtx.stroke();
       oCtx.restore();
 
@@ -1951,10 +2026,7 @@
         oCtx.strokeStyle = accent + '30'; oCtx.lineWidth = 1.5;
         const centerX = w / 2;
         for (let line = -6; line <= 6; line++) {
-          oCtx.beginPath();
-          oCtx.moveTo(centerX + line * 45, horizonY);
-          oCtx.lineTo(centerX + line * 220, h);
-          oCtx.stroke();
+          oCtx.beginPath(); oCtx.moveTo(centerX + line * 45, horizonY); oCtx.lineTo(centerX + line * 220, h); oCtx.stroke();
         }
         for (let row = 1; row <= 5; row++) {
           const ry = horizonY + Math.pow(row / 5, 1.7) * (h - horizonY);
@@ -1962,7 +2034,6 @@
         }
       }
       oCtx.restore();
-
       return off;
     }
 
@@ -1979,7 +2050,6 @@
       document.getElementById('podiumTypeSelect').value = p.podium;
       document.getElementById('bgPatternSelect').value = p.pattern;
       document.getElementById('bgPromptInput').value = p.prompt;
-
       bgGenerationCounter += 1;
       customBgImg = generateProceduralStudioImage(bgGenerationCounter);
       drawCard();
@@ -2013,34 +2083,27 @@
 
       bgGenerationCounter += 1;
       const currentVariant = bgGenerationCounter;
-
       customBgImg = generateProceduralStudioImage(currentVariant);
       drawCard();
 
       if (mode === 'procedural') {
         status.classList.remove('hidden');
-        status.textContent = `✅ 3D-студия (вариант #${currentVariant}) создана!`;
-        showToast(`🌄 Студийный фон #${currentVariant} обновлен!`, 'success');
+        status.textContent = `✅ 3D-студия #${currentVariant} создана!`;
+        showToast(`🌄 Фон #${currentVariant} обновлен!`, 'success');
         return;
       }
 
       status.classList.remove('hidden');
       btn.disabled = true;
-      btn.textContent = '⏳ Нейросеть рисует текстуру...';
+      btn.textContent = '⏳ Генерируем...';
 
       if (mode === 'cloud') {
         const bg1Hex = document.getElementById('customBg1').value;
         const accentHex = document.getElementById('customAccent').value;
         const colorDesc = syncColors ? `, color palette of ${hexToEnglishColorName(bg1Hex)} with ${hexToEnglishColorName(accentHex)} studio accent lighting` : '';
-        const cameraAngles = [
-          'front eye-level studio view, soft volumetric spotlight',
-          'cinematic macro studio shot, shallow depth of field bokeh',
-          'dramatic rim lighting, luxury glossy podium reflection',
-          'architectural studio lighting, soft diffused shadows',
-          'high-end commercial product stage, atmospheric glow'
-        ];
-        const angleTag = cameraAngles[currentVariant % cameraAngles.length];
-        status.textContent = `☁️ 3D-база #${currentVariant} готова! Подгружаем текстуру Flux...`;
+        const angles = ['front eye-level studio view, soft volumetric spotlight', 'cinematic macro studio shot, shallow depth of field bokeh', 'dramatic rim lighting, luxury glossy podium reflection', 'architectural studio lighting, soft diffused shadows', 'high-end commercial product stage, atmospheric glow'];
+        const angleTag = angles[currentVariant % angles.length];
+        status.textContent = `☁️ Загружаем текстуру Flux...`;
         try {
           const seed = Math.floor(Math.random() * 89999999) + 10000000 + currentVariant * 7919;
           const reqW = Math.min(960, canvas.width);
@@ -2062,13 +2125,13 @@
           customBgImg = cleanCanvas;
           drawCard();
           status.textContent = `✅ ИИ-фон #${currentVariant} готов!`;
-          showToast(`🌄 ИИ-фон #${currentVariant} установлен!`, 'success');
+          showToast(`🌄 ИИ-фон установлен!`, 'success');
         } catch (err) {
-          status.textContent = `✅ Установлен 3D-фон #${currentVariant}! Нажмите ещё раз для смены.`;
-          showToast(`🌄 3D-фон #${currentVariant} установлен!`, 'success');
+          status.textContent = `✅ 3D-фон #${currentVariant}! Нажмите ещё раз.`;
+          showToast(`🌄 3D-фон установлен!`, 'success');
         } finally {
           btn.disabled = false;
-          btn.textContent = '🔄 Сгенерировать другой ИИ-фон';
+          btn.textContent = '🔄 Другой фон';
         }
         return;
       }
@@ -2111,12 +2174,12 @@
         const imgUrl = `${comfyUrl}/view?filename=${encodeURIComponent(filename)}&type=output&t=${Date.now()}`;
         customBgImg = await loadImageElementWithTimeout(imgUrl, 15000);
         drawCard();
-        status.textContent = '✅ Локальный ИИ-фон установлен!';
+        status.textContent = '✅ Локальный ИИ-фон!';
       } catch (err) {
-        showToast('ComfyUI не запущен, применен встроенный 3D-фон!', 'info');
+        showToast('ComfyUI не запущен, применен 3D-фон!', 'info');
       } finally {
         btn.disabled = false;
-        btn.textContent = '🔄 Сгенерировать другой ИИ-фон';
+        btn.textContent = '🔄 Другой фон';
       }
     }
 
@@ -2174,7 +2237,6 @@
       drawCard();
       triggerAutoSave();
     }
-
     function removeBullet(idx) {
       const bulletsData = getActiveSlide().bullets;
       if (bulletsData.length <= 1) return showToast('Оставьте хотя бы одну плашку!', 'error');
@@ -2184,7 +2246,6 @@
       drawCard();
       triggerAutoSave();
     }
-
     function updateBulletText(idx, val) {
       getActiveSlide().bullets[idx].text = val;
       drawCard();
@@ -2246,7 +2307,6 @@
     document.getElementById('imgUpload').addEventListener('change', (e) => {
       if (e.target.files && e.target.files[0]) { loadProductFile(e.target.files[0]); e.target.value = ''; }
     });
-
     document.getElementById('bgFileUpload').addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
@@ -2308,6 +2368,74 @@
       return corners.some(c => Math.hypot(mouseX - c.x, mouseY - c.y) <= 28);
     }
 
+    // ================== INLINE-РЕДАКТОР (dblclick) ==================
+    function findTextElementAt(mx, my) {
+      const s = getActiveSlide();
+      const p = s.positions;
+      if (mx >= p.title.x && mx <= p.title.x + 700 && my >= p.title.y - 40 && my <= p.title.y + 100) {
+        return { type: 'title', value: s.title, pos: { x: p.title.x, y: p.title.y - 20 } };
+      }
+      const subY = p.title.y + (s.titleSize || 44) + 10;
+      if (mx >= p.title.x && mx <= p.title.x + 700 && my >= subY - 20 && my <= subY + 40) {
+        return { type: 'subtitle', value: s.subtitle, pos: { x: p.title.x, y: subY - 10 } };
+      }
+      if (mx >= p.badge.x && mx <= p.badge.x + 260 && my >= p.badge.y && my <= p.badge.y + 54) {
+        return { type: 'badge', value: s.badge, pos: { x: p.badge.x, y: p.badge.y } };
+      }
+      if (Math.hypot(mx - p.sticker.x, my - p.sticker.y) <= 85) {
+        return { type: 'sticker', value: s.sticker, pos: { x: p.sticker.x - 80, y: p.sticker.y - 15 } };
+      }
+      for (let i = 0; i < s.bullets.length; i++) {
+        const b = s.bullets[i];
+        if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+          return { type: 'bullet', index: i, value: b.text, pos: { x: b.x, y: b.y } };
+        }
+      }
+      return null;
+    }
+
+    function startInlineEdit(mx, my) {
+      const found = findTextElementAt(mx, my);
+      if (!found) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = rect.width / canvas.width;
+      const scaleY = rect.height / canvas.height;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = found.value || '';
+      input.className = 'inline-editor';
+      input.style.left = Math.max(10, rect.left + found.pos.x * scaleX) + 'px';
+      input.style.top = Math.max(10, rect.top + found.pos.y * scaleY) + 'px';
+      input.style.minWidth = '200px';
+      input.style.maxWidth = '400px';
+      document.body.appendChild(input);
+      input.focus();
+      input.select();
+
+      const finish = () => {
+        const newVal = input.value;
+        const s = getActiveSlide();
+        if (found.type === 'title') s.title = newVal;
+        else if (found.type === 'subtitle') s.subtitle = newVal;
+        else if (found.type === 'badge') s.badge = newVal;
+        else if (found.type === 'sticker') s.sticker = newVal;
+        else if (found.type === 'bullet') s.bullets[found.index].text = newVal;
+        syncUIFromCurrentSlide();
+        drawCard();
+        triggerAutoSave();
+        if (input.parentNode) input.remove();
+      };
+
+      input.addEventListener('blur', finish);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { if (input.parentNode) input.remove(); }
+      });
+    }
+
+    // ================== HANDLERS ==================
     function handleStart(e) {
       if (e.touches && e.touches.length === 2 && productImg && !isLayerLocked('product')) {
         if (e.cancelable) e.preventDefault();
@@ -2436,6 +2564,10 @@
     canvas.addEventListener('touchstart', handleStart, { passive: false });
     window.addEventListener('touchmove', handleMove, { passive: false });
     window.addEventListener('touchend', handleEnd);
+    canvas.addEventListener('dblclick', (e) => {
+      const pos = getPointerPos(e);
+      startInlineEdit(pos.x, pos.y);
+    });
 
     function drawBox(ctx, x, y, w, h, r) {
       ctx.beginPath();
@@ -2848,7 +2980,7 @@
       link.download = `kard-pro-slide-${currentSlideIndex + 1}.${ext}`;
       link.href = url;
       link.click();
-      showToast(`⬇ Слайд ${currentSlideIndex + 1} сохранен в Ultra HD!`, 'success');
+      showToast(`⬇ Слайд ${currentSlideIndex + 1} сохранен!`, 'success');
     }
 
     async function downloadAllSlides() {
@@ -2873,9 +3005,7 @@
         setTimeout(() => URL.revokeObjectURL(a.href), 5000);
         switchSlide(prevSlide);
         showToast('✅ Все 3 слайда в ZIP!', 'success');
-      } catch (e) {
-        showToast('Ошибка упаковки: ' + e.message, 'error');
-      }
+      } catch (e) { showToast('Ошибка упаковки: ' + e.message, 'error'); }
     }
 
     function saveProjectJSON() {
@@ -2925,6 +3055,7 @@
       syncUIFromCurrentSlide();
       drawCard();
     }
+    setTimeout(showOnboarding, 800);
   </script>
 </body>
 </html>
