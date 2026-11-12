@@ -834,8 +834,10 @@
       try {
         const savedUser = localStorage.getItem('kardpro_auth_user');
         if (savedUser) {
-          const parsed = JSON.parse(savedUser);
-          if (parsed && parsed.session_token) applyServerUserSession(parsed);
+          try {
+            const parsed = JSON.parse(savedUser);
+            if (parsed && parsed.session_token) applyServerUserSession(parsed);
+          } catch (e) {}
         }
         if (pendingYandexToken) await processYandexToken(pendingYandexToken);
         const res = await fetch('/api/payment-webhook?action=config');
@@ -862,10 +864,12 @@
             updateCreditsUI(data.credits);
             const saved = localStorage.getItem('kardpro_auth_user');
             if (saved) {
-              const parsed = JSON.parse(saved);
-              parsed.credits = data.credits;
-              if (data.session_token) { parsed.session_token = data.session_token; currentSessionToken = data.session_token; }
-              localStorage.setItem('kardpro_auth_user', JSON.stringify(parsed));
+              try {
+                const parsed = JSON.parse(saved);
+                parsed.credits = data.credits;
+                if (data.session_token) { parsed.session_token = data.session_token; currentSessionToken = data.session_token; }
+                localStorage.setItem('kardpro_auth_user', JSON.stringify(parsed));
+              } catch (e) {}
             }
           }
         }
@@ -929,11 +933,12 @@
 
     function closePayModal() {
       document.getElementById('payModal').classList.add('hidden');
-      // ВАЖНО: останавливаем polling, иначе он будет висеть вечно
+      // Останавливаем polling, чтобы не висел вечно
       if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
       document.getElementById('payWaitBox').classList.add('hidden');
     }
 
+    // 🔴 Оплата через ЮMoney + polling через Supabase check_payment
     function payWithYooMoney() {
       if (!currentUser || !currentSessionToken) { closePayModal(); openAuthModal(); return; }
       const { credits, price } = selectedPlan;
@@ -947,7 +952,8 @@
       payUrl.searchParams.append('sum', Number(price).toFixed(2));
       payUrl.searchParams.append('label', orderId);
       payUrl.searchParams.append('targets', `Пакет +${credits} ИИ-генераций на KARD-PRO.RU`);
-      payUrl.searchParams.append('successURL', `${window.location.origin}/?paid_order=${orderId}&add_credits=${credits}`);
+      // 🔴 Убрали add_credits — начисление только сервером через ЮMoney-вебхук
+      payUrl.searchParams.append('successURL', `${window.location.origin}/?paid_order=${orderId}`);
 
       const opened = window.open(payUrl.toString(), '_blank', 'noopener');
       if (!opened) {
@@ -957,47 +963,73 @@
       document.getElementById('payWaitBox').classList.remove('hidden');
 
       if (pollInterval) clearInterval(pollInterval);
+      let attempts = 0;
+      const maxAttempts = 40; // 2 минуты
       pollInterval = setInterval(async () => {
+        attempts++;
         try {
-          const res = await fetch(`/api/payment-webhook?label=${encodeURIComponent(orderId)}`);
-          const data = await res.json();
-          if (data.paid) {
-            clearInterval(pollInterval); pollInterval = null;
-            await fetchUserCreditsFromDB();
-            document.getElementById('payWaitBox').classList.add('hidden');
-            closePayModal();
-            showToast(`🎉 Оплата подтверждена! +${data.credits || credits} генераций`, 'success');
+          // 🔴 check_payment читает из Supabase — работает между инстансами Vercel
+          const res = await fetch(`/api/payment-webhook?action=check_payment&label=${encodeURIComponent(orderId)}`, {
+            headers: { 'Authorization': `Bearer ${currentSessionToken}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.paid) {
+              clearInterval(pollInterval); pollInterval = null;
+              await fetchUserCreditsFromDB();
+              document.getElementById('payWaitBox').classList.add('hidden');
+              closePayModal();
+              showToast(`🎉 Оплата подтверждена! Баланс: ${data.credits}`, 'success');
+              return;
+            }
           }
         } catch (e) {}
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval); pollInterval = null;
+          document.getElementById('payWaitBox').classList.add('hidden');
+          showToast('⏳ Оплата ещё не подтверждена. Проверьте баланс позже.', 'info');
+        }
       }, 3000);
     }
 
+    // 🔴 При возврате с оплаты — проверяем статус через Supabase, НЕ начисляем кредиты на клиенте
     async function checkReturnedPayment() {
       const params = new URLSearchParams(window.location.search);
       const paidOrder = params.get('paid_order');
-      const addCredits = parseInt(params.get('add_credits') || '0', 10);
-      if (paidOrder && addCredits >= 1 && addCredits <= 10000 && currentSessionToken) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+      // add_credits из URL ИГНОРИРУЕМ — начисление только через ЮMoney-вебхук на сервере
+      if (!paidOrder || !currentSessionToken) return;
+
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      const tryCheck = async () => {
         try {
-          const res = await fetch('/api/payment-webhook', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSessionToken}` },
-            body: JSON.stringify({ action: 'confirm_return', orderId: paidOrder, credits: addCredits, deviceFp: getHardwareFingerprint() })
+          const res = await fetch(`/api/payment-webhook?action=check_payment&label=${encodeURIComponent(paidOrder)}`, {
+            headers: { 'Authorization': `Bearer ${currentSessionToken}` }
           });
+          if (!res.ok) return false;
           const data = await res.json();
-          if (data.ok) {
-            if (typeof data.credits === 'number') updateCreditsUI(data.credits);
-            if (data.session_token) {
-              currentSessionToken = data.session_token;
-              const saved = JSON.parse(localStorage.getItem('kardpro_auth_user') || '{}');
-              saved.credits = data.credits;
-              saved.session_token = data.session_token;
-              localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
-            }
-            showToast(`🎉 Баланс пополнен на +${data.added || addCredits} генераций!`, 'success');
+          if (data.paid) {
+            await fetchUserCreditsFromDB();
+            showToast(`🎉 Оплата подтверждена! Баланс: ${data.credits}`, 'success');
+            return true;
           }
         } catch (e) {}
-      }
+        return false;
+      };
+
+      if (await tryCheck()) return;
+
+      showToast('⏳ Проверяем статус оплаты...', 'info');
+      let attempts = 0;
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(async () => {
+        attempts++;
+        const ok = await tryCheck();
+        if (ok || attempts >= 20) {
+          clearInterval(pollInterval); pollInterval = null;
+          if (!ok) showToast('⚠️ Оплата не подтверждена. Проверьте баланс позже.', 'error');
+        }
+      }, 3000);
     }
 
     async function activatePromoCode() {
@@ -1138,7 +1170,7 @@
     let historyStack = [];
     let redoStack = [];
 
-    // ================== АВТОСЕЙВ: ДЕБАУНС + ВСЕ НАСТРОЙКИ ==================
+    // ================== АВТОСЕЙВ ==================
     const AUTOSAVE_KEY = 'kardpro_autosave_v6';
     const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v5';
     let autosaveTimer = null;
@@ -1199,13 +1231,11 @@
           });
         }
 
-        // Сначала — формат холста (меняет размер canvas)
         if (parsed.globals && parsed.globals.canvasFormat) {
           document.getElementById('canvasFormat').value = parsed.globals.canvasFormat;
           changeCanvasFormat(false);
         }
 
-        // Затем — все остальные глобалы
         if (parsed.globals) {
           Object.keys(parsed.globals).forEach(id => {
             if (id === 'canvasFormat') return;
@@ -1520,7 +1550,6 @@
     }
 
     function applyMasterTemplate(tpl) {
-      // selectStudioScenePreset сам делает pushHistoryState
       if (tpl === 'cyber') {
         selectStudioScenePreset('cyber');
         document.getElementById('pillStyleSelect').value = 'neon';
@@ -1595,12 +1624,7 @@
 
     function setMarketplacePreset(mp) {
       pushHistoryState();
-      const map = {
-        ozon: { fmt: 'ozon', theme: 'ozon' },
-        wb: { fmt: 'ozon', theme: 'wb' },
-        ym: { fmt: 'square', theme: 'ym' },
-        avito: { fmt: 'avito_h', theme: 'avito' }
-      };
+      const map = { ozon: { fmt: 'ozon', theme: 'ozon' }, wb: { fmt: 'ozon', theme: 'wb' }, ym: { fmt: 'square', theme: 'ym' }, avito: { fmt: 'avito_h', theme: 'avito' } };
       const cfg = map[mp] || map.ozon;
       document.getElementById('canvasFormat').value = cfg.fmt;
       document.getElementById('themeSelect').value = cfg.theme;
@@ -1665,7 +1689,6 @@
           b.h = pH; b.x = cw - b.w - Math.round(cw * 0.05); b.y = startY + i * (pH + gap);
         });
       } else if (layoutType === 'grid') {
-        // ИСПРАВЛЕНО: динамический старт от количества рядов
         s.positions.product = { x: Math.round(cw * 0.5), y: Math.round(ch * 0.47) };
         s.positions.sticker = { x: Math.round(cw * 0.84), y: Math.round(ch * 0.46) };
         const colW = Math.round((cw - cw * 0.12 - 20) / 2);
@@ -1814,10 +1837,12 @@
         }
         if (typeof data.remaining_credits === 'number') {
           updateCreditsUI(data.remaining_credits);
-          const saved = JSON.parse(localStorage.getItem('kardpro_auth_user') || '{}');
-          saved.credits = data.remaining_credits;
-          if (data.session_token) { saved.session_token = data.session_token; currentSessionToken = data.session_token; }
-          localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
+          try {
+            const saved = JSON.parse(localStorage.getItem('kardpro_auth_user') || '{}');
+            saved.credits = data.remaining_credits;
+            if (data.session_token) { saved.session_token = data.session_token; currentSessionToken = data.session_token; }
+            localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
+          } catch (e) {}
         }
         if (data.slides && Array.isArray(data.slides)) {
           const icons = ['✓ ', '⚡ ', '💎 '];
@@ -1861,7 +1886,6 @@
     }
 
     // ================== ПРОЦЕДУРНЫЙ 3D-РЕНДЕР ==================
-    // ВАЖНО: явные размеры — чтобы при экспорте в 2x рендерить в правильном разрешении
     function generateProceduralStudioImage(variantSeed, w, h) {
       w = w || canvas.width;
       h = h || canvas.height;
@@ -1990,7 +2014,6 @@
       bgGenerationCounter += 1;
       const currentVariant = bgGenerationCounter;
 
-      // Мгновенный процедурный 3D-фон
       customBgImg = generateProceduralStudioImage(currentVariant);
       drawCard();
 
@@ -2050,7 +2073,6 @@
         return;
       }
 
-      // ComfyUI
       const comfyUrl = document.getElementById('comfyUrl').value.trim().replace(/\/$/, '');
       status.textContent = '🔌 Связь с ComfyUI...';
       try {
@@ -2098,7 +2120,6 @@
       }
     }
 
-    // renderBulletsInputs БЕЗ drawCard (убираем рекурсию)
     function renderBulletsInputs() {
       const container = document.getElementById('bulletsContainer');
       container.innerHTML = '';
@@ -2334,7 +2355,6 @@
         if (mouseX >= positions.badge.x && mouseX <= positions.badge.x + 260 && mouseY >= positions.badge.y && mouseY <= positions.badge.y + 54) {
           pushHistoryState(); draggingItem = 'badge'; dragOffsetX = mouseX - positions.badge.x; dragOffsetY = mouseY - positions.badge.y; return;
         }
-        // ИСПРАВЛЕНО: захват заголовка с учётом 2 строк и подзаголовка
         if (mouseX >= positions.title.x && mouseX <= positions.title.x + 760 && mouseY >= positions.title.y - 55 && mouseY <= positions.title.y + 135) {
           pushHistoryState(); draggingItem = 'title'; dragOffsetX = mouseX - positions.title.x; dragOffsetY = mouseY - positions.title.y; return;
         }
@@ -2447,7 +2467,6 @@
       ctx.restore();
     }
 
-    // ИСПРАВЛЕНО: усреднение по 4 углам + защита от битых изображений
     function removeWhiteBg(target) {
       const imgObj = target === 'logo' ? logoImg : productImg;
       if (!imgObj || !imgObj.width) return showToast('Сначала загрузите изображение!', 'error');
@@ -2458,12 +2477,10 @@
       const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
       const d = imgData.data;
       const w = tempCanvas.width, h = tempCanvas.height;
-      // Среднее по 4 углам — стабильнее чем 1 пиксель
       const corners = [0, w - 1, (h - 1) * w, h * w - 1];
       let bgR = 0, bgG = 0, bgB = 0;
       corners.forEach(idx => { const i = idx * 4; bgR += d[i]; bgG += d[i + 1]; bgB += d[i + 2]; });
       bgR = Math.round(bgR / 4); bgG = Math.round(bgG / 4); bgB = Math.round(bgB / 4);
-      // Если углы разнятся — фон неоднородный, снижаем порог
       const variance = corners.reduce((sum, idx) => {
         const i = idx * 4;
         return sum + Math.abs(d[i] - bgR) + Math.abs(d[i + 1] - bgG) + Math.abs(d[i + 2] - bgB);
@@ -2586,7 +2603,6 @@
       const podiumType = document.getElementById('podiumTypeSelect')?.value || 'neon_ring';
       const bgPattern = document.getElementById('bgPatternSelect')?.value || 'rays';
       const fontName = document.getElementById('fontFamilySelect').value || 'Montserrat';
-      // Per-slide значения
       const titleFontSize = s.titleSize || 44;
       const stickerColor = s.stickerColor || '#f59e0b';
       const ratingTextVal = s.ratingText || '★ 4.9 • Выбор покупателей';
@@ -2814,7 +2830,6 @@
         drawCard();
         return { url, ext };
       } catch (secErr) {
-        // CORS-fallback: используем процедурный 3D-фон в правильном разрешении
         canvas.width = baseW; canvas.height = baseH;
         customBgImg = generateProceduralStudioImage(bgGenerationCounter || 1, baseW * 2, baseH * 2);
         canvas.width = baseW * 2; canvas.height = baseH * 2;
@@ -2836,7 +2851,6 @@
       showToast(`⬇ Слайд ${currentSlideIndex + 1} сохранен в Ultra HD!`, 'success');
     }
 
-    // ИСПРАВЛЕНО: ZIP вместо 3 отдельных файлов (браузер не блокирует)
     async function downloadAllSlides() {
       if (typeof JSZip === 'undefined') { showToast('⚠️ ZIP-библиотека не загружена', 'error'); return; }
       const prevSlide = currentSlideIndex;
