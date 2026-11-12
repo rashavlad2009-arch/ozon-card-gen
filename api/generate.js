@@ -1,8 +1,5 @@
 import crypto from 'crypto';
 
-// =========================================================================
-// КОНСТАНТЫ
-// =========================================================================
 const FALLBACK_SUPABASE_URL = 'https://irxszktfravyeqnueh.supabase.co';
 
 const LIMITS = {
@@ -22,9 +19,6 @@ const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 global.usersVault = global.usersVault || {};
 global.rateBuckets = global.rateBuckets || new Map();
 
-// =========================================================================
-// ENV
-// =========================================================================
 function findEnvVar(suffixes) {
   for (const s of suffixes) {
     if (process.env[s]) return process.env[s].trim();
@@ -41,15 +35,11 @@ function getEnvConfig() {
   const apiKey = findEnvVar(['GROQ_API_KEY']);
   const sbUrl = (findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
   const sbServiceKey = findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']);
-  // 🔴 Salt ТОЛЬКО из двух источников — тот же, что в payment-webhook.js
   const secretSalt = findEnvVar(['KARDPRO_SESSION_SALT', 'SESSION_SECRET']) || sbServiceKey;
   const allowedOrigins = (findEnvVar(['ALLOWED_ORIGINS']) || '').split(',').map(s => s.trim()).filter(Boolean);
   return { apiKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins };
 }
 
-// =========================================================================
-// КРИПТО
-// =========================================================================
 function safeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   const bufA = Buffer.from(a, 'utf8');
@@ -78,9 +68,7 @@ function verifySessionToken(token, salt) {
 function createSessionToken(userObj, salt) {
   if (!salt) throw new Error('secretSalt не задан');
   const payload = Buffer.from(JSON.stringify({
-    id: userObj.id,
-    email: userObj.email,
-    name: userObj.name,
+    id: userObj.id, email: userObj.email, name: userObj.name,
     provider: userObj.provider || 'yandex',
     credits: typeof userObj.credits === 'number' ? userObj.credits : 0,
     ts: Date.now()
@@ -103,9 +91,6 @@ function readCookieVault(req, salt) {
   } catch { return {}; }
 }
 
-// =========================================================================
-// FETCH
-// =========================================================================
 async function fetchWithTimeout(url, opts = {}, timeoutMs = LIMITS.FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -113,9 +98,6 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = LIMITS.FETCH_TIMEOUT
   finally { clearTimeout(timer); }
 }
 
-// =========================================================================
-// RATE LIMIT
-// =========================================================================
 function checkRateLimit(key) {
   const now = Date.now();
   const bucket = global.rateBuckets.get(key);
@@ -135,23 +117,17 @@ function checkRateLimit(key) {
   return { allowed: true };
 }
 
-// =========================================================================
-// SUPABASE READ-ONLY
-// =========================================================================
 async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   if (!sbUrl || !sbServiceKey || !email) return null;
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } },
-      8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (!res.ok) return null;
     const data = await res.json();
     const users = data.users || data || [];
-    return Array.isArray(users)
-      ? users.find(u => (u.email || '').toLowerCase() === email.toLowerCase()) || null
-      : null;
+    return Array.isArray(users) ? users.find(u => (u.email || '').toLowerCase() === email.toLowerCase()) || null : null;
   } catch { return null; }
 }
 
@@ -160,60 +136,39 @@ async function getProfileCredits(sbUrl, sbServiceKey, userId) {
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } },
-      8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (!res.ok) return null;
     const list = await res.json();
-    return (Array.isArray(list) && list.length > 0 && typeof list[0].credits === 'number')
-      ? list[0].credits : null;
+    return (Array.isArray(list) && list.length > 0 && typeof list[0].credits === 'number') ? list[0].credits : null;
   } catch { return null; }
 }
 
-// 🔴 Пишем ТОЛЬКО в app_metadata (безопасно) + profiles (зеркало). user_metadata не трогаем.
 async function saveSupabaseCredits(sbUrl, sbServiceKey, sbUserId, nextCredits, patch) {
   if (!sbUrl || !sbServiceKey || !sbUserId) return;
   try {
     await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
       method: 'PUT',
-      headers: {
-        apikey: sbServiceKey,
-        Authorization: `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         app_metadata: {
-          kp_initialized: true,
-          kp_credits: nextCredits,
-          kp_has_spent: true,
+          kp_initialized: true, kp_credits: nextCredits, kp_has_spent: true,
           kp_bonus_blocked: !!patch.bonusBlocked,
           kp_pass_hash: patch.passHash || null,
           kp_used_labels: Array.isArray(patch.usedLabels) ? patch.usedLabels.slice(-100) : []
         }
       })
     }, 8000);
-  } catch (e) {
-    console.error('[generate] saveSupabaseCredits auth failed:', e.message);
-  }
+  } catch (e) { console.error('[generate] saveSupabaseCredits auth:', e.message); }
   try {
     await fetchWithTimeout(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(sbUserId)}`, {
       method: 'PATCH',
-      headers: {
-        apikey: sbServiceKey,
-        Authorization: `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
-      },
+      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ credits: nextCredits })
     }, 8000);
-  } catch (e) {
-    console.error('[generate] saveSupabaseCredits profiles failed:', e.message);
-  }
+  } catch (e) { console.error('[generate] saveSupabaseCredits profiles:', e.message); }
 }
 
-// =========================================================================
-// ВАЛИДАЦИЯ
-// =========================================================================
 function validateImageDataUrl(imageBase64) {
   if (!imageBase64 || typeof imageBase64 !== 'string') return { ok: false, reason: 'not_a_string' };
   if (imageBase64.length > LIMITS.MAX_IMAGE_B64_LEN) return { ok: false, reason: 'too_large' };
@@ -233,9 +188,59 @@ function clampString(s, max) {
   return t.length > max ? t.slice(0, max) : t;
 }
 
-// =========================================================================
-// VISION
-// =========================================================================
+// ================== ВАЛИДАТОР КАРТОЧКИ (МП) ==================
+function validateCardContent(content) {
+  const issues = [];
+  const warnings = [];
+
+  if (!content || !Array.isArray(content.slides)) {
+    return { ok: false, issues: [{ field: 'структура', label: 'Отсутствует массив slides', snippet: '' }], warnings: [], checkedCount: 0 };
+  }
+
+  const FORBIDDEN_PATTERNS = [
+    { re: /\b(?:8[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2})\b/i, label: 'номер телефона', severity: 'error' },
+    { re: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i, label: 'email', severity: 'error' },
+    { re: /\b(?:vk\.com|instagram|t\.me|wa\.me|whatsapp|telegram)\b/i, label: 'ссылка на соцсеть', severity: 'error' },
+    { re: /\b(?:qr[\s\-]?код|qr[\s\-]?code)\b/i, label: 'упоминание QR-кода', severity: 'warning' },
+    { re: /(?:скидк[аи]|акция|распродажа|только сегодня|черная пятница|black friday)/i, label: 'акция/скидка (запрещена на инфографике)', severity: 'warning' },
+    { re: /\b(?:самый лучший|лучший в мире|№\s*1|номер\s*1|лидер рынка|100%\s*качество)\b/i, label: 'недоказуемое превосходство', severity: 'warning' },
+    { re: /\b(?:гарантия\s+пожизненн|пожизненная гарантия)\b/i, label: 'пожизненная гарантия (недоказуемо)', severity: 'warning' },
+    { re: /(?:лечит|исцеляет|избавляет от болезней|медицинск)/i, label: 'медицинские утверждения', severity: 'error' }
+  ];
+
+  const textToCheck = [];
+  content.slides.forEach((slide, idx) => {
+    if (slide.title) textToCheck.push({ text: String(slide.title), slide: idx + 1, field: `Слайд ${idx + 1}: Заголовок` });
+    if (slide.subtitle) textToCheck.push({ text: String(slide.subtitle), slide: idx + 1, field: `Слайд ${idx + 1}: Подзаголовок` });
+    if (slide.badge) textToCheck.push({ text: String(slide.badge), slide: idx + 1, field: `Слайд ${idx + 1}: Бейдж` });
+    if (slide.sticker) textToCheck.push({ text: String(slide.sticker), slide: idx + 1, field: `Слайд ${idx + 1}: Стикер` });
+    if (Array.isArray(slide.bullets)) {
+      slide.bullets.forEach((b, bIdx) => textToCheck.push({ text: String(b), slide: idx + 1, field: `Слайд ${idx + 1}: Пункт ${bIdx + 1}` }));
+    }
+  });
+  if (content.seo) textToCheck.push({ text: String(content.seo), slide: 0, field: 'SEO' });
+
+  textToCheck.forEach(({ text, field }) => {
+    FORBIDDEN_PATTERNS.forEach(({ re, label, severity }) => {
+      if (re.test(text)) {
+        const entry = { field, label, snippet: text.substring(0, 60) + (text.length > 60 ? '...' : '') };
+        if (severity === 'error') issues.push(entry);
+        else warnings.push(entry);
+      }
+    });
+  });
+
+  // Проверки длины
+  content.slides.forEach((slide, idx) => {
+    if (slide.title && String(slide.title).length > 55) {
+      warnings.push({ field: `Слайд ${idx + 1}: Заголовок`, label: 'Длинный заголовок (>55 символов) — может не влезть', snippet: String(slide.title).substring(0, 50) + '...' });
+    }
+  });
+
+  return { ok: issues.length === 0, issues, warnings, checkedCount: textToCheck.length };
+}
+
+// ================== VISION ==================
 async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
   const visionPrompt = userHint
     ? `Посмотри на фото товара (подсказка: "${userHint.slice(0, 200)}"). Напиши на русском в 1-2 предложениях точное название товара, тип, цвет, материал, видимые детали и назначение для маркетплейса.`
@@ -250,9 +255,7 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
 
   let visionModels = [...baseVisionModels];
   try {
-    const mRes = await fetchWithTimeout('https://api.groq.com/openai/v1/models', {
-      headers: { Authorization: `Bearer ${apiKey}` }
-    }, 8000);
+    const mRes = await fetchWithTimeout('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } }, 8000);
     if (mRes.ok) {
       const mData = await mRes.json();
       const dyn = (mData.data || []).map(m => m.id).filter(id => {
@@ -270,18 +273,11 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: vModel,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: visionPrompt },
-              { type: 'image_url', image_url: { url: imageBase64 } }
-            ]
-          }],
+          messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }],
           temperature: 0.3,
           max_tokens: 300
         })
       }, 25000);
-
       if (vRes.ok) {
         const vData = await vRes.json();
         const text = vData.choices?.[0]?.message?.content?.trim();
@@ -296,13 +292,7 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'openai',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: visionPrompt },
-            { type: 'image_url', image_url: { url: imageBase64 } }
-          ]
-        }]
+        messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }]
       })
     }, 20000);
     if (backupRes.ok) {
@@ -315,16 +305,11 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
   return null;
 }
 
-// =========================================================================
-// JSON-ГЕНЕРАЦИЯ
-// =========================================================================
 async function generateFunnelJSON(apiKey, systemPrompt, product) {
   const priorityModels = ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
   let candidateModels = [...priorityModels];
   try {
-    const mRes = await fetchWithTimeout('https://api.groq.com/openai/v1/models', {
-      headers: { Authorization: `Bearer ${apiKey}` }
-    }, 8000);
+    const mRes = await fetchWithTimeout('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } }, 8000);
     if (mRes.ok) {
       const mData = await mRes.json();
       const dyn = (mData.data || []).map(m => m.id).filter(id =>
@@ -354,7 +339,6 @@ async function generateFunnelJSON(apiKey, systemPrompt, product) {
           max_tokens: 2000
         })
       }, 40000);
-
       if (!response.ok) {
         const errBody = await response.text().catch(() => '');
         lastError = `Модель ${modelId}: ${response.status} ${errBody.slice(0, 200)}`;
@@ -363,10 +347,7 @@ async function generateFunnelJSON(apiKey, systemPrompt, product) {
       const result = await response.json();
       const content = result.choices?.[0]?.message?.content;
       if (content) { rawContent = content; break; }
-      lastError = `Модель ${modelId}: пустой ответ`;
-    } catch (e) {
-      lastError = `Модель ${modelId}: ${e.message}`;
-    }
+    } catch (e) { lastError = `Модель ${modelId}: ${e.message}`; }
   }
 
   if (!rawContent) throw new Error(lastError);
@@ -376,9 +357,6 @@ async function generateFunnelJSON(apiKey, systemPrompt, product) {
   catch (e) { throw new Error(`Невалидный JSON от модели: ${e.message}`); }
 }
 
-// =========================================================================
-// HANDLER
-// =========================================================================
 export default async function handler(req, res) {
   const { apiKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins } = getEnvConfig();
   const origin = req.headers.origin || '';
@@ -390,9 +368,7 @@ export default async function handler(req, res) {
     }
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('[generate] ALLOWED_ORIGINS не задан!');
-    }
+    if (process.env.NODE_ENV === 'production') console.warn('[generate] ALLOWED_ORIGINS не задан!');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -420,25 +396,14 @@ export default async function handler(req, res) {
       imageBase64 = rawImageBase64;
     }
 
-    if (!secretSalt) {
-      console.error('[generate] secretSalt не задан!');
-      return res.status(500).json({ error: 'Server misconfiguration' });
-    }
-    if (!apiKey) {
-      return res.status(500).json({ error: 'GROQ_API_KEY не задан' });
-    }
+    if (!secretSalt) { console.error('[generate] secretSalt не задан!'); return res.status(500).json({ error: 'Server misconfiguration' }); }
+    if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY не задан' });
 
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '').trim();
-
-    if (!token) {
-      return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите через Яндекс ID!' });
-    }
+    const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+    if (!token) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите через Яндекс ID!' });
 
     const userObj = verifySessionToken(token, secretSalt);
-    if (!userObj || !userObj.email) {
-      return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Сессия устарела, войдите снова' });
-    }
+    if (!userObj || !userObj.email) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Сессия устарела' });
 
     const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     const rate = checkRateLimit(`${clientIp}:${userObj.id}`);
@@ -447,47 +412,26 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'RATE_LIMIT', message: `Подождите ${rate.retryAfter}с.` });
     }
 
-    // 🔴 Источник истины: ТОЛЬКО app_metadata.kp_credits или profiles.credits
-    //    user_metadata.credits и userObj.credits ИГНОРИРУЕМ (могут быть подделаны)
     const cookieVault = readCookieVault(req, secretSalt);
     const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
     const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
     const appMeta = sbUser?.app_metadata || {};
 
-    let currentCredits = 0;
-    let initialized = false;
-    let bonusBlocked = false;
-
-    if (typeof appMeta.kp_credits === 'number') {
-      currentCredits = appMeta.kp_credits;
-      initialized = true;
-    } else if (sbUser?.id) {
-      const profileCredits = await getProfileCredits(sbUrl, sbServiceKey, sbUser.id);
-      if (profileCredits !== null) {
-        currentCredits = profileCredits;
-        initialized = true;
-      }
+    let currentCredits = 0, initialized = false;
+    if (typeof appMeta.kp_credits === 'number') { currentCredits = appMeta.kp_credits; initialized = true; }
+    else if (sbUser?.id) {
+      const pc = await getProfileCredits(sbUrl, sbServiceKey, sbUser.id);
+      if (pc !== null) { currentCredits = pc; initialized = true; }
     }
+    if (!initialized && memRecord && typeof memRecord.credits === 'number') currentCredits = memRecord.credits;
 
-    if (!initialized && memRecord && typeof memRecord.credits === 'number') {
-      currentCredits = memRecord.credits;
-    }
-
-    bonusBlocked = !!(appMeta.kp_bonus_blocked || memRecord?.bonusBlocked);
-
-    // Бонус 5 кредитов: только для Yandex, не инициализированных, не заблокированных
-    if (!initialized && !bonusBlocked && currentCredits === 0 && userObj.provider !== 'email') {
-      currentCredits = 5;
-    }
+    const bonusBlocked = !!(appMeta.kp_bonus_blocked || memRecord?.bonusBlocked);
+    if (!initialized && !bonusBlocked && currentCredits === 0 && userObj.provider !== 'email') currentCredits = 5;
 
     if (currentCredits <= 0) {
-      return res.status(402).json({
-        error: 'NO_CREDITS',
-        message: 'Генерации закончились. Пополните баланс от 50 ₽!'
-      });
+      return res.status(402).json({ error: 'NO_CREDITS', message: 'Генерации закончились. Пополните баланс от 50 ₽!', creditsNotCharged: true });
     }
 
-    // Vision
     let recognizedProduct = null;
     if (imageBase64) {
       recognizedProduct = await recognizeProductFromImage(apiKey, imageBase64, product);
@@ -495,13 +439,11 @@ export default async function handler(req, res) {
         recognizedProduct = clampString(recognizedProduct, LIMITS.MAX_RECOGNIZED_LEN);
         product = clampString(product ? `${product} (${recognizedProduct})` : recognizedProduct, LIMITS.MAX_PRODUCT_LEN);
       } else if (!product) {
-        return res.status(422).json({ error: 'Не удалось разглядеть товар. Загрузите более чёткое фото.' });
+        return res.status(422).json({ error: 'Не удалось разглядеть товар. Загрузите более чёткое фото.', creditsNotCharged: true });
       }
     }
 
-    if (!product) {
-      return res.status(400).json({ error: 'Опишите товар или загрузите фото!' });
-    }
+    if (!product) return res.status(400).json({ error: 'Опишите товар или загрузите фото!', creditsNotCharged: true });
 
     const toneInstructions = {
       hit: 'Упор на максимальный CTR, яркую выгоду и бестселлер.',
@@ -512,7 +454,8 @@ export default async function handler(req, res) {
 
     const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
 Задача: ${toneInstructions[tone] || toneInstructions.hit}
-Создай продающую воронку из 3 слайдов карточки товара и верни строго валидный JSON без markdown-обертки:
+КРИТИЧНО: не используй в текстах номера телефонов, email, ссылки на соцсети, слова "скидка/акция/распродажа", "лучший/№1/лидер", медицинские утверждения. Ozon/WB блокируют такие карточки.
+Создай продающую воронку из 3 слайдов и верни строго валидный JSON без markdown-обертки:
 {
   "title_variants": ["Заголовок 1 (2-3 слова КАПСОМ)", "Заголовок 2", "Заголовок 3"],
   "ai_colors": { "bg1": "#HEX", "bg2": "#HEX", "accent": "#HEX", "badge": "#HEX" },
@@ -528,27 +471,24 @@ export default async function handler(req, res) {
 
     let content;
     try { content = await generateFunnelJSON(apiKey, systemPrompt, product); }
-    catch (e) { return res.status(500).json({ error: e.message }); }
+    catch (e) { return res.status(500).json({ error: e.message, creditsNotCharged: true }); }
 
+    // 🔴 ВАЛИДАЦИЯ — до списания кредита
+    const validation = validateCardContent(content);
+
+    // Кредит списывается ТОЛЬКО после успешной валидации структуры
     const nextCredits = Math.max(0, currentCredits - 1);
     const updatedRecord = {
       ...(memRecord || {}),
-      id: sbUser?.id || userObj.id,
-      email: userObj.email,
-      name: userObj.name,
-      provider: userObj.provider || 'yandex',
-      credits: nextCredits,
-      hasSpent: true,
-      bonusBlocked,
+      id: sbUser?.id || userObj.id, email: userObj.email, name: userObj.name,
+      provider: userObj.provider || 'yandex', credits: nextCredits, hasSpent: true, bonusBlocked,
       usedLabels: Array.isArray(memRecord?.usedLabels) ? memRecord.usedLabels : []
     };
-
     global.usersVault[updatedRecord.id] = updatedRecord;
 
     if (sbUser?.id) {
       await saveSupabaseCredits(sbUrl, sbServiceKey, sbUser.id, nextCredits, {
-        bonusBlocked,
-        passHash: appMeta.kp_pass_hash || null,
+        bonusBlocked, passHash: appMeta.kp_pass_hash || null,
         usedLabels: Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : []
       });
     }
@@ -556,11 +496,12 @@ export default async function handler(req, res) {
     if (recognizedProduct) content.recognized_product = recognizedProduct;
     content.remaining_credits = nextCredits;
     content.session_token = createSessionToken(updatedRecord, secretSalt);
+    content.validation = validation;
 
-    console.log(`[generate] OK user=${userObj.email} ${currentCredits}->${nextCredits}`);
+    console.log(`[generate] OK ${userObj.email} ${currentCredits}->${nextCredits} issues=${validation.issues.length} warnings=${validation.warnings.length}`);
     return res.status(200).json(content);
   } catch (err) {
     console.error('[generate] error:', err.message);
-    return res.status(500).json({ error: err.message || 'Внутренняя ошибка' });
+    return res.status(500).json({ error: err.message || 'Внутренняя ошибка', creditsNotCharged: true });
   }
 }
