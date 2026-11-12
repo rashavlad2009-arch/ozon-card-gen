@@ -7,12 +7,6 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236366f1'/%3E%3Cstop offset='50%25' stop-color='%23a855f7'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M32 25h12v22l20-22h15L55 50l25 25H65L44 53v22H32V25z' fill='%23fff'/%3E%3C/svg%3E">
   <meta name="theme-color" content="#06080f">
   <meta name="description" content="ИИ-генератор продающих карточек и инфографики для Ozon, Wildberries, Яндекс Маркета и Авито.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kard-pro.ru/">
-  <meta property="og:title" content="KARD-PRO — ИИ-студия карточек для маркетплейсов">
-  <meta property="og:description" content="3 слайда за 1 клик + встроенный валидатор требований МП.">
-  <meta property="og:image" content="https://kard-pro.ru/api/og">
-  <meta name="twitter:card" content="summary_large_image">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -47,6 +41,51 @@
       <div id="onboardingStep"></div>
       <button onclick="nextOnboardingStep()" id="onboardingBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-sm cursor-pointer">Далее →</button>
       <button onclick="skipOnboarding()" class="text-xs text-slate-500 hover:text-white cursor-pointer">Пропустить</button>
+    </div>
+  </div>
+
+  <!-- CSV-МАССОВЫЙ ИМПОРТ -->
+  <div id="batchModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl relative max-h-[94vh] overflow-y-auto">
+      <button onclick="closeBatchModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+      <div class="text-center space-y-1">
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">📦 Массовый импорт</div>
+        <h2 class="text-2xl font-extrabold text-white">Генерация по CSV</h2>
+        <p class="text-xs text-slate-400">Колонки: <b>name, description, tone</b> (tone: hit/luxury/trust/gift)</p>
+      </div>
+      <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3 text-xs space-y-2">
+        <div class="text-indigo-300 font-bold">Пример CSV:</div>
+        <pre class="bg-black/40 rounded p-2 text-[10px] text-slate-300 overflow-x-auto">name,description,tone
+Наушники,"Беспроводные наушники ANC, 40 часов",hit
+Термокружка,"Термокружка 500 мл, нержавейка",luxury</pre>
+        <button onclick="downloadCsvTemplate()" class="bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer">⬇ Скачать шаблон</button>
+      </div>
+      <div class="space-y-2">
+        <label class="text-[11px] text-slate-400 font-semibold block">1. Загрузите CSV-файл:</label>
+        <input id="batchCsvFile" type="file" accept=".csv,text/csv" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
+        <div class="text-[11px] text-slate-500 text-center">— или —</div>
+        <label class="text-[11px] text-slate-400 font-semibold block">2. Вставьте CSV текстом:</label>
+        <textarea id="batchCsvText" rows="5" placeholder="name,description,tone&#10;Товар 1,Описание 1,hit" class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 font-mono"></textarea>
+      </div>
+      <div id="batchPreview" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-xs">
+        <div class="text-emerald-300 font-bold mb-1">📋 Найдено товаров: <span id="batchCount">0</span></div>
+        <div id="batchPreviewList" class="text-[11px] text-slate-300 max-h-32 overflow-y-auto space-y-0.5"></div>
+      </div>
+      <div id="batchProgress" class="hidden space-y-2">
+        <div class="flex justify-between text-[11px]">
+          <span class="text-indigo-300 font-bold">Прогресс:</span>
+          <span id="batchProgressText" class="text-white font-bold">0 / 0</span>
+        </div>
+        <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+          <div id="batchProgressBar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all" style="width: 0%"></div>
+        </div>
+        <div id="batchCurrent" class="text-[11px] text-slate-400 truncate">Ожидание...</div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="previewBatchCsv()" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs cursor-pointer">👁️ Предпросмотр</button>
+        <button id="batchStartBtn" onclick="runBatchImport()" disabled class="py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs cursor-pointer opacity-50">🚀 Запустить импорт</button>
+      </div>
+      <p class="text-[10px] text-slate-500 text-center">⚠️ Кредиты списываются по 1 за товар. Входной макет будет заменён последним товаром из CSV.</p>
     </div>
   </div>
 
@@ -170,6 +209,7 @@
     </div>
     <div class="flex items-center gap-1.5 sm:gap-2">
       <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">✉️ Связь</button>
+      <button onclick="openBatchModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 font-bold px-2.5 py-1.5 rounded-xl text-xs cursor-pointer">📦 CSV</button>
       <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"><span id="authNavText">👤 Войти</span></button>
       <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-xl text-xs font-bold">🚪</button>
       <button onclick="handleTopUpClick()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer">
@@ -209,7 +249,7 @@
                 <option value="gift">🎁 Подарок</option>
               </select>
             </div>
-            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар или загрузите фото и нажмите «Распознать»..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
+            <textarea id="aiPrompt" rows="3" placeholder="Опишите ваш товар..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
             <div class="flex flex-wrap gap-1.5">
               <span class="text-[10px] text-slate-500 self-center mr-1">Примеры:</span>
               <button onclick="fillSamplePrompt('Беспроводные наушники с ANC, 40 часов работы, чехол и кабель Type-C')" class="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-0.5 rounded-lg text-slate-300">🎧 Наушники</button>
@@ -230,7 +270,7 @@
             </div>
           </div>
 
-          <!-- 🆕 ВАЛИДАТОР -->
+          <!-- ВАЛИДАТОР -->
           <div id="validationPanel" class="bg-[#0b0f19] border border-white/10 rounded-2xl p-4 space-y-2 hidden">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-white">🛡️ Готовность к публикации</span>
@@ -240,11 +280,11 @@
             <div id="validationList" class="space-y-1.5 text-[11px] max-h-48 overflow-y-auto"></div>
           </div>
 
-          <!-- 🆕 BRAND PROFILE -->
+          <!-- BRAND PROFILE -->
           <div class="bg-purple-500/10 p-4 rounded-2xl border border-purple-500/30 space-y-2 text-xs">
             <div class="flex items-center justify-between">
               <span class="font-bold text-purple-300">🎨 Бренд-профиль</span>
-              <span class="text-[10px] text-slate-400">Сохранить стиль для будущих товаров</span>
+              <span class="text-[10px] text-slate-400">Сохранить стиль</span>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <button onclick="saveBrandProfile()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-xl text-[11px] cursor-pointer">💾 Сохранить бренд</button>
@@ -618,6 +658,7 @@
   </div>
 
   <script>
+    // ================== ЯНДЕКС TOKEN ==================
     let pendingYandexToken = null;
     if (window.location.hash && window.location.hash.includes('access_token=')) {
       const hp = new URLSearchParams(window.location.hash.substring(1));
@@ -654,7 +695,6 @@
       { icon: '⬇️', title: 'Скачайте', text: 'Нажмите "Скачать 3" — получите ZIP с 3 слайдами' }
     ];
     let onboardingIdx = 0;
-
     function showOnboarding() {
       if (localStorage.getItem('kardpro_onboarding_done')) return;
       onboardingIdx = 0;
@@ -833,6 +873,7 @@
       const displayLabel = userObj.name || (userObj.email ? userObj.email.split('@')[0] : 'Профиль');
       document.getElementById('authNavText').textContent = `🟢 ${displayLabel}`;
       document.getElementById('logoutBtn').classList.remove('hidden');
+      // Обновляем кредиты только если сервер прислал число
       if (typeof userObj.credits === 'number') updateCreditsUI(userObj.credits);
       localStorage.setItem('kardpro_auth_user', JSON.stringify(userObj));
       closeAuthModal();
@@ -861,16 +902,33 @@
       } catch (e) { showToast('Ошибка Яндекс ID: ' + e.message, 'error'); }
     }
 
+    // 🔴 Не показываем кредиты из localStorage до ответа сервера
     async function initAuthSystem() {
       getHardwareFingerprint();
       try {
         const saved = localStorage.getItem('kardpro_auth_user');
-        if (saved) { try { const p = JSON.parse(saved); if (p && p.session_token) applyServerUserSession(p); } catch (e) {} }
+        if (saved) {
+          try {
+            const p = JSON.parse(saved);
+            if (p && p.session_token) {
+              currentUser = { id: p.id, email: p.email, name: p.name };
+              currentSessionToken = p.session_token;
+              const label = p.name || (p.email ? p.email.split('@')[0] : 'Профиль');
+              document.getElementById('authNavText').textContent = `🟢 ${label}`;
+              document.getElementById('logoutBtn').classList.remove('hidden');
+              // Плейсхолдер — реальный баланс придёт от ?action=profile
+              document.getElementById('creditsCount').textContent = '…';
+            }
+          } catch (e) {}
+        }
         if (pendingYandexToken) await processYandexToken(pendingYandexToken);
         const res = await fetch('/api/payment-webhook?action=config');
         const cfg = await res.json();
         if (cfg.yandexClientId) oauthConfig.yandexClientId = cfg.yandexClientId;
-        if (currentSessionToken) { await fetchUserCreditsFromDB(); await checkReturnedPayment(); }
+        if (currentSessionToken) {
+          await fetchUserCreditsFromDB();
+          await checkReturnedPayment();
+        }
       } catch (e) { console.warn('Автономный старт:', e); }
     }
 
@@ -880,11 +938,14 @@
       window.location.href = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
     }
 
+    // 🔴 Авторитетный источник — сервер (Supabase profiles)
     async function fetchUserCreditsFromDB() {
       if (!currentSessionToken) return;
       try {
         const fp = encodeURIComponent(getHardwareFingerprint());
-        const res = await fetch(`/api/payment-webhook?action=profile&fp=${fp}`, { headers: { 'Authorization': `Bearer ${currentSessionToken}` } });
+        const res = await fetch(`/api/payment-webhook?action=profile&fp=${fp}`, {
+          headers: { 'Authorization': `Bearer ${currentSessionToken}` }
+        });
         if (res.ok) {
           const data = await res.json();
           if (typeof data.credits === 'number') {
@@ -895,9 +956,19 @@
               if (data.session_token) { saved.session_token = data.session_token; currentSessionToken = data.session_token; }
               localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
             } catch (e) {}
+          } else {
+            document.getElementById('creditsCount').textContent = '—';
+          }
+        } else {
+          document.getElementById('creditsCount').textContent = '—';
+          if (res.status === 401) {
+            // Сессия истекла — разлогиниваем
+            setTimeout(logoutUser, 1500);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        document.getElementById('creditsCount').textContent = '—';
+      }
     }
 
     window.addEventListener('focus', () => { if (currentSessionToken) fetchUserCreditsFromDB(); });
@@ -936,6 +1007,7 @@
       document.getElementById('authNavText').textContent = '👤 Войти';
       document.getElementById('logoutBtn').classList.add('hidden');
       if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+      batchCancelFlag = true;
       closePayModal();
       showToast('Вы вышли из аккаунта', 'info');
     }
@@ -1067,8 +1139,282 @@
       } catch (e) { showToast(e.message, 'error'); }
     }
 
-    initAuthSystem();
+    // ================== CSV-МАССОВЫЙ ИМПОРТ ==================
+    let batchItems = [];
+    let batchRunning = false;
+    let batchCancelFlag = false;
 
+    function openBatchModal() {
+      if (!currentUser || !currentSessionToken) {
+        showToast('🎁 Войдите в аккаунт для массового импорта', 'info');
+        openAuthModal();
+        return;
+      }
+      if (typeof JSZip === 'undefined') {
+        showToast('⚠️ ZIP-библиотека не загружена. Обновите страницу.', 'error');
+        return;
+      }
+      document.getElementById('batchModal').classList.remove('hidden');
+      document.getElementById('batchCsvFile').value = '';
+      document.getElementById('batchCsvText').value = '';
+      document.getElementById('batchPreview').classList.add('hidden');
+      document.getElementById('batchProgress').classList.add('hidden');
+      const btn = document.getElementById('batchStartBtn');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+      btn.textContent = '🚀 Запустить импорт';
+      batchItems = [];
+      batchRunning = false;
+      batchCancelFlag = false;
+    }
+
+    function closeBatchModal() {
+      if (batchRunning) {
+        showToast('⏳ Импорт выполняется. Дождитесь завершения.', 'info');
+        return;
+      }
+      document.getElementById('batchModal').classList.add('hidden');
+    }
+
+    function splitCSVLine(line) {
+      const result = [];
+      let cur = '', inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if ((c === ',' || c === ';') && !inQuotes) { result.push(cur); cur = ''; }
+        else cur += c;
+      }
+      result.push(cur);
+      return result.map(s => s.trim());
+    }
+
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return [];
+      const headers = splitCSVLine(lines[0]).map(h => h.toLowerCase());
+      const items = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = splitCSVLine(lines[i]);
+        const row = {};
+        headers.forEach((h, idx) => row[h] = vals[idx] || '');
+        const name = row.name || row.title || '';
+        const description = row.description || row.desc || name;
+        const tone = (row.tone || 'hit').toLowerCase();
+        if (!name && !description) continue;
+        items.push({ name, description, tone: ['hit', 'luxury', 'trust', 'gift'].includes(tone) ? tone : 'hit' });
+      }
+      return items;
+    }
+
+    function downloadCsvTemplate() {
+      const csv = 'name,description,tone\nНаушники,"Беспроводные наушники ANC, 40 часов",hit\nТермокружка,"Термокружка 500 мл, нержавейка",luxury\nКашпо,"Кашпо с автополивом, геометрический дизайн",trust';
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'kard-pro-batch-template.csv';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      showToast('⬇ Шаблон CSV скачан!', 'success');
+    }
+
+    function loadCsvFromFile() {
+      const file = document.getElementById('batchCsvFile').files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('batchCsvText').value = e.target.result;
+        previewBatchCsv();
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+    document.getElementById('batchCsvFile').addEventListener('change', loadCsvFromFile);
+
+    function previewBatchCsv() {
+      const text = document.getElementById('batchCsvText').value.trim();
+      const btn = document.getElementById('batchStartBtn');
+      if (!text) {
+        batchItems = [];
+        document.getElementById('batchPreview').classList.add('hidden');
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+        btn.textContent = '🚀 Запустить импорт';
+        return;
+      }
+      batchItems = parseCSV(text);
+      const preview = document.getElementById('batchPreview');
+      const list = document.getElementById('batchPreviewList');
+      document.getElementById('batchCount').textContent = batchItems.length;
+      list.innerHTML = '';
+      batchItems.slice(0, 10).forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'truncate';
+        div.textContent = `${idx + 1}. ${item.name} — ${item.tone}`;
+        list.appendChild(div);
+      });
+      if (batchItems.length > 10) {
+        const more = document.createElement('div');
+        more.className = 'text-slate-500 italic';
+        more.textContent = `... и ещё ${batchItems.length - 10}`;
+        list.appendChild(more);
+      }
+      preview.classList.remove('hidden');
+      if (batchItems.length > 0) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+        btn.textContent = `🚀 Запустить импорт (${batchItems.length} товаров)`;
+      } else {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+        btn.textContent = '🚀 Запустить импорт';
+      }
+    }
+
+    async function runBatchImport() {
+      if (batchRunning) return;
+      if (batchItems.length === 0) return;
+      if (!currentUser || !currentSessionToken) { openAuthModal(); return; }
+
+      if (userCredits < batchItems.length) {
+        const ok = confirm(`Кредитов ${userCredits}, товаров ${batchItems.length}. Генерация остановится при исчерпании. Продолжить?`);
+        if (!ok) return;
+      }
+
+      batchRunning = true;
+      batchCancelFlag = false;
+
+      const progress = document.getElementById('batchProgress');
+      const progressBar = document.getElementById('batchProgressBar');
+      const progressText = document.getElementById('batchProgressText');
+      const current = document.getElementById('batchCurrent');
+      const startBtn = document.getElementById('batchStartBtn');
+
+      progress.classList.remove('hidden');
+      startBtn.disabled = true;
+      startBtn.classList.add('opacity-50');
+
+      const zip = new JSZip();
+      const prevSlide = currentSlideIndex;
+      let success = 0, failed = 0, cancelled = false;
+
+      for (let i = 0; i < batchItems.length; i++) {
+        if (batchCancelFlag) { cancelled = true; break; }
+
+        const item = batchItems[i];
+        progressText.textContent = `${i + 1} / ${batchItems.length}`;
+        progressBar.style.width = `${(i / batchItems.length) * 100}%`;
+        current.textContent = `⏳ ${item.name}`;
+
+        try {
+          const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSessionToken}` },
+            body: JSON.stringify({ product: item.description || item.name, tone: item.tone })
+          });
+          const data = await res.json();
+
+          if (!res.ok || data.error) {
+            if (data.error === 'NO_CREDITS' || res.status === 402) {
+              showToast(`⚠️ Закончились кредиты на товаре ${i + 1}`, 'error');
+              break;
+            }
+            if (res.status === 401) {
+              showToast('⚠️ Сессия истекла. Войдите заново.', 'error');
+              break;
+            }
+            failed++;
+            current.textContent = `❌ ${item.name} (${data.error || 'ошибка'})`;
+            await new Promise(r => setTimeout(r, 800));
+            continue;
+          }
+
+          if (typeof data.remaining_credits === 'number') {
+            updateCreditsUI(data.remaining_credits);
+            try {
+              const saved = JSON.parse(localStorage.getItem('kardpro_auth_user') || '{}');
+              saved.credits = data.remaining_credits;
+              if (data.session_token) { saved.session_token = data.session_token; currentSessionToken = data.session_token; }
+              localStorage.setItem('kardpro_auth_user', JSON.stringify(saved));
+            } catch (e) {}
+          }
+
+          // Применяем слайды локально (для экспорта)
+          if (data.slides && Array.isArray(data.slides)) {
+            const icons = ['✓ ', '⚡ ', '💎 '];
+            data.slides.slice(0, 3).forEach((sl, idx) => {
+              if (!slidesState[idx]) return;
+              slidesState[idx].title = sl.title || slidesState[idx].title;
+              slidesState[idx].subtitle = sl.subtitle || slidesState[idx].subtitle;
+              slidesState[idx].badge = sl.badge || slidesState[idx].badge;
+              slidesState[idx].sticker = sl.sticker || slidesState[idx].sticker;
+              if (Array.isArray(sl.bullets) && sl.bullets.length > 0) {
+                slidesState[idx].bullets = sl.bullets.map(b => ({ text: icons[idx] + String(b).replace(/^([✓🔥⚡💎★•]\s*)/, ''), x: 50, y: 950, w: 560, h: 62 }));
+              }
+            });
+          }
+          if (data.ai_colors) {
+            customBgImg = null;
+            if (data.ai_colors.bg1 && /^#[0-9a-f]{6}$/i.test(data.ai_colors.bg1)) document.getElementById('customBg1').value = data.ai_colors.bg1;
+            if (data.ai_colors.bg2 && /^#[0-9a-f]{6}$/i.test(data.ai_colors.bg2)) document.getElementById('customBg2').value = data.ai_colors.bg2;
+            if (data.ai_colors.accent && /^#[0-9a-f]{6}$/i.test(data.ai_colors.accent)) document.getElementById('customAccent').value = data.ai_colors.accent;
+            if (data.ai_colors.badge && /^#[0-9a-f]{6}$/i.test(data.ai_colors.badge)) document.getElementById('customBadge').value = data.ai_colors.badge;
+          }
+          if (data.dimensions) {
+            slidesState[1].dimWidth = data.dimensions.width || '18 см';
+            slidesState[1].dimHeight = data.dimensions.height || '24 см';
+            slidesState[1].showDimensions = true;
+          }
+          autoArrangeAllSlides();
+
+          // Экспорт 3 слайдов в ZIP
+          const safeName = (item.name || `product_${i + 1}`).replace(/[^a-zа-я0-9_-]/gi, '_').substring(0, 30);
+          for (let s = 0; s < 3; s++) {
+            switchSlide(s);
+            await new Promise(r => setTimeout(r, 100));
+            const exp = exportCanvasDataURL();
+            const b64 = exp.url.split(',')[1];
+            zip.file(`product_${i + 1}_${safeName}/slide_${s + 1}.${exp.ext}`, b64, { base64: true });
+          }
+          success++;
+          current.textContent = `✅ ${item.name}`;
+        } catch (err) {
+          failed++;
+          current.textContent = `❌ ${item.name} (${err.message})`;
+        }
+
+        progressBar.style.width = `${((i + 1) / batchItems.length) * 100}%`;
+        // Пауза 800ms — защита от rate-limit
+        await new Promise(r => setTimeout(r, 800));
+      }
+
+      switchSlide(prevSlide);
+      progressBar.style.width = '100%';
+      if (cancelled) current.textContent = `⏹ Отменено пользователем. Успешно ${success}, ошибок ${failed}`;
+      else current.textContent = `✅ Готово: успешно ${success}, ошибок ${failed}`;
+      startBtn.disabled = false;
+      startBtn.classList.remove('opacity-50');
+      startBtn.textContent = '🚀 Запустить заново';
+
+      if (success > 0) {
+        try {
+          const blob = await zip.generateAsync({ type: 'blob' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `kard-pro-batch-${Date.now()}.zip`;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+          showToast(`✅ Готово: ${success} товаров в ZIP!`, 'success');
+        } catch (e) { showToast('Ошибка упаковки ZIP: ' + e.message, 'error'); }
+      }
+
+      await fetchUserCreditsFromDB();
+      runValidationNow();
+      batchRunning = false;
+    }
+
+    // ================== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==================
     function switchTab(tabId) {
       ['ai', 'media', 'style', 'text', 'layers'].forEach(id => {
         document.getElementById('tab_' + id).classList.toggle('hidden', id !== tabId);
@@ -1077,7 +1423,6 @@
         else btn.className = 'py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5';
       });
     }
-
     function fillSamplePrompt(txt) { document.getElementById('aiPrompt').value = txt; }
 
     // ================== СТУДИЙНЫЕ ПРЕСЕТЫ ==================
@@ -1175,8 +1520,8 @@
     let historyStack = [];
     let redoStack = [];
 
-    const AUTOSAVE_KEY = 'kardpro_autosave_v7';
-    const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v6';
+    const AUTOSAVE_KEY = 'kardpro_autosave_v8';
+    const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v7';
     let autosaveTimer = null;
 
     const GLOBAL_PERSIST_IDS = [
@@ -1202,7 +1547,7 @@
           if (!el) return;
           globals[id] = el.type === 'checkbox' ? el.checked : el.value;
         });
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ slidesState, globals, seo: document.getElementById('seoResult').value, version: 7 }));
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ slidesState, globals, seo: document.getElementById('seoResult').value, version: 8 }));
       } catch (e) {}
     }
     window.addEventListener('beforeunload', () => {
@@ -1787,34 +2132,37 @@
       });
     }
 
-    // ================== ВАЛИДАТОР (локальный) ==================
+    // ================== ВАЛИДАТОР (все слайды) ==================
     function runLocalValidation() {
-      const s = getActiveSlide();
-      const issues = [];
-      const warnings = [];
+      const issues = [], warnings = [];
       const patterns = [
         { re: /\b(?:8[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2})\b/i, label: 'номер телефона', severity: 'error' },
         { re: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i, label: 'email', severity: 'error' },
         { re: /\b(?:vk\.com|instagram|t\.me|wa\.me|whatsapp|telegram)\b/i, label: 'ссылка на соцсеть', severity: 'error' },
         { re: /(?:скидк[аи]|акция|распродажа|черная пятница|black friday)/i, label: 'акция/скидка', severity: 'warning' },
         { re: /\b(?:самый лучший|№\s*1|номер\s*1|лидер рынка)\b/i, label: 'недоказуемое превосходство', severity: 'warning' },
-        { re: /\b(?:qr[\s\-]?код)\b/i, label: 'QR-код', severity: 'warning' }
+        { re: /\b(?:qr[\s\-]?код)\b/i, label: 'QR-код', severity: 'warning' },
+        { re: /(?:лечит|исцеляет|медицинск)/i, label: 'медицинские утверждения', severity: 'error' }
       ];
-      const texts = [
-        { field: 'Заголовок', text: s.title || '' },
-        { field: 'Подзаголовок', text: s.subtitle || '' },
-        { field: 'Бейдж', text: s.badge || '' },
-        { field: 'Стикер', text: s.sticker || '' },
-        ...s.bullets.map((b, i) => ({ field: `Пункт ${i + 1}`, text: b.text || '' }))
-      ];
-      texts.forEach(({ field, text }) => {
-        patterns.forEach(({ re, label, severity }) => {
-          if (re.test(text)) {
-            (severity === 'error' ? issues : warnings).push({ field, label, snippet: text.substring(0, 50) });
-          }
+
+      slidesState.forEach((s, slideIdx) => {
+        const texts = [
+          { field: `Слайд ${slideIdx + 1}: Заголовок`, text: s.title || '' },
+          { field: `Слайд ${slideIdx + 1}: Подзаголовок`, text: s.subtitle || '' },
+          { field: `Слайд ${slideIdx + 1}: Бейдж`, text: s.badge || '' },
+          { field: `Слайд ${slideIdx + 1}: Стикер`, text: s.sticker || '' },
+          ...s.bullets.map((b, i) => ({ field: `Слайд ${slideIdx + 1}: Пункт ${i + 1}`, text: b.text || '' }))
+        ];
+        texts.forEach(({ field, text }) => {
+          patterns.forEach(({ re, label, severity }) => {
+            if (re.test(text)) {
+              (severity === 'error' ? issues : warnings).push({ field, label, snippet: text.substring(0, 50) });
+            }
+          });
         });
+        if (s.title && s.title.length > 55) warnings.push({ field: `Слайд ${slideIdx + 1}: Заголовок`, label: `длинный (${s.title.length} симв)`, snippet: s.title.substring(0, 50) });
       });
-      if (s.title && s.title.length > 55) warnings.push({ field: 'Заголовок', label: `длинный (${s.title.length} симв)`, snippet: s.title.substring(0, 50) });
+
       return { issues, warnings };
     }
 
@@ -1826,8 +2174,20 @@
       panel.classList.remove('hidden');
 
       const local = runLocalValidation();
-      const allIssues = [...(data?.issues || []), ...local.issues];
-      const allWarnings = [...(data?.warnings || []), ...local.warnings];
+      const seen = new Set();
+      const allIssues = [], allWarnings = [];
+
+      const addUnique = (list, item) => {
+        const key = `${item.field}|${item.label}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        list.push(item);
+      };
+
+      if (data?.issues) data.issues.forEach(i => addUnique(allIssues, i));
+      if (data?.warnings) data.warnings.forEach(w => addUnique(allWarnings, w));
+      local.issues.forEach(i => addUnique(allIssues, i));
+      local.warnings.forEach(w => addUnique(allWarnings, w));
 
       list.innerHTML = '';
       if (allIssues.length === 0 && allWarnings.length === 0) {
@@ -2185,6 +2545,7 @@
 
     function renderBulletsInputs() {
       const container = document.getElementById('bulletsContainer');
+      if (!container) return;
       container.innerHTML = '';
       const bulletsData = getActiveSlide().bullets;
       bulletsData.forEach((item, idx) => {
@@ -2368,15 +2729,16 @@
       return corners.some(c => Math.hypot(mouseX - c.x, mouseY - c.y) <= 28);
     }
 
-    // ================== INLINE-РЕДАКТОР (dblclick) ==================
+    // ================== INLINE-РЕДАКТОР ==================
     function findTextElementAt(mx, my) {
       const s = getActiveSlide();
       const p = s.positions;
-      if (mx >= p.title.x && mx <= p.title.x + 700 && my >= p.title.y - 40 && my <= p.title.y + 100) {
+      const titleFont = s.titleSize || 44;
+      if (mx >= p.title.x && mx <= p.title.x + 700 && my >= p.title.y - 40 && my <= p.title.y + titleFont * 2 + 40) {
         return { type: 'title', value: s.title, pos: { x: p.title.x, y: p.title.y - 20 } };
       }
-      const subY = p.title.y + (s.titleSize || 44) + 10;
-      if (mx >= p.title.x && mx <= p.title.x + 700 && my >= subY - 20 && my <= subY + 40) {
+      const subY = p.title.y + titleFont + 10;
+      if (mx >= p.title.x && mx <= p.title.x + 700 && my >= subY - 20 && my <= subY + 50) {
         return { type: 'subtitle', value: s.subtitle, pos: { x: p.title.x, y: subY - 10 } };
       }
       if (mx >= p.badge.x && mx <= p.badge.x + 260 && my >= p.badge.y && my <= p.badge.y + 54) {
@@ -2406,8 +2768,10 @@
       input.type = 'text';
       input.value = found.value || '';
       input.className = 'inline-editor';
-      input.style.left = Math.max(10, rect.left + found.pos.x * scaleX) + 'px';
-      input.style.top = Math.max(10, rect.top + found.pos.y * scaleY) + 'px';
+      const leftPos = Math.min(rect.left + found.pos.x * scaleX, window.innerWidth - 420);
+      const topPos = Math.min(rect.top + found.pos.y * scaleY, window.innerHeight - 50);
+      input.style.left = Math.max(10, leftPos) + 'px';
+      input.style.top = Math.max(10, topPos) + 'px';
       input.style.minWidth = '200px';
       input.style.maxWidth = '400px';
       document.body.appendChild(input);
@@ -3055,6 +3419,7 @@
       syncUIFromCurrentSlide();
       drawCard();
     }
+    initAuthSystem();
     setTimeout(showOnboarding, 800);
   </script>
 </body>
