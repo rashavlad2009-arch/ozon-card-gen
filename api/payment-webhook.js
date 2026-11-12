@@ -1,8 +1,5 @@
 import crypto from 'crypto';
 
-// =========================================================================
-// КОНСТАНТЫ
-// =========================================================================
 const FALLBACK_SUPABASE_URL = 'https://irxszktfravyeqnueh.supabase.co';
 const FALLBACK_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
 const YOOMONEY_WALLET = '4100119681467569';
@@ -10,23 +7,12 @@ const YOOMONEY_WALLET = '4100119681467569';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RATE_WINDOW_MS = 60 * 1000;
 
-// 🔴 Только публичные промокоды. Owner-коды (GEMBAR9000/VLAD9000) —
-//    ТОЛЬКО через ENV KARDPRO_OWNER_PROMOS, иначе они утекли из исходников.
-const BUILTIN_PROMOS = {
-  'START5': 5,
-  'PRO50': 5,
-  'SELLER10': 10,
-  'SHOP20': 20,
-  'VIP2026': 50
-};
+const BUILTIN_PROMOS = { 'START5': 5, 'PRO50': 5, 'SELLER10': 10, 'SHOP20': 20, 'VIP2026': 50 };
 
 global.usersVault = global.usersVault || {};
 global.claimedDevices = global.claimedDevices || {};
 global.rateBuckets = global.rateBuckets || new Map();
 
-// =========================================================================
-// ENV
-// =========================================================================
 function findEnvVar(suffixes) {
   for (const s of suffixes) {
     if (process.env[s]) return process.env[s].trim();
@@ -44,15 +30,11 @@ function getEnvConfig() {
   const sbAnonKey = findEnvVar(['SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY']);
   const sbServiceKey = findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']);
   const yandexClientId = findEnvVar(['YANDEX_CLIENT_ID']) || FALLBACK_YANDEX_CLIENT_ID;
-  // 🔴 Salt ТОЛЬКО из двух источников — тот же, что в generate.js
   const secretSalt = findEnvVar(['KARDPRO_SESSION_SALT', 'SESSION_SECRET']) || sbServiceKey;
   const allowedOrigins = (findEnvVar(['ALLOWED_ORIGINS']) || '').split(',').map(s => s.trim()).filter(Boolean);
   return { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt, allowedOrigins };
 }
 
-// =========================================================================
-// ПРОМОКОДЫ
-// =========================================================================
 function getPromoCodes() {
   const codes = { ...BUILTIN_PROMOS };
   const ownerRaw = findEnvVar(['KARDPRO_OWNER_PROMOS']) || '';
@@ -73,9 +55,6 @@ function getOwnerPromoWhitelist() {
   return new Set(raw.split(',').map(e => (e.split(':')[0] || '').trim().toUpperCase()).filter(Boolean));
 }
 
-// =========================================================================
-// КРИПТО
-// =========================================================================
 function safeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
   const bufA = Buffer.from(a, 'utf8');
@@ -87,12 +66,9 @@ function safeEqual(a, b) {
 function createSessionToken(userObj, salt) {
   if (!salt) throw new Error('secretSalt не задан');
   const payload = Buffer.from(JSON.stringify({
-    id: userObj.id,
-    email: userObj.email,
-    name: userObj.name,
+    id: userObj.id, email: userObj.email, name: userObj.name,
     provider: userObj.provider || 'yandex',
-    credits: typeof userObj.credits === 'number' ? userObj.credits : 0,
-    ts: Date.now()
+    credits: typeof userObj.credits === 'number' ? userObj.credits : 0, ts: Date.now()
   })).toString('base64url');
   const sig = crypto.createHmac('sha256', salt).update(payload).digest('base64url');
   return `kp.${payload}.${sig}`;
@@ -121,9 +97,6 @@ function resolveUserFromRequest(req, secretSalt) {
   return verifySessionToken(token, secretSalt);
 }
 
-// =========================================================================
-// COOKIE VAULT
-// =========================================================================
 function readCookieVault(req, salt) {
   try {
     const cookieHeader = req.headers.cookie || '';
@@ -150,7 +123,6 @@ function writeCookieVault(res, vaultObj, salt) {
       }
     }
     if (b64.length > 3500) return;
-
     const sig = crypto.createHmac('sha256', salt).update(b64).digest('base64url');
     const val = encodeURIComponent(`${b64}.${sig}`);
     const isProd = process.env.VERCEL || process.env.NODE_ENV === 'production';
@@ -159,9 +131,6 @@ function writeCookieVault(res, vaultObj, salt) {
   } catch {}
 }
 
-// =========================================================================
-// ТАРИФИКАЦИЯ (зеркало фронтенда)
-// =========================================================================
 function creditsForRub(rub) {
   const r = Math.max(0, Number(rub) || 0);
   if (r < 50) return 0;
@@ -180,9 +149,6 @@ function isValidAmountForCredits(amountRub, credits) {
   return cred <= creditsForRub(amt);
 }
 
-// =========================================================================
-// RATE LIMIT
-// =========================================================================
 function checkRate(key, maxHits, windowMs = RATE_WINDOW_MS) {
   const now = Date.now();
   const bucket = global.rateBuckets.get(key);
@@ -195,9 +161,7 @@ function checkRate(key, maxHits, windowMs = RATE_WINDOW_MS) {
     }
     return { ok: true };
   }
-  if (bucket.hits >= maxHits) {
-    return { ok: false, retryAfter: Math.ceil((bucket.start + windowMs - now) / 1000) };
-  }
+  if (bucket.hits >= maxHits) return { ok: false, retryAfter: Math.ceil((bucket.start + windowMs - now) / 1000) };
   bucket.hits++;
   return { ok: true };
 }
@@ -209,9 +173,6 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 12000) {
   finally { clearTimeout(timer); }
 }
 
-// =========================================================================
-// EMAIL / UUID
-// =========================================================================
 function emailToDeterministicUUID(email) {
   const hex = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
@@ -224,29 +185,21 @@ function normalizeEmail(rawEmail) {
   local = local.split('+')[0];
   const yandexDomains = ['ya.ru', 'yandex.com', 'yandex.by', 'yandex.kz', 'yandex.ua', 'narod.ru'];
   if (yandexDomains.includes(domain)) domain = 'yandex.ru';
-  if (domain === 'gmail.com' || domain === 'yandex.ru') {
-    local = local.replace(/\./g, '').replace(/-/g, '');
-  }
+  if (domain === 'gmail.com' || domain === 'yandex.ru') local = local.replace(/\./g, '').replace(/-/g, '');
   return `${local}@${domain}`;
 }
 
-// =========================================================================
-// SUPABASE
-// =========================================================================
 async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   if (!sbUrl || !sbServiceKey || !email) return null;
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } },
-      8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (!res.ok) return null;
     const data = await res.json();
     const users = data.users || data || [];
-    return Array.isArray(users)
-      ? users.find(u => (u.email || '').toLowerCase() === email.toLowerCase()) || null
-      : null;
+    return Array.isArray(users) ? users.find(u => (u.email || '').toLowerCase() === email.toLowerCase()) || null : null;
   } catch { return null; }
 }
 
@@ -258,11 +211,7 @@ async function getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate =
   try {
     const linkRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/generate_link`, {
       method: 'POST',
-      headers: {
-        apikey: sbServiceKey,
-        Authorization: `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'magiclink', email })
     }, 8000);
     if (!linkRes.ok) return null;
@@ -276,27 +225,20 @@ async function getProfileCredits(sbUrl, sbServiceKey, userId) {
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } },
-      8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (!res.ok) return null;
     const list = await res.json();
-    return (Array.isArray(list) && list.length > 0 && typeof list[0].credits === 'number')
-      ? list[0].credits : null;
+    return (Array.isArray(list) && list.length > 0 && typeof list[0].credits === 'number') ? list[0].credits : null;
   } catch { return null; }
 }
 
-// 🔴 Только app_metadata (безопасно) + profiles (зеркало для UI). user_metadata не трогаем.
 async function updateSupabaseCloudRecord(sbUrl, sbServiceKey, sbUserId, email, data) {
   if (!sbUrl || !sbServiceKey || !sbUserId) return;
   try {
     await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
       method: 'PUT',
-      headers: {
-        apikey: sbServiceKey,
-        Authorization: `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         app_metadata: {
           kp_initialized: true,
@@ -308,15 +250,12 @@ async function updateSupabaseCloudRecord(sbUrl, sbServiceKey, sbUserId, email, d
         }
       })
     }, 8000);
-  } catch (e) {
-    console.error('[payment-webhook] Supabase auth PUT failed:', e.message);
-  }
+  } catch (e) { console.error('[payment-webhook] auth PUT:', e.message); }
 
   try {
     const checkRes = await fetchWithTimeout(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(sbUserId)}&select=id`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } },
-      8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (checkRes.ok) {
       const list = await checkRes.json();
@@ -324,63 +263,37 @@ async function updateSupabaseCloudRecord(sbUrl, sbServiceKey, sbUserId, email, d
       if (Array.isArray(list) && list.length > 0) {
         await fetchWithTimeout(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(sbUserId)}`, {
           method: 'PATCH',
-          headers: {
-            apikey: sbServiceKey,
-            Authorization: `Bearer ${sbServiceKey}`,
-            'Content-Type': 'application/json',
-            Prefer: 'return=minimal'
-          },
+          headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
           body: JSON.stringify(payload)
         }, 8000);
       } else {
         await fetchWithTimeout(`${sbUrl}/rest/v1/profiles`, {
           method: 'POST',
-          headers: {
-            apikey: sbServiceKey,
-            Authorization: `Bearer ${sbServiceKey}`,
-            'Content-Type': 'application/json',
-            Prefer: 'return=minimal'
-          },
+          headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
           body: JSON.stringify({ id: sbUserId, email, ...payload })
         }, 8000);
       }
     }
-  } catch (e) {
-    console.error('[payment-webhook] Supabase profiles failed:', e.message);
-  }
+  } catch (e) { console.error('[payment-webhook] profiles:', e.message); }
 }
 
-// =========================================================================
-// SYNC USER ACCOUNT
-// =========================================================================
 async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, name, deviceFp, isVerifiedOAuth, allowCreate = true) {
   const cookieVault = readCookieVault(req, secretSalt);
-  const hwHash = deviceFp
-    ? crypto.createHmac('sha256', secretSalt).update(`hw_${deviceFp}`).digest('hex').substring(0, 24)
-    : null;
+  const hwHash = deviceFp ? crypto.createHmac('sha256', secretSalt).update(`hw_${deviceFp}`).digest('hex').substring(0, 24) : null;
 
   const sbUser = await getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate);
   const userId = sbUser?.id || emailToDeterministicUUID(email);
   const appMeta = sbUser?.app_metadata || {};
 
-  // 🔴 Кредиты ТОЛЬКО из app_metadata.kp_credits или profiles. user_metadata.credits ИГНОРИРУЕМ
-  let syncedCredits = 0;
-  let initialized = false;
-
-  if (typeof appMeta.kp_credits === 'number') {
-    syncedCredits = appMeta.kp_credits;
-    initialized = true;
-  } else if (sbUser?.id) {
-    const profileCredits = await getProfileCredits(sbUrl, sbServiceKey, sbUser.id);
-    if (profileCredits !== null) {
-      syncedCredits = profileCredits;
-      initialized = true;
-    }
+  let syncedCredits = 0, initialized = false;
+  if (typeof appMeta.kp_credits === 'number') { syncedCredits = appMeta.kp_credits; initialized = true; }
+  else if (sbUser?.id) {
+    const pc = await getProfileCredits(sbUrl, sbServiceKey, sbUser.id);
+    if (pc !== null) { syncedCredits = pc; initialized = true; }
   }
 
   const legacyId = emailToDeterministicUUID(email);
   const localRecord = cookieVault[userId] || cookieVault[legacyId] || global.usersVault[userId] || global.usersVault[legacyId] || null;
-
   if (!initialized && localRecord && typeof localRecord.credits === 'number' && !localRecord.bonusBlocked) {
     syncedCredits = localRecord.credits;
   }
@@ -388,15 +301,12 @@ async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email,
   let bonusBlocked = !!appMeta.kp_bonus_blocked || !!localRecord?.bonusBlocked;
   let hasSpent = !!appMeta.kp_has_spent || !!localRecord?.hasSpent;
   let usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels
-    : Array.isArray(localRecord?.usedLabels) ? localRecord.usedLabels
-    : [];
+    : Array.isArray(localRecord?.usedLabels) ? localRecord.usedLabels : [];
   let passHash = appMeta.kp_pass_hash || localRecord?.passHash || null;
 
-  // Бонус 5 для новых Yandex (если устройство не «засвечено»)
   if (!initialized && isVerifiedOAuth) {
     if (hwHash && global.claimedDevices[hwHash] && global.claimedDevices[hwHash] !== email) {
-      syncedCredits = 0;
-      bonusBlocked = true;
+      syncedCredits = 0; bonusBlocked = true;
     } else {
       syncedCredits = 5;
       if (hwHash) global.claimedDevices[hwHash] = email;
@@ -406,25 +316,15 @@ async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email,
   }
 
   const displayName = name || (email ? email.split('@')[0] : 'Селлер');
-
   const record = {
-    id: userId,
-    email,
-    name: displayName,
-    credits: syncedCredits,
-    usedLabels,
-    passHash,
-    bonusBlocked,
-    hasSpent,
+    id: userId, email, name: displayName, credits: syncedCredits,
+    usedLabels, passHash, bonusBlocked, hasSpent,
     provider: isVerifiedOAuth ? 'yandex' : 'email'
   };
 
   await updateSupabaseCloudRecord(sbUrl, sbServiceKey, sbUser?.id, email, {
-    credits: syncedCredits,
-    used_labels: usedLabels,
-    pass_hash: passHash,
-    has_spent: hasSpent,
-    bonus_blocked: bonusBlocked
+    credits: syncedCredits, used_labels: usedLabels, pass_hash: passHash,
+    has_spent: hasSpent, bonus_blocked: bonusBlocked
   });
 
   global.usersVault[userId] = record;
@@ -445,26 +345,18 @@ async function saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSa
   const targetId = sbUser?.id || record.id;
 
   await updateSupabaseCloudRecord(sbUrl, sbServiceKey, targetId, record.email, {
-    credits: record.credits,
-    used_labels: record.usedLabels || [],
+    credits: record.credits, used_labels: record.usedLabels || [],
     pass_hash: record.passHash || sbUser?.app_metadata?.kp_pass_hash || null,
-    has_spent: !!record.hasSpent,
-    bonus_blocked: !!record.bonusBlocked
+    has_spent: !!record.hasSpent, bonus_blocked: !!record.bonusBlocked
   });
 }
 
-// =========================================================================
-// SANITIZE
-// =========================================================================
 function sanitizeCreditsCount(val) {
   const num = parseInt(val, 10);
   if (isNaN(num) || num < 1) return 5;
   return Math.min(10000, num);
 }
 
-// =========================================================================
-// HANDLER
-// =========================================================================
 export default async function handler(req, res) {
   const { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt, allowedOrigins } = getEnvConfig();
   const reqOrigin = req.headers.origin || '';
@@ -476,100 +368,63 @@ export default async function handler(req, res) {
     }
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('[payment-webhook] ALLOWED_ORIGINS не задан!');
-    }
+    if (process.env.NODE_ENV === 'production') console.warn('[payment-webhook] ALLOWED_ORIGINS не задан!');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (!secretSalt) {
-    console.error('[payment-webhook] secretSalt не задан!');
-    return res.status(500).json({ error: 'Server misconfiguration' });
-  }
+  if (!secretSalt) { console.error('[payment-webhook] secretSalt не задан!'); return res.status(500).json({ error: 'Server misconfiguration' }); }
 
   const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
 
-  // =========================== GET ===========================
   if (req.method === 'GET') {
     const { action, label, fp } = req.query;
 
     if (action === 'config') {
       return res.status(200).json({
-        supabaseUrl: sbUrl,
-        supabaseAnonKey: sbAnonKey,
-        yandexClientId,
-        wallet: YOOMONEY_WALLET,
+        supabaseUrl: sbUrl, supabaseAnonKey: sbAnonKey,
+        yandexClientId, wallet: YOOMONEY_WALLET,
         cloudSyncActive: Boolean(sbUrl && sbServiceKey)
       });
     }
 
     if (action === 'profile') {
       const rate = checkRate(`profile:${clientIp}`, 30);
-      if (!rate.ok) {
-        res.setHeader('Retry-After', String(rate.retryAfter));
-        return res.status(429).json({ error: 'RATE_LIMIT', retryAfter: rate.retryAfter });
-      }
+      if (!rate.ok) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: 'RATE_LIMIT' }); }
       const userObj = resolveUserFromRequest(req, secretSalt);
       if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
-
-      // 🔴 allowCreate=false: profile — read-only
-      const record = await syncUserAccount(
-        req, res, sbUrl, sbServiceKey, secretSalt,
-        userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false
-      );
-
-      return res.status(200).json({
-        ok: true,
-        id: record.id,
-        email: record.email,
-        name: record.name,
-        credits: record.credits,
-        session_token: createSessionToken(record, secretSalt)
-      });
+      const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false);
+      return res.status(200).json({ ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
     }
 
-    // 🔴 НОВОЕ: check_payment — polling через Supabase (работает между инстансами)
     if (action === 'check_payment') {
       const rate = checkRate(`check_pay:${clientIp}`, 60);
-      if (!rate.ok) {
-        res.setHeader('Retry-After', String(rate.retryAfter));
-        return res.status(429).json({ error: 'RATE_LIMIT', retryAfter: rate.retryAfter });
-      }
+      if (!rate.ok) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: 'RATE_LIMIT' }); }
       const userObj = resolveUserFromRequest(req, secretSalt);
       if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
-
       const orderLabel = String(label || '').trim();
       if (!orderLabel) return res.status(400).json({ error: 'Missing label' });
 
-      // Read-only из Supabase (не создаём пользователя)
       const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
       if (!sbUser) return res.status(200).json({ paid: false, credits: 0 });
-
       const appMeta = sbUser.app_metadata || {};
       const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
       const isPaid = usedLabels.includes(orderLabel);
       let credits = typeof appMeta.kp_credits === 'number' ? appMeta.kp_credits : 0;
       if (!isPaid) {
-        const profileCredits = await getProfileCredits(sbUrl, sbServiceKey, sbUser.id);
-        if (profileCredits !== null) credits = profileCredits;
+        const pc = await getProfileCredits(sbUrl, sbServiceKey, sbUser.id);
+        if (pc !== null) credits = pc;
       }
-
       return res.status(200).json({ paid: isPaid, credits });
     }
 
-    // Legacy: старый ?label= через in-memory
     if (!label) return res.status(400).json({ error: 'Missing label' });
-    if (global.usersVault[`paid_${label}`]) {
-      return res.status(200).json({ paid: true, credits: global.usersVault[`paid_${label}`] });
-    }
+    if (global.usersVault[`paid_${label}`]) return res.status(200).json({ paid: true, credits: global.usersVault[`paid_${label}`] });
     return res.status(200).json({ paid: false });
   }
 
-  // =========================== POST ===========================
   if (req.method === 'POST') {
     try {
       const isJson = (req.headers['content-type'] || '').includes('application/json');
@@ -577,220 +432,132 @@ export default async function handler(req, res) {
         ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
         : (typeof req.body === 'string' ? Object.fromEntries(new URLSearchParams(req.body)) : req.body);
 
-      // ------------------- SOCIAL AUTH -------------------
       if (body?.action === 'social_auth') {
         const rate = checkRate(`social:${clientIp}`, 10);
-        if (!rate.ok) {
-          res.setHeader('Retry-After', String(rate.retryAfter));
-          return res.status(429).json({ error: 'RATE_LIMIT', retryAfter: rate.retryAfter });
-        }
+        if (!rate.ok) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: 'RATE_LIMIT' }); }
 
         const { accessToken, clientProfile, deviceFp } = body;
-        let rawEmail = '';
-        let displayName = '';
-
+        let rawEmail = '', displayName = '';
         if (accessToken) {
           try {
-            const yaRes = await fetchWithTimeout('https://login.yandex.ru/info?format=json', {
-              headers: { Authorization: `OAuth ${accessToken}` }
-            }, 8000);
+            const yaRes = await fetchWithTimeout('https://login.yandex.ru/info?format=json', { headers: { Authorization: `OAuth ${accessToken}` } }, 8000);
             if (yaRes.ok) {
               const yaData = await yaRes.json();
               rawEmail = yaData.default_email || (Array.isArray(yaData.emails) && yaData.emails[0]) || `${yaData.login || yaData.id}@yandex.ru`;
               displayName = yaData.display_name || yaData.real_name || yaData.login || rawEmail.split('@')[0];
             }
-          } catch (e) {
-            console.warn('[payment-webhook] Yandex info failed:', e.message);
-          }
+          } catch {}
         }
-        if (!rawEmail && clientProfile?.email) {
-          rawEmail = String(clientProfile.email);
-          displayName = clientProfile.name || rawEmail.split('@')[0];
-        }
+        if (!rawEmail && clientProfile?.email) { rawEmail = String(clientProfile.email); displayName = clientProfile.name || rawEmail.split('@')[0]; }
         if (!rawEmail) return res.status(401).json({ error: 'Не удалось получить профиль Яндекса' });
 
         const verifiedEmail = normalizeEmail(rawEmail);
-        const record = await syncUserAccount(
-          req, res, sbUrl, sbServiceKey, secretSalt,
-          verifiedEmail, displayName, deviceFp || '', true, true
-        );
+        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, verifiedEmail, displayName, deviceFp || '', true, true);
 
         return res.status(200).json({
-          ok: true,
-          id: record.id,
-          email: record.email,
-          name: record.name,
-          credits: record.credits,
-          bonus_blocked: record.bonusBlocked,
-          session_token: createSessionToken(record, secretSalt)
+          ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits,
+          bonus_blocked: record.bonusBlocked, session_token: createSessionToken(record, secretSalt)
         });
       }
 
-      // ------------------- EMAIL AUTH -------------------
       if (body?.action === 'email_auth') {
         const rate = checkRate(`email_auth:${clientIp}`, 8);
-        if (!rate.ok) {
-          res.setHeader('Retry-After', String(rate.retryAfter));
-          return res.status(429).json({ error: `Слишком много попыток. Подождите ${rate.retryAfter}с.` });
-        }
+        if (!rate.ok) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: `Подождите ${rate.retryAfter}с.` }); }
 
         const rawEmail = String(body.email || '').trim();
         const password = String(body.password || '').trim();
         const mode = body.mode || 'login';
         const deviceFp = body.deviceFp || '';
-
         if (!rawEmail || !rawEmail.includes('@') || password.length < 6) {
           return res.status(400).json({ error: 'Введите корректный Email и пароль (≥6 символов)' });
         }
-
         const email = normalizeEmail(rawEmail);
         const passHash = crypto.createHmac('sha256', secretSalt).update(`${email}:${password}`).digest('hex');
 
-        // signup → allowCreate=true; login → allowCreate=false
         const allowCreate = mode === 'signup';
-        const record = await syncUserAccount(
-          req, res, sbUrl, sbServiceKey, secretSalt,
-          email, email.split('@')[0], deviceFp, false, allowCreate
-        );
+        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, email.split('@')[0], deviceFp, false, allowCreate);
 
-        // 🔴 Защита от takeover
-        if (mode === 'signup' && record.passHash) {
-          return res.status(409).json({ error: 'Аккаунт с этим Email уже существует' });
-        }
-        if (mode === 'login' && !record.passHash) {
-          return res.status(404).json({ error: 'Аккаунт не найден. Зарегистрируйтесь.' });
-        }
-        if (mode === 'login' && record.passHash && !safeEqual(record.passHash, passHash)) {
-          return res.status(401).json({ error: 'Неверный пароль' });
-        }
+        if (mode === 'signup' && record.passHash) return res.status(409).json({ error: 'Аккаунт с этим Email уже существует' });
+        if (mode === 'login' && !record.passHash) return res.status(404).json({ error: 'Аккаунт не найден. Зарегистрируйтесь.' });
+        if (mode === 'login' && record.passHash && !safeEqual(record.passHash, passHash)) return res.status(401).json({ error: 'Неверный пароль' });
 
         record.passHash = passHash;
         await saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record);
 
         return res.status(200).json({
-          ok: true,
-          id: record.id,
-          email: record.email,
-          name: record.name,
-          credits: record.credits,
-          bonus_blocked: record.bonusBlocked,
-          session_token: createSessionToken(record, secretSalt)
+          ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits,
+          bonus_blocked: record.bonusBlocked, session_token: createSessionToken(record, secretSalt)
         });
       }
 
-      // ------------------- PROMO -------------------
       if (body?.action === 'promo') {
         const rate = checkRate(`promo:${clientIp}`, 20);
-        if (!rate.ok) {
-          res.setHeader('Retry-After', String(rate.retryAfter));
-          return res.status(429).json({ error: 'RATE_LIMIT', retryAfter: rate.retryAfter });
-        }
-
+        if (!rate.ok) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: 'RATE_LIMIT' }); }
         const userObj = resolveUserFromRequest(req, secretSalt);
         if (!userObj || !userObj.email) return res.status(401).json({ error: 'Войдите в аккаунт' });
 
-        const record = await syncUserAccount(
-          req, res, sbUrl, sbServiceKey, secretSalt,
-          userObj.email, userObj.name, body.deviceFp || '', userObj.provider !== 'email', false
-        );
-
+        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, body.deviceFp || '', userObj.provider !== 'email', false);
         const code = String(body.code || '').trim().toUpperCase();
         const bonus = getPromoCodes()[code];
         if (!bonus) return res.status(400).json({ error: 'Неверный промокод' });
 
         const isOwnerUnlimited = getOwnerPromoWhitelist().has(code);
         const promoKey = `promo_used_${code}`;
-
         if (!isOwnerUnlimited && record.usedLabels.includes(promoKey)) {
           return res.status(400).json({ error: 'Промокод уже активирован на вашем аккаунте!' });
         }
-
         record.credits += bonus;
         if (!isOwnerUnlimited) record.usedLabels.push(promoKey);
         await saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record);
-
-        return res.status(200).json({
-          ok: true,
-          added: bonus,
-          credits: record.credits,
-          session_token: createSessionToken(record, secretSalt)
-        });
+        return res.status(200).json({ ok: true, added: bonus, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
       }
 
-      // ------------------- CONFIRM_RETURN (НЕ начисляет кредиты!) -------------------
       if (body?.action === 'confirm_return') {
         const rate = checkRate(`confirm:${clientIp}`, 30);
-        if (!rate.ok) {
-          res.setHeader('Retry-After', String(rate.retryAfter));
-          return res.status(429).json({ error: 'RATE_LIMIT', retryAfter: rate.retryAfter });
-        }
-
+        if (!rate.ok) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: 'RATE_LIMIT' }); }
         const userObj = resolveUserFromRequest(req, secretSalt);
         if (!userObj || !userObj.email) return res.status(401).json({ error: 'Войдите в аккаунт' });
-
         const orderId = String(body.orderId || '').trim();
-        if (!orderId.startsWith('kp_')) {
-          return res.status(400).json({ error: 'Некорректный идентификатор заказа' });
-        }
+        if (!orderId.startsWith('kp_')) return res.status(400).json({ error: 'Некорректный orderId' });
 
-        // Читаем статус из Supabase (безопасно, работает между инстансами)
         const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
         const appMeta = sbUser?.app_metadata || {};
         const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-        const paid = usedLabels.includes(orderId);
-        const credits = typeof appMeta.kp_credits === 'number' ? appMeta.kp_credits : 0;
-
         return res.status(200).json({
-          ok: true,
-          paid,
-          credits,
-          added: 0,  // 🔴 Начисление только через ЮMoney-вебхук
-          session_token: createSessionToken(userObj, secretSalt)
+          ok: true, paid: usedLabels.includes(orderId),
+          credits: typeof appMeta.kp_credits === 'number' ? appMeta.kp_credits : 0,
+          added: 0, session_token: createSessionToken(userObj, secretSalt)
         });
       }
 
-      // ------------------- ЮMONEY WEBHOOK -------------------
       const yoomoneySecret = (findEnvVar(['YOOMONEY_NOTIFICATION_SECRET']) || '').trim();
       if (!yoomoneySecret) {
-        console.error('[payment-webhook] YOOMONEY_NOTIFICATION_SECRET не задан — вебхук отключён');
+        console.error('[payment-webhook] YOOMONEY_NOTIFICATION_SECRET не задан');
         return res.status(503).send('Payment webhook disabled');
       }
 
       const {
-        notification_type = '', operation_id = '', amount = '',
-        currency = '', datetime = '', sender = '', codepro = '',
-        label = '', sha1_hash = ''
+        notification_type = '', operation_id = '', amount = '', currency = '',
+        datetime = '', sender = '', codepro = '', label = '', sha1_hash = ''
       } = body || {};
 
       const checkString = `${notification_type}&${operation_id}&${amount}&${currency}&${datetime}&${sender}&${codepro}&${yoomoneySecret}&${label}`;
       const calculatedHash = crypto.createHash('sha1').update(checkString, 'utf-8').digest('hex');
-
       if (!safeEqual(calculatedHash, String(sha1_hash).toLowerCase())) {
-        console.warn('[payment-webhook] Invalid sha1_hash for op:', operation_id);
+        console.warn('[payment-webhook] Invalid sha1_hash:', operation_id);
         return res.status(400).send('Invalid signature');
       }
 
-      if (String(currency) !== '643') {
-        console.warn('[payment-webhook] Unsupported currency:', currency);
-        return res.status(400).send('Unsupported currency');
-      }
-
+      if (String(currency) !== '643') return res.status(400).send('Unsupported currency');
       const amt = parseFloat(amount);
-      if (!Number.isFinite(amt) || amt <= 0) {
-        return res.status(400).send('Invalid amount');
-      }
-
-      if (!label || !label.startsWith('kp_')) {
-        return res.status(400).send('Invalid label');
-      }
+      if (!Number.isFinite(amt) || amt <= 0) return res.status(400).send('Invalid amount');
+      if (!label || !label.startsWith('kp_')) return res.status(400).send('Invalid label');
 
       const parts = label.split('_');
       if (parts.length < 3) return res.status(400).send('Invalid label format');
-
       const creditsToAdd = sanitizeCreditsCount(parts[1]);
       const userId = parts[2];
 
-      // 🔴 Заявленные кредиты ≤ того, что оплачено
       if (!isValidAmountForCredits(amt, creditsToAdd)) {
         console.warn(`[payment-webhook] amount ${amt}₽ insufficient for ${creditsToAdd} credits`);
         return res.status(400).send('Amount insufficient');
@@ -800,31 +567,24 @@ export default async function handler(req, res) {
 
       if (userId && sbUrl && sbServiceKey) {
         try {
-          const uRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${userId}`, {
-            headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` }
-          }, 8000);
+          const uRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${userId}`, { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000);
           if (uRes.ok) {
             const uData = await uRes.json();
             const appMeta = uData?.app_metadata || {};
             const used = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-
             if (!used.includes(label)) {
               const cur = typeof appMeta.kp_credits === 'number' ? appMeta.kp_credits : 0;
               await updateSupabaseCloudRecord(sbUrl, sbServiceKey, userId, uData.email || '', {
-                credits: cur + creditsToAdd,
-                used_labels: [...used, label],
+                credits: cur + creditsToAdd, used_labels: [...used, label],
                 pass_hash: appMeta.kp_pass_hash || null,
-                has_spent: !!appMeta.kp_has_spent,
-                bonus_blocked: !!appMeta.kp_bonus_blocked
+                has_spent: !!appMeta.kp_has_spent, bonus_blocked: !!appMeta.kp_bonus_blocked
               });
-              console.log(`[payment-webhook] OK user=${userId} ${cur}->${cur + creditsToAdd} via ${label}`);
+              console.log(`[payment-webhook] OK user=${userId} ${cur}->${cur + creditsToAdd}`);
             } else {
               console.log(`[payment-webhook] duplicate webhook for ${label}`);
             }
           }
-        } catch (e) {
-          console.error('[payment-webhook] Post-payment sync failed:', e.message);
-        }
+        } catch (e) { console.error('[payment-webhook] sync failed:', e.message); }
       }
 
       return res.status(200).send('OK');
