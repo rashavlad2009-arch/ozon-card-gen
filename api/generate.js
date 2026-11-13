@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const FALLBACK_SUPABASE_URL = 'https://irxszktfravyeqnueh.supabase.co';
+const FALLBACK_SUPABASE_URL = 'https://irxszktfwtravyeqnueh.supabase.co';
 
 const LIMITS = {
   MAX_PRODUCT_LEN: 2000,
@@ -11,7 +11,8 @@ const LIMITS = {
   SESSION_TTL_MS: 30 * 24 * 60 * 60 * 1000,
   FETCH_TIMEOUT_MS: 25000,
   RATE_WINDOW_MS: 60 * 1000,
-  RATE_MAX_HITS: 20
+  RATE_MAX_HITS: 20,
+  DB_TIMEOUT_MS: 20000
 };
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const BONUS_CREDITS = 5;
@@ -29,11 +30,24 @@ function findEnvVar(suffixes) {
   return '';
 }
 
+function normalizeSupabaseUrl(raw) {
+  let url = String(raw || '').trim().replace(/\/$/, '');
+  if (!url) return '';
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    if (/^[a-z0-9]{15,40}$/i.test(url)) {
+      return `https://${url}.supabase.co`;
+    }
+    return url;
+  }
+  url = url.replace(/^http:\/\//, 'https://');
+  return url;
+}
+
 function getEnvConfig() {
   const apiKey = findEnvVar(['GROQ_API_KEY']);
-  const sbUrl = (findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
-  const sbServiceKey = findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']);
-  const secretSalt = findEnvVar(['KARDPRO_SESSION_SALT', 'SESSION_SECRET']) || sbServiceKey;
+  const sbUrl = normalizeSupabaseUrl(findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL);
+  const sbServiceKey = (findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']) || '').trim();
+  const secretSalt = (findEnvVar(['KARDPRO_SESSION_SALT', 'SESSION_SECRET']) || sbServiceKey).trim();
   const allowedOrigins = (findEnvVar(['ALLOWED_ORIGINS']) || '').split(',').map(s => s.trim()).filter(Boolean);
   return { apiKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins };
 }
@@ -110,9 +124,8 @@ function checkRateLimit(key) {
   return { allowed: true };
 }
 
-// 🔴 ЕДИНАЯ функция ID — всегда детерминированная
 function emailToDeterministicUUID(email) {
-  const hex = crypto.createHash('sha256').update(`user_${email.toLowerCase()}`).digest('hex').substring(0, 32);
+  const hex = crypto.createHash('sha256').update(`user_${String(email).toLowerCase()}`).digest('hex').substring(0, 32);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
@@ -121,7 +134,7 @@ async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, LIMITS.DB_TIMEOUT_MS
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -130,13 +143,12 @@ async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   } catch { return null; }
 }
 
-// 🔴 Источник истины — только profiles. Возвращает {credits, bonusGranted}
 async function readProfile(sbUrl, sbServiceKey, userId) {
   if (!sbUrl || !sbServiceKey || !userId) return null;
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, LIMITS.DB_TIMEOUT_MS
     );
     if (!res.ok) return null;
     const list = await res.json();
@@ -147,11 +159,11 @@ async function readProfile(sbUrl, sbServiceKey, userId) {
       };
     }
     return null;
-  } catch (e) { console.error('[generate] readProfile:', e.message); return null; }
+  } catch (e) { return null; }
 }
 
 async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
-  if (!sbUrl || !sbServiceKey || !userId) return false;
+  if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
   try {
     const res = await fetchWithTimeout(`${sbUrl}/rest/v1/profiles`, {
       method: 'POST',
@@ -162,13 +174,17 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusG
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
-    }, 8000);
-    return res.ok;
-  } catch (e) { console.error('[generate] upsertProfile:', e.message); return false; }
+    }, LIMITS.DB_TIMEOUT_MS);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 100)}` };
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e.message }; }
 }
 
 async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
-  if (!sbUrl || !sbServiceKey || !userId) return false;
+  if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
   try {
     const res = await fetchWithTimeout(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
@@ -181,10 +197,14 @@ async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({ credits: newCredits })
-      }, 8000
+      }, LIMITS.DB_TIMEOUT_MS
     );
-    return res.ok;
-  } catch (e) { console.error('[generate] patchProfileCredits:', e.message); return false; }
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 100)}` };
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e.message }; }
 }
 
 async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
@@ -194,8 +214,8 @@ async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
       method: 'PUT',
       headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_metadata: patch })
-    }, 8000);
-  } catch (e) { console.error('[generate] updateAppMetadata:', e.message); }
+    }, LIMITS.DB_TIMEOUT_MS);
+  } catch (e) { /* ignore */ }
 }
 
 function validateImageDataUrl(imageBase64) {
@@ -259,7 +279,6 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
   const visionPrompt = userHint
     ? `Посмотри на фото (подсказка: "${userHint.slice(0, 200)}"). Напиши на русском в 1-2 предложениях точное название, тип, цвет, материал, детали и назначение для маркетплейса.`
     : `Внимательно посмотри на фото. Напиши на русском точное название, категорию, цвет, материал, форму и ключевые особенности в 1-2 предложениях.`;
-
   const baseModels = [
     'meta-llama/llama-4-scout-17b-16e-instruct',
     'meta-llama/llama-4-maverick-17b-128e-instruct',
@@ -278,7 +297,6 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
       visionModels = [...new Set([...visionModels, ...dyn])];
     }
   } catch {}
-
   for (const vModel of visionModels) {
     try {
       const vRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
@@ -297,7 +315,6 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
       }
     } catch {}
   }
-
   try {
     const b = await fetchWithTimeout('https://text.pollinations.ai/openai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -329,7 +346,6 @@ async function generateFunnelJSON(apiKey, systemPrompt, product) {
       candidateModels = [...new Set([...candidateModels, ...dyn])];
     }
   } catch {}
-
   let lastError = 'Ошибка ИИ', rawContent = null;
   for (const modelId of candidateModels) {
     try {
@@ -360,6 +376,7 @@ async function generateFunnelJSON(apiKey, systemPrompt, product) {
 export default async function handler(req, res) {
   const { apiKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins } = getEnvConfig();
   const origin = req.headers.origin || '';
+
   if (allowedOrigins.length > 0) {
     if (allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
@@ -367,12 +384,12 @@ export default async function handler(req, res) {
     }
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    if (process.env.NODE_ENV === 'production') console.warn('[generate] ALLOWED_ORIGINS не задан!');
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -392,8 +409,9 @@ export default async function handler(req, res) {
       imageBase64 = rawImageBase64;
     }
 
-    if (!secretSalt) { console.error('[generate] secretSalt не задан!'); return res.status(500).json({ error: 'Server misconfiguration' }); }
+    if (!secretSalt) return res.status(500).json({ error: 'KARDPRO_SESSION_SALT не задан' });
     if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY не задан' });
+    if (!sbUrl || !sbServiceKey) return res.status(500).json({ error: 'Supabase не настроен' });
 
     const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
     if (!token) return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Войдите через Яндекс ID!' });
@@ -410,17 +428,13 @@ export default async function handler(req, res) {
 
     const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
     const appMeta = sbUser?.app_metadata || {};
-
-    // 🔴 ГЛАВНОЕ: всегда детерминированный ID
     const userId = emailToDeterministicUUID(userObj.email);
 
-    // Читаем профиль
     const profile = await readProfile(sbUrl, sbServiceKey, userId);
     let currentCredits = 0;
     let bonusGranted = false;
 
     if (profile === null) {
-      // Первый визит — решаем: давать ли бонус?
       const hasSpent = !!appMeta.kp_has_spent;
       const isOAuth = userObj.provider !== 'email';
 
@@ -429,12 +443,15 @@ export default async function handler(req, res) {
         bonusGranted = true;
       } else {
         currentCredits = 0;
-        bonusGranted = isOAuth;  // OAuth, но уже тратил — бонус не положен
+        bonusGranted = isOAuth;
       }
 
       const created = await upsertProfile(sbUrl, sbServiceKey, userId, userObj.email, currentCredits, bonusGranted);
-      if (!created) {
-        return res.status(500).json({ error: 'Ошибка инициализации профиля', creditsNotCharged: true });
+      if (!created.ok) {
+        return res.status(500).json({
+          error: `Ошибка БД: ${created.error}`,
+          creditsNotCharged: true
+        });
       }
     } else {
       currentCredits = profile.credits;
@@ -449,7 +466,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Vision
     let recognizedProduct = null;
     if (imageBase64) {
       recognizedProduct = await recognizeProductFromImage(apiKey, imageBase64, product);
@@ -482,18 +498,15 @@ export default async function handler(req, res) {
 
     const validation = validateCardContent(content);
 
-    // 🔴 Списание через PATCH — атомарно, только credits
     const nextCredits = Math.max(0, currentCredits - 1);
     const saved = await patchProfileCredits(sbUrl, sbServiceKey, userId, nextCredits);
-    if (!saved) {
-      console.error('[generate] Failed to save credits for', userObj.email);
+    if (!saved.ok) {
       return res.status(500).json({
-        error: 'Не удалось сохранить списание. Кредит не списан — попробуйте ещё раз.',
+        error: `Ошибка сохранения в БД: ${saved.error}`,
         creditsNotCharged: true
       });
     }
 
-    // app_metadata — опционально, не блокирует
     if (sbUser?.id) {
       updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
         ...appMeta,
@@ -514,10 +527,8 @@ export default async function handler(req, res) {
     content.session_token = createSessionToken(updatedRecord, secretSalt);
     content.validation = validation;
 
-    console.log(`[generate] OK ${userObj.email} ${currentCredits}->${nextCredits} issues=${validation.issues.length}`);
     return res.status(200).json(content);
   } catch (err) {
-    console.error('[generate] error:', err.message);
     return res.status(500).json({ error: err.message || 'Внутренняя ошибка', creditsNotCharged: true });
   }
 }
