@@ -3,9 +3,10 @@ import crypto from 'crypto';
 const FALLBACK_SUPABASE_URL = 'https://irxszktfravyeqnueh.supabase.co';
 const FALLBACK_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
 const YOOMONEY_WALLET = '4100119681467569';
-
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RATE_WINDOW_MS = 60 * 1000;
+const BONUS_CREDITS = 5;
+
 const BUILTIN_PROMOS = { 'START5': 5, 'PRO50': 5, 'SELLER10': 10, 'SHOP20': 20, 'VIP2026': 50 };
 
 global.usersVault = global.usersVault || {};
@@ -16,8 +17,8 @@ function findEnvVar(suffixes) {
   for (const s of suffixes) if (process.env[s]) return process.env[s].trim();
   const allKeys = Object.keys(process.env);
   for (const s of suffixes) {
-    const match = allKeys.find(k => k.endsWith(s) && process.env[k]);
-    if (match) return process.env[match].trim();
+    const m = allKeys.find(k => k.endsWith(s) && process.env[k]);
+    if (m) return process.env[m].trim();
   }
   return '';
 }
@@ -166,8 +167,9 @@ async function fetchWithTimeout(url, opts = {}, timeoutMs = 12000) {
   finally { clearTimeout(timer); }
 }
 
+// 🔴 ЕДИНАЯ функция ID
 function emailToDeterministicUUID(email) {
-  const hex = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
+  const hex = crypto.createHash('sha256').update(`user_${String(email).toLowerCase()}`).digest('hex').substring(0, 32);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
@@ -213,22 +215,26 @@ async function getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate =
   } catch { return null; }
 }
 
-// 🔴 profiles — единственный источник истины
 async function readProfile(sbUrl, sbServiceKey, userId) {
   if (!sbUrl || !sbServiceKey || !userId) return null;
   try {
     const res = await fetchWithTimeout(
-      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits`,
+      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
       { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (!res.ok) return null;
     const list = await res.json();
-    if (Array.isArray(list) && list.length > 0 && typeof list[0].credits === 'number') return list[0].credits;
+    if (Array.isArray(list) && list.length > 0) {
+      return {
+        credits: typeof list[0].credits === 'number' ? list[0].credits : 0,
+        bonusGranted: !!list[0].bonus_granted
+      };
+    }
     return null;
   } catch { return null; }
 }
 
-async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits) {
+async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
   if (!sbUrl || !sbServiceKey || !userId) return false;
   try {
     const res = await fetchWithTimeout(`${sbUrl}/rest/v1/profiles`, {
@@ -239,10 +245,30 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits) {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
-      body: JSON.stringify({ id: userId, email, credits })
+      body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
     }, 8000);
     return res.ok;
   } catch (e) { console.error('[payment-webhook] upsertProfile:', e.message); return false; }
+}
+
+async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
+  if (!sbUrl || !sbServiceKey || !userId) return false;
+  try {
+    const res = await fetchWithTimeout(
+      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: sbServiceKey,
+          Authorization: `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ credits: newCredits })
+      }, 8000
+    );
+    return res.ok;
+  } catch (e) { console.error('[payment-webhook] patchProfileCredits:', e.message); return false; }
 }
 
 async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
@@ -256,58 +282,65 @@ async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
   } catch (e) { console.error('[payment-webhook] updateAppMetadata:', e.message); }
 }
 
-async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, name, deviceFp, isVerifiedOAuth, allowCreate = true, tokenCreditsFallback = null) {
+async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, name, deviceFp, isVerifiedOAuth, allowCreate = true) {
   const cookieVault = readCookieVault(req, secretSalt);
   const hwHash = deviceFp ? crypto.createHmac('sha256', secretSalt).update(`hw_${deviceFp}`).digest('hex').substring(0, 24) : null;
 
   const sbUser = await getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate);
-  const userId = sbUser?.id || emailToDeterministicUUID(email);
   const appMeta = sbUser?.app_metadata || {};
 
-  // 🔴 читаем из profiles
-  let currentCredits = await readProfile(sbUrl, sbServiceKey, userId);
-  const isNewInProfiles = currentCredits === null;
+  // 🔴 ГЛАВНОЕ: детерминированный UUID — никогда sbUser.id
+  const userId = emailToDeterministicUUID(email);
 
-  const hasSpent = !!appMeta.kp_has_spent || !!cookieVault[userId]?.hasSpent || !!global.usersVault[userId]?.hasSpent;
+  const profile = await readProfile(sbUrl, sbServiceKey, userId);
+  let currentCredits = 0;
+  let bonusGranted = false;
 
-  if (isNewInProfiles) {
-    if (isVerifiedOAuth && !hasSpent) {
+  if (profile === null) {
+    const hasSpent = !!appMeta.kp_has_spent || !!cookieVault[userId]?.hasSpent || !!global.usersVault[userId]?.hasSpent;
+    const isOAuth = isVerifiedOAuth;
+
+    if (isOAuth && !hasSpent) {
+      // Проверка на мульти-аккаунт по fingerprint
       if (hwHash && global.claimedDevices[hwHash] && global.claimedDevices[hwHash] !== email) {
         currentCredits = 0;
+        bonusGranted = true;  // Помечаем, что бонус уже был использован на этом устройстве
       } else {
-        currentCredits = 5;
+        currentCredits = BONUS_CREDITS;
+        bonusGranted = true;
         if (hwHash) global.claimedDevices[hwHash] = email;
       }
-    } else if (typeof tokenCreditsFallback === 'number' && tokenCreditsFallback > 0) {
-      currentCredits = tokenCreditsFallback;
-    } else if (cookieVault[userId] && typeof cookieVault[userId].credits === 'number') {
-      currentCredits = cookieVault[userId].credits;
     } else {
       currentCredits = 0;
+      bonusGranted = isOAuth;  // OAuth, но уже тратил — бонус не положен
     }
-    await upsertProfile(sbUrl, sbServiceKey, userId, email, currentCredits);
+
+    const created = await upsertProfile(sbUrl, sbServiceKey, userId, email, currentCredits, bonusGranted);
+    if (!created) console.error('[payment-webhook] Failed to create profile for', email);
+  } else {
+    currentCredits = profile.credits;
+    bonusGranted = profile.bonusGranted;
   }
 
   const passHash = appMeta.kp_pass_hash || cookieVault[userId]?.passHash || null;
   const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : (cookieVault[userId]?.usedLabels || []);
   const displayName = name || (email ? email.split('@')[0] : 'Селлер');
 
-  if (sbUser?.id) {
-    await updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
-      ...appMeta,
-      kp_initialized: true,
-      kp_has_spent: hasSpent,
-      kp_bonus_blocked: false,
-      kp_pass_hash: passHash,
-      kp_used_labels: usedLabels.slice(-100)
-    });
-  }
-
   const record = {
     id: userId, email, name: displayName, credits: currentCredits,
-    usedLabels, passHash, bonusBlocked: false, hasSpent,
+    bonusGranted, usedLabels, passHash, bonusBlocked: false,
+    hasSpent: !!appMeta.kp_has_spent,
     provider: isVerifiedOAuth ? 'yandex' : 'email'
   };
+
+  if (sbUser?.id) {
+    updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
+      ...appMeta,
+      kp_initialized: true,
+      kp_pass_hash: passHash,
+      kp_used_labels: usedLabels.slice(-100)
+    }).catch(() => {});
+  }
 
   global.usersVault[userId] = record;
   cookieVault[userId] = record;
@@ -323,19 +356,8 @@ async function saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSa
   cookieVault[record.id] = record;
   writeCookieVault(res, cookieVault, secretSalt);
 
-  const saved = await upsertProfile(sbUrl, sbServiceKey, record.id, record.email, record.credits);
+  const saved = await patchProfileCredits(sbUrl, sbServiceKey, record.id, record.credits);
   if (!saved) console.error('[payment-webhook] Failed to save balance for', record.email);
-
-  const sbUser = await getOrCreateSupabaseUser(sbUrl, sbServiceKey, record.email, false);
-  if (sbUser?.id) {
-    await updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
-      kp_initialized: true,
-      kp_has_spent: !!record.hasSpent,
-      kp_bonus_blocked: !!record.bonusBlocked,
-      kp_pass_hash: record.passHash || null,
-      kp_used_labels: (record.usedLabels || []).slice(-100)
-    });
-  }
 }
 
 function sanitizeCreditsCount(val) {
@@ -382,8 +404,8 @@ export default async function handler(req, res) {
       const userObj = resolveUserFromRequest(req, secretSalt);
       if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
 
-      // profile — read-only, но syncUserAccount создаст профиль если его нет (для консистентности)
-      const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false, userObj.credits);
+      const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt,
+        userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false);
 
       return res.status(200).json({
         ok: true, id: record.id, email: record.email, name: record.name,
@@ -400,12 +422,13 @@ export default async function handler(req, res) {
       if (!orderLabel) return res.status(400).json({ error: 'Missing label' });
 
       const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
-      const userId = sbUser?.id || emailToDeterministicUUID(userObj.email);
+      const userId = emailToDeterministicUUID(userObj.email);
       const appMeta = sbUser?.app_metadata || {};
       const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
       const isPaid = usedLabels.includes(orderLabel);
-      let credits = await readProfile(sbUrl, sbServiceKey, userId);
-      if (credits === null) credits = 0;
+
+      const profile = await readProfile(sbUrl, sbServiceKey, userId);
+      const credits = profile ? profile.credits : 0;
 
       return res.status(200).json({ paid: isPaid, credits });
     }
@@ -442,8 +465,8 @@ export default async function handler(req, res) {
         if (!rawEmail) return res.status(401).json({ error: 'Не удалось получить профиль Яндекса' });
 
         const verifiedEmail = normalizeEmail(rawEmail);
-        // При первом входе токена с кредитами нет — передаём null
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, verifiedEmail, displayName, deviceFp || '', true, true, null);
+        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt,
+          verifiedEmail, displayName, deviceFp || '', true, true);
 
         return res.status(200).json({
           ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits,
@@ -465,7 +488,8 @@ export default async function handler(req, res) {
         const passHash = crypto.createHmac('sha256', secretSalt).update(`${email}:${password}`).digest('hex');
 
         const allowCreate = mode === 'signup';
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, email.split('@')[0], deviceFp, false, allowCreate, null);
+        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt,
+          email, email.split('@')[0], deviceFp, false, allowCreate);
 
         if (mode === 'signup' && record.passHash) return res.status(409).json({ error: 'Аккаунт с этим Email уже существует' });
         if (mode === 'login' && !record.passHash) return res.status(404).json({ error: 'Аккаунт не найден. Зарегистрируйтесь.' });
@@ -473,6 +497,15 @@ export default async function handler(req, res) {
 
         record.passHash = passHash;
         await saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record);
+        // Обновляем app_metadata с passHash
+        const sbUser = await getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, false);
+        if (sbUser?.id) {
+          await updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
+            ...(sbUser.app_metadata || {}),
+            kp_initialized: true,
+            kp_pass_hash: passHash
+          });
+        }
 
         return res.status(200).json({
           ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits,
@@ -486,20 +519,36 @@ export default async function handler(req, res) {
         const userObj = resolveUserFromRequest(req, secretSalt);
         if (!userObj || !userObj.email) return res.status(401).json({ error: 'Войдите в аккаунт' });
 
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, body.deviceFp || '', userObj.provider !== 'email', false, userObj.credits);
+        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt,
+          userObj.email, userObj.name, body.deviceFp || '', userObj.provider !== 'email', false);
+
         const code = String(body.code || '').trim().toUpperCase();
         const bonus = getPromoCodes()[code];
         if (!bonus) return res.status(400).json({ error: 'Неверный промокод' });
 
         const isOwnerUnlimited = getOwnerPromoWhitelist().has(code);
         const promoKey = `promo_used_${code}`;
-        if (!isOwnerUnlimited && record.usedLabels.includes(promoKey)) return res.status(400).json({ error: 'Промокод уже активирован!' });
+        if (!isOwnerUnlimited && record.usedLabels.includes(promoKey)) {
+          return res.status(400).json({ error: 'Промокод уже активирован на вашем аккаунте!' });
+        }
 
         record.credits += bonus;
         if (!isOwnerUnlimited) record.usedLabels.push(promoKey);
         await saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record);
 
-        return res.status(200).json({ ok: true, added: bonus, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
+        // Обновить usedLabels в app_metadata
+        const sbUser = await getOrCreateSupabaseUser(sbUrl, sbServiceKey, userObj.email, false);
+        if (sbUser?.id) {
+          await updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
+            ...(sbUser.app_metadata || {}),
+            kp_used_labels: record.usedLabels.slice(-100)
+          });
+        }
+
+        return res.status(200).json({
+          ok: true, added: bonus, credits: record.credits,
+          session_token: createSessionToken(record, secretSalt)
+        });
       }
 
       if (body?.action === 'confirm_return') {
@@ -511,11 +560,12 @@ export default async function handler(req, res) {
         if (!orderId.startsWith('kp_')) return res.status(400).json({ error: 'Некорректный orderId' });
 
         const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
-        const userId = sbUser?.id || emailToDeterministicUUID(userObj.email);
+        const userId = emailToDeterministicUUID(userObj.email);
         const appMeta = sbUser?.app_metadata || {};
         const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-        let credits = await readProfile(sbUrl, sbServiceKey, userId);
-        if (credits === null) credits = 0;
+
+        const profile = await readProfile(sbUrl, sbServiceKey, userId);
+        const credits = profile ? profile.credits : 0;
 
         return res.status(200).json({
           ok: true, paid: usedLabels.includes(orderId),
@@ -523,6 +573,7 @@ export default async function handler(req, res) {
         });
       }
 
+      // ЮMoney webhook
       const yoomoneySecret = (findEnvVar(['YOOMONEY_NOTIFICATION_SECRET']) || '').trim();
       if (!yoomoneySecret) {
         console.error('[payment-webhook] YOOMONEY_NOTIFICATION_SECRET не задан — вебхук отключён');
@@ -559,22 +610,31 @@ export default async function handler(req, res) {
 
       if (userId && sbUrl && sbServiceKey) {
         try {
-          const uRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${userId}`, { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000);
+          const uRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${userId}`, {
+            headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` }
+          }, 8000);
           if (uRes.ok) {
             const uData = await uRes.json();
             const appMeta = uData?.app_metadata || {};
             const used = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
+
             if (!used.includes(label)) {
-              const targetUserId = uData.id || userId;
-              const cur = await readProfile(sbUrl, sbServiceKey, targetUserId);
-              const base = cur !== null ? cur : 0;
-              await upsertProfile(sbUrl, sbServiceKey, targetUserId, uData.email || '', base + creditsToAdd);
+              const profile = await readProfile(sbUrl, sbServiceKey, userId);
+              const base = profile ? profile.credits : 0;
+              const newBalance = base + creditsToAdd;
+
+              const saved = await patchProfileCredits(sbUrl, sbServiceKey, userId, newBalance);
+              if (!saved && !profile) {
+                // Профиля не было — создаём
+                await upsertProfile(sbUrl, sbServiceKey, userId, uData.email || '', newBalance, true);
+              }
+
               await updateAppMetadata(sbUrl, sbServiceKey, uData.id, {
                 ...appMeta,
                 kp_initialized: true,
                 kp_used_labels: [...used, label]
               });
-              console.log(`[payment-webhook] OK user=${targetUserId} ${base}->${base + creditsToAdd}`);
+              console.log(`[payment-webhook] OK user=${userId} ${base}->${newBalance}`);
             } else {
               console.log(`[payment-webhook] duplicate webhook for ${label}`);
             }
