@@ -6,7 +6,8 @@ const YOOMONEY_WALLET = '4100119681467569';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RATE_WINDOW_MS = 60 * 1000;
 const BONUS_CREDITS = 5;
-const DB_TIMEOUT_MS = 20000;
+const DB_TIMEOUT_MS = 30000;
+const DB_RETRIES = 3;
 
 const BUILTIN_PROMOS = { 'START5': 5, 'PRO50': 5, 'SELLER10': 10, 'SHOP20': 20, 'VIP2026': 50 };
 
@@ -174,6 +175,22 @@ function checkRate(key, maxHits, windowMs = RATE_WINDOW_MS) {
   return { ok: true };
 }
 
+// 🔴 ФУНКЦИЯ С ПОВТОРНЫМИ ПОПЫТКАМИ
+async function fetchWithRetry(url, opts = {}, timeoutMs = DB_TIMEOUT_MS, retries = DB_RETRIES) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      const res = await fetch(url, { ...opts, signal: ctrl.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+}
+
 async function fetchWithTimeout(url, opts = {}, timeoutMs = 12000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -200,9 +217,9 @@ function normalizeEmail(raw) {
 async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   if (!sbUrl || !sbServiceKey || !email) return null;
   try {
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, DB_TIMEOUT_MS
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -217,11 +234,11 @@ async function getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate =
   if (existing) return existing;
   if (!allowCreate) return null;
   try {
-    const linkRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/generate_link`, {
+    const linkRes = await fetchWithRetry(`${sbUrl}/auth/v1/admin/generate_link`, {
       method: 'POST',
       headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'magiclink', email })
-    }, DB_TIMEOUT_MS);
+    });
     if (!linkRes.ok) return null;
     const data = await linkRes.json();
     return data?.user || (data?.id ? data : null);
@@ -231,9 +248,9 @@ async function getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate =
 async function readProfile(sbUrl, sbServiceKey, userId) {
   if (!sbUrl || !sbServiceKey || !userId) return null;
   try {
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, DB_TIMEOUT_MS
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
     );
     if (!res.ok) return null;
     const list = await res.json();
@@ -250,7 +267,7 @@ async function readProfile(sbUrl, sbServiceKey, userId) {
 async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
   if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
   try {
-    const res = await fetchWithTimeout(`${sbUrl}/rest/v1/profiles`, {
+    const res = await fetchWithRetry(`${sbUrl}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
         apikey: sbServiceKey,
@@ -259,7 +276,7 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusG
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
-    }, DB_TIMEOUT_MS);
+    });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
       return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 100)}` };
@@ -271,7 +288,7 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusG
 async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
   if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
   try {
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
       {
         method: 'PATCH',
@@ -282,7 +299,7 @@ async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({ credits: newCredits })
-      }, DB_TIMEOUT_MS
+      }
     );
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
@@ -295,11 +312,11 @@ async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
 async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
   if (!sbUrl || !sbServiceKey || !sbUserId) return;
   try {
-    await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
+    await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
       method: 'PUT',
       headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_metadata: patch })
-    }, DB_TIMEOUT_MS);
+    });
   } catch (e) { /* ignore */ }
 }
 
@@ -639,9 +656,9 @@ export default async function handler(req, res) {
 
       if (userId && sbUrl && sbServiceKey) {
         try {
-          const uRes = await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${userId}`, {
+          const uRes = await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${userId}`, {
             headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` }
-          }, DB_TIMEOUT_MS);
+          });
           if (uRes.ok) {
             const uData = await uRes.json();
             const appMeta = uData?.app_metadata || {};
