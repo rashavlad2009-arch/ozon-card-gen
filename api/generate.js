@@ -45,14 +45,13 @@ function normalizeSupabaseUrl(raw) {
 }
 
 function getEnvConfig() {
-  const groqKey1 = findEnvVar(['GROQ_API_KEY']);
-  const groqKey2 = findEnvVar(['GROQ_API_KEY_2']); // резервный ключ
-  const cerebrasKey = findEnvVar(['CEREBRAS_API_KEY']);
+  const groqKey = findEnvVar(['GROQ_API_KEY']);
+  const openRouterKey = findEnvVar(['OPENROUTER_API_KEY']);
   const sbUrl = normalizeSupabaseUrl(findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL);
   const sbServiceKey = (findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']) || '').trim();
   const secretSalt = (findEnvVar(['KARDPRO_SESSION_SALT', 'SESSION_SECRET']) || sbServiceKey).trim();
   const allowedOrigins = (findEnvVar(['ALLOWED_ORIGINS']) || '').split(',').map(s => s.trim()).filter(Boolean);
-  return { groqKey1, groqKey2, cerebrasKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins };
+  return { groqKey, openRouterKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins };
 }
 
 function safeEqual(a, b) {
@@ -293,6 +292,7 @@ function validateCardContent(content) {
   return { ok: issues.length === 0, issues, warnings, checkedCount: texts.length };
 }
 
+// === Vision (Groq) ===
 async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
   const visionPrompt = userHint
     ? `Посмотри на фото (подсказка: "${userHint.slice(0, 200)}"). Напиши на русском в 1-2 предложениях точное название, тип, цвет, материал, детали и назначение для маркетплейса.`
@@ -350,23 +350,27 @@ async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
   return null;
 }
 
-// 🔴 Генерация JSON с fallback: Groq (основной + резервный) → Cerebras → Pollinations
+// === Генерация JSON с цепочкой: Groq → OpenRouter → Pollinations ===
 async function generateFunnelJSON(prompt, systemPrompt, product) {
-  const { groqKey1, groqKey2, cerebrasKey } = getEnvConfig();
+  const { groqKey, openRouterKey } = getEnvConfig();
 
   const groqModels = ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
-  const cerebrasModels = ['llama-4-scout-17b-16e-instruct', 'qwen-3-32b'];
+  const openRouterModels = [
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemini-2.0-flash-exp:free',
+    'deepseek/deepseek-r1:free'
+  ];
 
   let lastError = 'Все провайдеры недоступны';
   let rawContent = null;
 
-  // Пробуем Groq (ключ 1)
-  if (groqKey1) {
+  // 1. Пробуем Groq (если ключ есть)
+  if (groqKey) {
     for (const model of groqModels) {
       try {
         const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${groqKey1}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model,
             response_format: { type: 'json_object' },
@@ -379,17 +383,22 @@ async function generateFunnelJSON(prompt, systemPrompt, product) {
           rawContent = d.choices?.[0]?.message?.content;
           if (rawContent) break;
         }
-      } catch (e) { lastError = `Groq(1) ${model}: ${e.message}`; }
+      } catch (e) { lastError = `Groq ${model}: ${e.message}`; }
     }
   }
 
-  // Если не вышло — пробуем Groq (ключ 2)
-  if (!rawContent && groqKey2) {
-    for (const model of groqModels) {
+  // 2. Пробуем OpenRouter (если ключ есть и Groq не сработал)
+  if (!rawContent && openRouterKey) {
+    for (const model of openRouterModels) {
       try {
-        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+        const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${groqKey2}`, 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': `Bearer ${openRouterKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://kard-pro.ru',
+            'X-Title': 'KARD-PRO'
+          },
           body: JSON.stringify({
             model,
             response_format: { type: 'json_object' },
@@ -402,34 +411,11 @@ async function generateFunnelJSON(prompt, systemPrompt, product) {
           rawContent = d.choices?.[0]?.message?.content;
           if (rawContent) break;
         }
-      } catch (e) { lastError = `Groq(2) ${model}: ${e.message}`; }
+      } catch (e) { lastError = `OpenRouter ${model}: ${e.message}`; }
     }
   }
 
-  // Если всё ещё нет — пробуем Cerebras
-  if (!rawContent && cerebrasKey) {
-    for (const model of cerebrasModels) {
-      try {
-        const res = await fetchWithTimeout('https://api.cerebras.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${cerebrasKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            response_format: { type: 'json_object' },
-            messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }],
-            temperature: 0.3, max_tokens: 2000
-          })
-        }, 40000);
-        if (res.ok) {
-          const d = await res.json();
-          rawContent = d.choices?.[0]?.message?.content;
-          if (rawContent) break;
-        }
-      } catch (e) { lastError = `Cerebras ${model}: ${e.message}`; }
-    }
-  }
-
-  // Последний шанс — Pollinations (бесплатно, без ключа)
+  // 3. Последний шанс — Pollinations (без ключа)
   if (!rawContent) {
     try {
       const res = await fetchWithTimeout('https://text.pollinations.ai/openai', {
@@ -456,7 +442,7 @@ async function generateFunnelJSON(prompt, systemPrompt, product) {
 }
 
 export default async function handler(req, res) {
-  const { groqKey1, sbUrl, sbServiceKey, secretSalt, allowedOrigins } = getEnvConfig();
+  const { groqKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins } = getEnvConfig();
   const origin = req.headers.origin || '';
 
   if (allowedOrigins.length > 0) {
@@ -492,7 +478,9 @@ export default async function handler(req, res) {
     }
 
     if (!secretSalt) return res.status(500).json({ error: 'KARDPRO_SESSION_SALT не задан' });
-    if (!groqKey1) return res.status(500).json({ error: 'GROQ_API_KEY не задан' });
+    if (!groqKey && !getEnvConfig().openRouterKey) {
+      return res.status(500).json({ error: 'Нужен хотя бы один ключ: GROQ_API_KEY или OPENROUTER_API_KEY' });
+    }
     if (!sbUrl || !sbServiceKey) return res.status(500).json({ error: 'Supabase не настроен' });
 
     const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
@@ -550,7 +538,10 @@ export default async function handler(req, res) {
 
     let recognizedProduct = null;
     if (imageBase64) {
-      recognizedProduct = await recognizeProductFromImage(groqKey1, imageBase64, product);
+      // Для Vision по-прежнему используем Groq (если есть)
+      if (groqKey) {
+        recognizedProduct = await recognizeProductFromImage(groqKey, imageBase64, product);
+      }
       if (recognizedProduct) {
         recognizedProduct = clampString(recognizedProduct, LIMITS.MAX_RECOGNIZED_LEN);
         product = clampString(product ? `${product} (${recognizedProduct})` : recognizedProduct, LIMITS.MAX_PRODUCT_LEN);
@@ -575,7 +566,7 @@ export default async function handler(req, res) {
 {"title_variants":["Заголовок 1","Заголовок 2","Заголовок 3"],"ai_colors":{"bg1":"#HEX","bg2":"#HEX","accent":"#HEX","badge":"#HEX"},"slides":[{"title":"ЗАГОЛОВОК","subtitle":"УТП","badge":"ХИТ ПРОДАЖ","sticker":"ГАРАНТИЯ 1 ГОД","bullets":["Выгода 1","Выгода 2","Выгода 3"]},{"title":"ХАРАКТЕРИСТИКИ","subtitle":"Надежные материалы","badge":"ПАРАМЕТРЫ","sticker":"ПРЕМИУМ","bullets":["Материал: ...","Мощность: ...","Особенность: ...","Вес: ..."]},{"title":"КОМПЛЕКТАЦИЯ","subtitle":"Полный набор","badge":"ЧТО В КОРОБКЕ","sticker":"ПОДАРОК","bullets":["1. Товар","2. Кабель","3. Инструкция","4. Коробка"]}],"dimensions":{"width":"18 см","height":"24 см"},"bg_prompt":"English studio prompt, empty center podium, 8k","seo":"SEO-описание 500-700 символов."}`;
 
     let content;
-    try { content = await generateFunnelJSON(groqKey1, systemPrompt, product); }
+    try { content = await generateFunnelJSON(groqKey, systemPrompt, product); }
     catch (e) { return res.status(500).json({ error: e.message, creditsNotCharged: true }); }
 
     const validation = validateCardContent(content);
