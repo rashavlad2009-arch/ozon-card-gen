@@ -69,7 +69,7 @@
         "@id": "https://kard-pro.ru/#org",
         "name": "KARD-PRO",
         "url": "https://kard-pro.ru/",
-        "contactPoint": { "@type": "ContactPoint", "email": "vlad.gembar@mail.ru", "contactType": "customer support" }
+        "contactPoint": { "@type": "ContactPoint", "contactType": "customer support" }
       },
       {
         "@type": "FAQPage",
@@ -115,7 +115,9 @@
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
+  
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@700&family=Rubik:wght@600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+  
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #06080f; color: #f8fafc; overflow-x: hidden; }
     .canvas-bg { background-color: #090d16; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 20px 20px; }
@@ -146,7 +148,7 @@
     </div>
   </div>
 
-  <!-- CSV -->
+  <!-- CSV МАССОВЫЙ ИМПОРТ -->
   <div id="batchModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl relative max-h-[94vh] overflow-y-auto">
       <button onclick="closeBatchModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
@@ -195,11 +197,15 @@
     <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
       <button onclick="closeFeedbackModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1.5">
-        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">✉️ Связь</div>
+        <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">✉️ Связь с автором</div>
         <h2 class="text-xl font-extrabold text-white">Поддержка KARD-PRO</h2>
+        <p class="text-xs text-slate-400">Идеи, вопросы или сотрудничество</p>
       </div>
       <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-2">
-        <div class="text-xs"><span class="text-[10px] text-slate-400 block">Почта:</span><b class="text-sm text-indigo-300 select-all">vlad.gembar@mail.ru</b></div>
+        <div class="text-xs">
+          <span class="text-[10px] text-slate-400 block">Почта автора:</span>
+          <b id="supportEmailText" class="text-sm text-indigo-300 select-all">vlad.gembar@mail.ru</b>
+        </div>
         <button onclick="copySupportEmail()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">📋 Копировать</button>
       </div>
       <textarea id="feedbackMessageInput" rows="3" placeholder="Здравствуйте, Влад!..." class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500"></textarea>
@@ -309,7 +315,7 @@
       <button id="mpBtn_avito" onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold cursor-pointer">🟢 Авито (4:3)</button>
     </div>
     <div class="flex items-center gap-1.5 sm:gap-2">
-      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">✉️</button>
+      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer">✉️ Связь с автором</button>
       <button onclick="openBatchModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 font-bold px-2.5 py-1.5 rounded-xl text-xs cursor-pointer">📦 CSV</button>
       <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"><span id="authNavText">👤 Войти</span></button>
       <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-xl text-xs font-bold">🚪</button>
@@ -484,6 +490,7 @@
                 <select id="bgEngineMode" class="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-emerald-300">
                   <option value="cloud">⚡ Гибрид 3D + Flux</option>
                   <option value="procedural">🎨 3D-студия</option>
+                  <option value="gimmy">🎨 Gimmy (без водяных знаков)</option>
                   <option value="comfy">🖥️ ComfyUI</option>
                 </select>
               </div>
@@ -712,8 +719,8 @@
           <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300">📂 Открыть</button>
         </div>
         <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/5 px-1">
-          <span>Связь:</span>
-          <button onclick="openFeedbackModal()" class="text-indigo-400 hover:text-indigo-300 font-bold underline">✉️ vlad.gembar@mail.ru</button>
+          <span>Связь с автором:</span>
+          <button onclick="openFeedbackModal()" class="text-indigo-400 hover:text-indigo-300 font-bold underline">✉️ Написать</button>
         </div>
       </div>
     </aside>
@@ -744,6 +751,8 @@
         <span>📐 Двойной клик на тексте = редактирование</span>
         <span class="text-white/20">•</span>
         <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline">Скачать слайд</button>
+        <span class="text-white/20">•</span>
+        <button onclick="openFeedbackModal()" class="text-emerald-400 hover:text-emerald-300 font-bold underline">✉️ Связь с автором</button>
       </div>
     </main>
   </div>
@@ -806,7 +815,7 @@
   <footer class="bg-black/50 border-t border-white/10 py-6 px-4">
     <div class="max-w-4xl mx-auto text-center text-xs text-slate-500 space-y-2">
       <div class="flex flex-wrap items-center justify-center gap-4">
-        <a href="mailto:vlad.gembar@mail.ru" class="hover:text-white">✉️ vlad.gembar@mail.ru</a>
+        <button onclick="openFeedbackModal()" class="hover:text-white">✉️ Связь с автором</button>
       </div>
       <p class="pt-2">© 2024-2026 KARD-PRO. ИИ-генератор карточек для Ozon, Wildberries, Яндекс Маркета и Авито.</p>
       <p class="text-[10px]">KARD-PRO не связан с Ozon, Wildberries, Яндекс Маркет или Авито. Все товарные знаки принадлежат их владельцам.</p>
@@ -1609,8 +1618,8 @@
     let historyStack = [];
     let redoStack = [];
 
-    const AUTOSAVE_KEY = 'kardpro_autosave_v9';
-    const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v8';
+    const AUTOSAVE_KEY = 'kardpro_autosave_v10';
+    const LEGACY_AUTOSAVE_KEY = 'kardpro_autosave_v9';
     let autosaveTimer = null;
 
     const GLOBAL_PERSIST_IDS = [
@@ -1636,7 +1645,7 @@
           if (!el) return;
           globals[id] = el.type === 'checkbox' ? el.checked : el.value;
         });
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ slidesState, globals, seo: document.getElementById('seoResult').value, version: 9 }));
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ slidesState, globals, seo: document.getElementById('seoResult').value, version: 10 }));
       } catch (e) {}
     }
     window.addEventListener('beforeunload', () => {
@@ -2504,34 +2513,44 @@
       const syncColors = document.getElementById('syncBgColorsToggle')?.checked !== false;
       const status = document.getElementById('bgStatus');
       const btn = document.getElementById('comfyGenBtn');
+      
       bgGenerationCounter += 1;
       const currentVariant = bgGenerationCounter;
       customBgImg = generateProceduralStudioImage(currentVariant);
       drawCard();
+
       if (mode === 'procedural') {
         status.classList.remove('hidden');
         status.textContent = `✅ 3D-студия #${currentVariant}!`;
         showToast(`🌄 Фон #${currentVariant} обновлён!`, 'success');
         return;
       }
+
       status.classList.remove('hidden');
       btn.disabled = true;
       btn.textContent = '⏳ Генерируем...';
-      if (mode === 'cloud') {
+
+      if (mode === 'cloud' || mode === 'gimmy') {
         const bg1Hex = document.getElementById('customBg1').value;
         const accentHex = document.getElementById('customAccent').value;
         const colorDesc = syncColors ? `, palette of ${hexToEnglishColorName(bg1Hex)} with ${hexToEnglishColorName(accentHex)} accent` : '';
         const angles = ['front eye-level', 'cinematic macro', 'dramatic rim', 'architectural', 'high-end commercial'];
         const angleTag = angles[currentVariant % angles.length];
-        status.textContent = `☁️ Загружаем Flux...`;
+        
+        status.textContent = `☁️ Загружаем фон...`;
         try {
           const seed = Math.floor(Math.random() * 89999999) + 10000000 + currentVariant * 7919;
           const reqW = Math.min(960, canvas.width);
           const reqH = Math.min(960, canvas.height);
           const fullPrompt = `${basePrompt}${colorDesc}, ${angleTag}, empty center podium, no text, 8k`;
           const encoded = encodeURIComponent(fullPrompt);
+          
+          // Для Gimmy можно использовать Pollinations с другими параметрами, 
+          // либо оставить тот же запрос, так как в настройках указано nologo=true
           const directUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${reqW}&height=${reqH}&seed=${seed}&nologo=true`;
-          const loadedImg = await loadImageElementWithTimeout(directUrl, 14000);
+          
+          const loadedImg = await loadImageElementWithTimeout(directUrl, 20000);
+          
           const cleanCanvas = document.createElement('canvas');
           cleanCanvas.width = canvas.width;
           cleanCanvas.height = canvas.height;
@@ -2546,7 +2565,7 @@
           status.textContent = `✅ ИИ-фон #${currentVariant}!`;
           showToast(`🌄 ИИ-фон установлен!`, 'success');
         } catch (err) {
-          status.textContent = `✅ 3D-фон #${currentVariant}!`;
+          status.textContent = `✅ 3D-фон #${currentVariant} (ИИ недоступен)`;
           showToast(`🌄 3D-фон установлен!`, 'success');
         } finally {
           btn.disabled = false;
@@ -2554,6 +2573,7 @@
         }
         return;
       }
+
       const comfyUrl = document.getElementById('comfyUrl').value.trim().replace(/\/$/, '');
       status.textContent = '🔌 ComfyUI...';
       try {
