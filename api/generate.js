@@ -13,8 +13,8 @@ const LIMITS = {
   RATE_WINDOW_MS: 60 * 1000,
   RATE_MAX_HITS: 20
 };
-
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const BONUS_CREDITS = 5;
 
 global.usersVault = global.usersVault || {};
 global.rateBuckets = global.rateBuckets || new Map();
@@ -23,8 +23,8 @@ function findEnvVar(suffixes) {
   for (const s of suffixes) if (process.env[s]) return process.env[s].trim();
   const allKeys = Object.keys(process.env);
   for (const s of suffixes) {
-    const match = allKeys.find(k => k.endsWith(s) && process.env[k]);
-    if (match) return process.env[match].trim();
+    const m = allKeys.find(k => k.endsWith(s) && process.env[k]);
+    if (m) return process.env[m].trim();
   }
   return '';
 }
@@ -40,9 +40,9 @@ function getEnvConfig() {
 
 function safeEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const bufA = Buffer.from(a, 'utf8'), bufB = Buffer.from(b, 'utf8');
-  if (bufA.length !== bufB.length) return false;
-  try { return crypto.timingSafeEqual(bufA, bufB); } catch { return false; }
+  const bA = Buffer.from(a, 'utf8'), bB = Buffer.from(b, 'utf8');
+  if (bA.length !== bB.length) return false;
+  try { return crypto.timingSafeEqual(bA, bB); } catch { return false; }
 }
 
 function verifySessionToken(token, salt) {
@@ -110,8 +110,9 @@ function checkRateLimit(key) {
   return { allowed: true };
 }
 
+// 🔴 ЕДИНАЯ функция ID — всегда детерминированная
 function emailToDeterministicUUID(email) {
-  const hex = crypto.createHash('sha256').update(`user_${email}`).digest('hex').substring(0, 32);
+  const hex = crypto.createHash('sha256').update(`user_${email.toLowerCase()}`).digest('hex').substring(0, 32);
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
@@ -129,22 +130,27 @@ async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   } catch { return null; }
 }
 
-// 🔴 profiles — ЕДИНСТВЕННЫЙ источник истины для кредитов
+// 🔴 Источник истины — только profiles. Возвращает {credits, bonusGranted}
 async function readProfile(sbUrl, sbServiceKey, userId) {
   if (!sbUrl || !sbServiceKey || !userId) return null;
   try {
     const res = await fetchWithTimeout(
-      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits`,
+      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
       { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, 8000
     );
     if (!res.ok) return null;
     const list = await res.json();
-    if (Array.isArray(list) && list.length > 0 && typeof list[0].credits === 'number') return list[0].credits;
+    if (Array.isArray(list) && list.length > 0) {
+      return {
+        credits: typeof list[0].credits === 'number' ? list[0].credits : 0,
+        bonusGranted: !!list[0].bonus_granted
+      };
+    }
     return null;
-  } catch { return null; }
+  } catch (e) { console.error('[generate] readProfile:', e.message); return null; }
 }
 
-async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits) {
+async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
   if (!sbUrl || !sbServiceKey || !userId) return false;
   try {
     const res = await fetchWithTimeout(`${sbUrl}/rest/v1/profiles`, {
@@ -155,10 +161,30 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits) {
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
-      body: JSON.stringify({ id: userId, email, credits })
+      body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
     }, 8000);
     return res.ok;
   } catch (e) { console.error('[generate] upsertProfile:', e.message); return false; }
+}
+
+async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
+  if (!sbUrl || !sbServiceKey || !userId) return false;
+  try {
+    const res = await fetchWithTimeout(
+      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: sbServiceKey,
+          Authorization: `Bearer ${sbServiceKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ credits: newCredits })
+      }, 8000
+    );
+    return res.ok;
+  } catch (e) { console.error('[generate] patchProfileCredits:', e.message); return false; }
 }
 
 async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
@@ -193,7 +219,7 @@ function clampString(s, max) {
 function validateCardContent(content) {
   const issues = [], warnings = [];
   if (!content || !Array.isArray(content.slides)) {
-    return { ok: false, issues: [{ field: 'структура', label: 'Отсутствует массив slides', snippet: '' }], warnings: [], checkedCount: 0 };
+    return { ok: false, issues: [{ field: 'структура', label: 'Отсутствует slides', snippet: '' }], warnings: [], checkedCount: 0 };
   }
   const FORBIDDEN = [
     { re: /\b(?:8[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2})\b/i, label: 'номер телефона', severity: 'error' },
@@ -213,7 +239,6 @@ function validateCardContent(content) {
     if (Array.isArray(sl.bullets)) sl.bullets.forEach((b, i) => texts.push({ text: String(b), field: `Слайд ${idx + 1}: Пункт ${i + 1}` }));
   });
   if (content.seo) texts.push({ text: String(content.seo), field: 'SEO' });
-
   texts.forEach(({ text, field }) => {
     FORBIDDEN.forEach(({ re, label, severity }) => {
       if (re.test(text)) {
@@ -233,22 +258,22 @@ function validateCardContent(content) {
 async function recognizeProductFromImage(apiKey, imageBase64, userHint = '') {
   const visionPrompt = userHint
     ? `Посмотри на фото (подсказка: "${userHint.slice(0, 200)}"). Напиши на русском в 1-2 предложениях точное название, тип, цвет, материал, детали и назначение для маркетплейса.`
-    : `Внимательно посмотри на фото. Напиши на русском точное название товара, категорию, цвет, материал, форму и ключевые особенности в 1-2 предложениях.`;
+    : `Внимательно посмотри на фото. Напиши на русском точное название, категорию, цвет, материал, форму и ключевые особенности в 1-2 предложениях.`;
 
-  const baseVisionModels = [
+  const baseModels = [
     'meta-llama/llama-4-scout-17b-16e-instruct',
     'meta-llama/llama-4-maverick-17b-128e-instruct',
     'llama-3.2-90b-vision-preview',
     'llama-3.2-11b-vision-preview'
   ];
-  let visionModels = [...baseVisionModels];
+  let visionModels = [...baseModels];
   try {
     const r = await fetchWithTimeout('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${apiKey}` } }, 8000);
     if (r.ok) {
       const d = await r.json();
       const dyn = (d.data || []).map(m => m.id).filter(id => {
-        const low = id.toLowerCase();
-        return low.includes('vision') || low.includes('scout') || low.includes('maverick');
+        const l = id.toLowerCase();
+        return l.includes('vision') || l.includes('scout') || l.includes('maverick');
       });
       visionModels = [...new Set([...visionModels, ...dyn])];
     }
@@ -383,34 +408,37 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'RATE_LIMIT', message: `Подождите ${rate.retryAfter}с.` });
     }
 
-    const cookieVault = readCookieVault(req, secretSalt);
-    const memRecord = global.usersVault[userObj.id] || cookieVault[userObj.id] || null;
     const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
     const appMeta = sbUser?.app_metadata || {};
-    const userId = sbUser?.id || emailToDeterministicUUID(userObj.email);
 
-    // 🔴 ГЛАВНОЕ: читаем из profiles. Единственный источник истины.
-    let currentCredits = await readProfile(sbUrl, sbServiceKey, userId);
-    let initialized = currentCredits !== null;
+    // 🔴 ГЛАВНОЕ: всегда детерминированный ID
+    const userId = emailToDeterministicUUID(userObj.email);
 
-    if (!initialized) {
-      const hasSpent = !!appMeta.kp_has_spent || !!memRecord?.hasSpent;
-      // Новый OAuth-пользователь, никогда не тратил → 5 кредитов и создаём профиль
-      if (userObj.provider !== 'email' && !hasSpent) {
-        currentCredits = 5;
-        initialized = true;
-        const created = await upsertProfile(sbUrl, sbServiceKey, userId, userObj.email, 5);
-        if (!created) {
-          // Не смогли создать — вернём ошибку, чтобы не давать "фантомные" кредиты
-          return res.status(500).json({ error: 'Ошибка инициализации профиля', creditsNotCharged: true });
-        }
-      } else if (memRecord && typeof memRecord.credits === 'number') {
-        currentCredits = memRecord.credits;
-        initialized = true;
-        await upsertProfile(sbUrl, sbServiceKey, userId, userObj.email, currentCredits);
+    // Читаем профиль
+    const profile = await readProfile(sbUrl, sbServiceKey, userId);
+    let currentCredits = 0;
+    let bonusGranted = false;
+
+    if (profile === null) {
+      // Первый визит — решаем: давать ли бонус?
+      const hasSpent = !!appMeta.kp_has_spent;
+      const isOAuth = userObj.provider !== 'email';
+
+      if (isOAuth && !hasSpent) {
+        currentCredits = BONUS_CREDITS;
+        bonusGranted = true;
       } else {
         currentCredits = 0;
+        bonusGranted = isOAuth;  // OAuth, но уже тратил — бонус не положен
       }
+
+      const created = await upsertProfile(sbUrl, sbServiceKey, userId, userObj.email, currentCredits, bonusGranted);
+      if (!created) {
+        return res.status(500).json({ error: 'Ошибка инициализации профиля', creditsNotCharged: true });
+      }
+    } else {
+      currentCredits = profile.credits;
+      bonusGranted = profile.bonusGranted;
     }
 
     if (currentCredits <= 0) {
@@ -421,6 +449,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // Vision
     let recognizedProduct = null;
     if (imageBase64) {
       recognizedProduct = await recognizeProductFromImage(apiKey, imageBase64, product);
@@ -443,9 +472,9 @@ export default async function handler(req, res) {
 
     const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
 Задача: ${toneInstructions[tone] || toneInstructions.hit}
-КРИТИЧНО: не используй номера телефонов, email, ссылки на соцсети, слова "скидка/акция/распродажа", "лучший/№1/лидер", медицинские утверждения.
-Верни строго валидный JSON без markdown:
-{"title_variants":["Заголовок 1","Заголовок 2","Заголовок 3"],"ai_colors":{"bg1":"#HEX","bg2":"#HEX","accent":"#HEX","badge":"#HEX"},"slides":[{"title":"ЗАГОЛОВОК","subtitle":"УТП","badge":"ХИТ ПРОДАЖ","sticker":"ГАРАНТИЯ 1 ГОД","bullets":["Выгода 1","Выгода 2","Выгода 3"]},{"title":"ХАРАКТЕРИСТИКИ","subtitle":"Надежные материалы","badge":"ПАРАМЕТРЫ","sticker":"ПРЕМИУМ","bullets":["Материал: ...","Мощность: ...","Особенность: ...","Вес: ..."]},{"title":"КОМПЛЕКТАЦИЯ","subtitle":"Полный набор","badge":"ЧТО В КОРОБКЕ","sticker":"ПОДАРОК","bullets":["1. Товар","2. Кабель","3. Инструкция","4. Коробка"]}],"dimensions":{"width":"18 см","height":"24 см"},"bg_prompt":"English studio prompt","seo":"SEO-описание 500-700 символов."}`;
+КРИТИЧНО: не используй номера телефонов, email, ссылки на соцсети, слова "скидка/акция/распродажа", "лучший/№1/лидер", медицинские утверждения. Ozon/WB блокируют такие карточки.
+Создай продающую воронку из 3 слайдов и верни СТРОГО валидный JSON без markdown:
+{"title_variants":["Заголовок 1","Заголовок 2","Заголовок 3"],"ai_colors":{"bg1":"#HEX","bg2":"#HEX","accent":"#HEX","badge":"#HEX"},"slides":[{"title":"ЗАГОЛОВОК","subtitle":"УТП","badge":"ХИТ ПРОДАЖ","sticker":"ГАРАНТИЯ 1 ГОД","bullets":["Выгода 1","Выгода 2","Выгода 3"]},{"title":"ХАРАКТЕРИСТИКИ","subtitle":"Надежные материалы","badge":"ПАРАМЕТРЫ","sticker":"ПРЕМИУМ","bullets":["Материал: ...","Мощность: ...","Особенность: ...","Вес: ..."]},{"title":"КОМПЛЕКТАЦИЯ","subtitle":"Полный набор","badge":"ЧТО В КОРОБКЕ","sticker":"ПОДАРОК","bullets":["1. Товар","2. Кабель","3. Инструкция","4. Коробка"]}],"dimensions":{"width":"18 см","height":"24 см"},"bg_prompt":"English studio prompt, empty center podium, 8k","seo":"SEO-описание 500-700 символов."}`;
 
     let content;
     try { content = await generateFunnelJSON(apiKey, systemPrompt, product); }
@@ -453,30 +482,30 @@ export default async function handler(req, res) {
 
     const validation = validateCardContent(content);
 
-    // 🔴 СПИСАНИЕ: upsert в profiles. Если не удалось — НЕ списываем и возвращаем ошибку.
+    // 🔴 Списание через PATCH — атомарно, только credits
     const nextCredits = Math.max(0, currentCredits - 1);
-    const saved = await upsertProfile(sbUrl, sbServiceKey, userId, userObj.email, nextCredits);
+    const saved = await patchProfileCredits(sbUrl, sbServiceKey, userId, nextCredits);
     if (!saved) {
       console.error('[generate] Failed to save credits for', userObj.email);
-      return res.status(500).json({ error: 'Не удалось сохранить списание кредита. Кредит не списан — попробуйте ещё раз.', creditsNotCharged: true });
+      return res.status(500).json({
+        error: 'Не удалось сохранить списание. Кредит не списан — попробуйте ещё раз.',
+        creditsNotCharged: true
+      });
     }
 
-    // Флаги в app_metadata
+    // app_metadata — опционально, не блокирует
     if (sbUser?.id) {
-      await updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
+      updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
         ...appMeta,
         kp_initialized: true,
-        kp_has_spent: true,
-        kp_bonus_blocked: false,
-        kp_pass_hash: appMeta.kp_pass_hash || null,
-        kp_used_labels: Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels.slice(-100) : []
-      });
+        kp_has_spent: true
+      }).catch(() => {});
     }
 
     const updatedRecord = {
       id: userId, email: userObj.email, name: userObj.name,
       provider: userObj.provider || 'yandex',
-      credits: nextCredits, hasSpent: true, bonusBlocked: false
+      credits: nextCredits, hasSpent: true, bonusGranted
     };
     global.usersVault[userId] = updatedRecord;
 
