@@ -12,7 +12,8 @@ const LIMITS = {
   FETCH_TIMEOUT_MS: 25000,
   RATE_WINDOW_MS: 60 * 1000,
   RATE_MAX_HITS: 20,
-  DB_TIMEOUT_MS: 20000
+  DB_TIMEOUT_MS: 30000,
+  DB_RETRIES: 3
 };
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const BONUS_CREDITS = 5;
@@ -102,6 +103,22 @@ function readCookieVault(req, salt) {
   } catch { return {}; }
 }
 
+// 🔴 ФУНКЦИЯ С ПОВТОРНЫМИ ПОПЫТКАМИ ДЛЯ ОБХОДА ТАЙМАУТОВ VERCEL -> SUPABASE
+async function fetchWithRetry(url, opts = {}, timeoutMs = LIMITS.DB_TIMEOUT_MS, retries = LIMITS.DB_RETRIES) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      const res = await fetch(url, { ...opts, signal: ctrl.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      if (i === retries - 1) throw err; // Если это последняя попытка, выбрасываем ошибку
+      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Пауза 1с, 2с... перед следующей попыткой
+    }
+  }
+}
+
 async function fetchWithTimeout(url, opts = {}, timeoutMs = LIMITS.FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -132,9 +149,9 @@ function emailToDeterministicUUID(email) {
 async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   if (!sbUrl || !sbServiceKey || !email) return null;
   try {
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, LIMITS.DB_TIMEOUT_MS
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
     );
     if (!res.ok) return null;
     const data = await res.json();
@@ -146,9 +163,9 @@ async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
 async function readProfile(sbUrl, sbServiceKey, userId) {
   if (!sbUrl || !sbServiceKey || !userId) return null;
   try {
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }, LIMITS.DB_TIMEOUT_MS
+      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
     );
     if (!res.ok) return null;
     const list = await res.json();
@@ -165,7 +182,7 @@ async function readProfile(sbUrl, sbServiceKey, userId) {
 async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
   if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
   try {
-    const res = await fetchWithTimeout(`${sbUrl}/rest/v1/profiles`, {
+    const res = await fetchWithRetry(`${sbUrl}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
         apikey: sbServiceKey,
@@ -174,7 +191,7 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusG
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
-    }, LIMITS.DB_TIMEOUT_MS);
+    });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
       return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 100)}` };
@@ -186,7 +203,7 @@ async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusG
 async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
   if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
   try {
-    const res = await fetchWithTimeout(
+    const res = await fetchWithRetry(
       `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
       {
         method: 'PATCH',
@@ -197,7 +214,7 @@ async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({ credits: newCredits })
-      }, LIMITS.DB_TIMEOUT_MS
+      }
     );
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
@@ -210,11 +227,11 @@ async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
 async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
   if (!sbUrl || !sbServiceKey || !sbUserId) return;
   try {
-    await fetchWithTimeout(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
+    await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
       method: 'PUT',
       headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ app_metadata: patch })
-    }, LIMITS.DB_TIMEOUT_MS);
+    });
   } catch (e) { /* ignore */ }
 }
 
