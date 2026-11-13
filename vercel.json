@@ -1,15 +1,14 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "framework": null,
+  "outputDirectory": ".",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 60,
-      "memory": 1024
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  },
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
