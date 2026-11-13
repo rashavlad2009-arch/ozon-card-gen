@@ -12,7 +12,7 @@ const LIMITS = {
   FETCH_TIMEOUT_MS: 25000,
   RATE_WINDOW_MS: 60 * 1000,
   RATE_MAX_HITS: 20,
-  DB_TIMEOUT_MS: 30000,
+  DB_TIMEOUT_MS: 20000,
   DB_RETRIES: 3
 };
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -35,13 +35,10 @@ function normalizeSupabaseUrl(raw) {
   let url = String(raw || '').trim().replace(/\/$/, '');
   if (!url) return '';
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    if (/^[a-z0-9]{15,40}$/i.test(url)) {
-      return `https://${url}.supabase.co`;
-    }
+    if (/^[a-z0-9]{15,40}$/i.test(url)) return `https://${url}.supabase.co`;
     return url;
   }
-  url = url.replace(/^http:\/\//, 'https://');
-  return url;
+  return url.replace(/^http:\/\//, 'https://');
 }
 
 function getEnvConfig() {
@@ -72,7 +69,6 @@ function verifySessionToken(token, salt) {
     const d = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
     if (typeof d.ts !== 'number') return null;
     if (Date.now() - d.ts > LIMITS.SESSION_TTL_MS) return null;
-    if (d.ts - Date.now() > 5 * 60 * 1000) return null;
     if (!d.id || !d.email) return null;
     return d;
   } catch { return null; }
@@ -80,12 +76,7 @@ function verifySessionToken(token, salt) {
 
 function createSessionToken(u, salt) {
   if (!salt) throw new Error('secretSalt не задан');
-  const payload = Buffer.from(JSON.stringify({
-    id: u.id, email: u.email, name: u.name,
-    provider: u.provider || 'yandex',
-    credits: typeof u.credits === 'number' ? u.credits : 0,
-    ts: Date.now()
-  })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ id: u.id, email: u.email, name: u.name, provider: u.provider || 'yandex', credits: typeof u.credits === 'number' ? u.credits : 0, ts: Date.now() })).toString('base64url');
   const sig = crypto.createHmac('sha256', salt).update(payload).digest('base64url');
   return `kp.${payload}.${sig}`;
 }
@@ -149,10 +140,7 @@ function emailToDeterministicUUID(email) {
 async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
   if (!sbUrl || !sbServiceKey || !email) return null;
   try {
-    const res = await fetchWithRetry(
-      `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
-    );
+    const res = await fetchWithRetry(`${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`, { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } });
     if (!res.ok) return null;
     const data = await res.json();
     const users = data.users || data || [];
@@ -163,75 +151,40 @@ async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
 async function readProfile(sbUrl, sbServiceKey, userId) {
   if (!sbUrl || !sbServiceKey || !userId) return null;
   try {
-    const res = await fetchWithRetry(
-      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
-    );
+    const res = await fetchWithRetry(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`, { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } });
     if (!res.ok) return null;
     const list = await res.json();
-    if (Array.isArray(list) && list.length > 0) {
-      return {
-        credits: typeof list[0].credits === 'number' ? list[0].credits : 0,
-        bonusGranted: !!list[0].bonus_granted
-      };
-    }
+    if (Array.isArray(list) && list.length > 0) return { credits: typeof list[0].credits === 'number' ? list[0].credits : 0, bonusGranted: !!list[0].bonus_granted };
     return null;
   } catch { return null; }
 }
 
 async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
-  if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
+  if (!sbUrl || !sbServiceKey || !userId) return { ok: false };
   try {
     const res = await fetchWithRetry(`${sbUrl}/rest/v1/profiles`, {
-      method: 'POST',
-      headers: {
-        apikey: sbServiceKey,
-        Authorization: `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
+      method: 'POST', headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
     });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 100)}` };
-    }
-    return { ok: true };
+    return { ok: res.ok };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
 async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
-  if (!sbUrl || !sbServiceKey || !userId) return { ok: false, error: 'Missing params' };
+  if (!sbUrl || !sbServiceKey || !userId) return { ok: false };
   try {
-    const res = await fetchWithRetry(
-      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-      {
-        method: 'PATCH',
-        headers: {
-          apikey: sbServiceKey,
-          Authorization: `Bearer ${sbServiceKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({ credits: newCredits })
-      }
-    );
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      return { ok: false, error: `HTTP ${res.status}: ${txt.slice(0, 100)}` };
-    }
-    return { ok: true };
+    const res = await fetchWithRetry(`${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`, {
+      method: 'PATCH', headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ credits: newCredits })
+    });
+    return { ok: res.ok };
   } catch (e) { return { ok: false, error: e.message }; }
 }
 
 async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
   if (!sbUrl || !sbServiceKey || !sbUserId) return;
   try {
-    await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
-      method: 'PUT',
-      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_metadata: patch })
-    });
+    await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, { method: 'PUT', headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ app_metadata: patch }) });
   } catch (e) { /* ignore */ }
 }
 
@@ -240,24 +193,16 @@ function validateImageDataUrl(imageBase64) {
   if (imageBase64.length > LIMITS.MAX_IMAGE_B64_LEN) return { ok: false, reason: 'too_large' };
   const match = imageBase64.match(/^data:(image\/[a-z+]+);base64,/i);
   if (!match) return { ok: false, reason: 'bad_format' };
-  const mime = match[1].toLowerCase();
-  if (!ALLOWED_IMAGE_MIMES.has(mime)) return { ok: false, reason: 'bad_mime' };
-  const b64 = imageBase64.split(',')[1] || '';
-  if (Math.floor(b64.length * 0.75) > LIMITS.MAX_IMAGE_BYTES) return { ok: false, reason: 'too_large' };
+  if (!ALLOWED_IMAGE_MIMES.has(match[1].toLowerCase())) return { ok: false, reason: 'bad_mime' };
+  if (Math.floor((imageBase64.split(',')[1] || '').length * 0.75) > LIMITS.MAX_IMAGE_BYTES) return { ok: false, reason: 'too_large' };
   return { ok: true };
 }
 
-function clampString(s, max) {
-  if (typeof s !== 'string') return '';
-  const t = s.trim();
-  return t.length > max ? t.slice(0, max) : t;
-}
+function clampString(s, max) { return typeof s !== 'string' ? '' : s.trim().length > max ? s.trim().slice(0, max) : s.trim(); }
 
 function validateCardContent(content) {
   const issues = [], warnings = [];
-  if (!content || !Array.isArray(content.slides)) {
-    return { ok: false, issues: [{ field: 'структура', label: 'Отсутствует slides', snippet: '' }], warnings: [], checkedCount: 0 };
-  }
+  if (!content || !Array.isArray(content.slides)) return { ok: false, issues: [{ field: 'структура', label: 'Отсутствует slides', snippet: '' }], warnings: [], checkedCount: 0 };
   const FORBIDDEN = [
     { re: /\b(?:8[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2})\b/i, label: 'номер телефона', severity: 'error' },
     { re: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i, label: 'email', severity: 'error' },
@@ -285,36 +230,21 @@ function validateCardContent(content) {
     });
   });
   content.slides.forEach((sl, idx) => {
-    if (sl.title && String(sl.title).length > 55) {
-      warnings.push({ field: `Слайд ${idx + 1}: Заголовок`, label: 'Длинный заголовок (>55)', snippet: String(sl.title).substring(0, 50) + '...' });
-    }
+    if (sl.title && String(sl.title).length > 55) warnings.push({ field: `Слайд ${idx + 1}: Заголовок`, label: 'Длинный заголовок (>55)', snippet: String(sl.title).substring(0, 50) + '...' });
   });
   return { ok: issues.length === 0, issues, warnings, checkedCount: texts.length };
 }
 
-// === Vision (Groq + OpenRouter fallback) ===
 async function recognizeProductFromImage(groqKey, openRouterKey, imageBase64, userHint = '') {
-  const visionPrompt = userHint
-    ? `Посмотри на фото (подсказка: "${userHint.slice(0, 200)}"). Напиши на русском в 1-2 предложениях точное название, тип, цвет, материал, детали и назначение для маркетплейса.`
-    : `Внимательно посмотри на фото. Напиши на русском точное название, категорию, цвет, материал, форму и ключевые особенности в 1-2 предложениях.`;
+  const visionPrompt = userHint ? `Посмотри на фото (подсказка: "${userHint.slice(0, 200)}"). Напиши на русском в 1-2 предложениях точное название, тип, цвет, материал, детали и назначение.` : `Внимательно посмотри на фото. Напиши на русском точное название, категорию, цвет, материал, форму и особенности в 1-2 предложениях.`;
 
-  // 1. Пробуем Groq
   if (groqKey) {
-    const groqModels = [
-      'meta-llama/llama-4-scout-17b-16e-instruct',
-      'llama-3.2-90b-vision-preview',
-      'llama-3.2-11b-vision-preview'
-    ];
+    const groqModels = ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.2-90b-vision-preview', 'llama-3.2-11b-vision-preview'];
     for (const vModel of groqModels) {
       try {
         const vRes = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: vModel,
-            messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }],
-            temperature: 0.3, max_tokens: 300
-          })
+          method: 'POST', headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: vModel, messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }], temperature: 0.3, max_tokens: 300 })
         }, 25000);
         if (vRes.ok) {
           const d = await vRes.json();
@@ -325,27 +255,13 @@ async function recognizeProductFromImage(groqKey, openRouterKey, imageBase64, us
     }
   }
 
-  // 2. Пробуем OpenRouter Vision
   if (openRouterKey) {
-    const orModels = [
-      'google/gemini-2.0-flash-exp:free',
-      'qwen/qwen-2-vl-72b-instruct'
-    ];
+    const orModels = ['google/gemini-2.0-flash-exp:free', 'qwen/qwen-2-vl-72b-instruct'];
     for (const model of orModels) {
       try {
         const vRes = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openRouterKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://kard-pro.ru',
-            'X-Title': 'KARD-PRO'
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }],
-            temperature: 0.3, max_tokens: 300
-          })
+          method: 'POST', headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://kard-pro.ru', 'X-Title': 'KARD-PRO' },
+          body: JSON.stringify({ model, messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }], temperature: 0.3, max_tokens: 300 })
         }, 25000);
         if (vRes.ok) {
           const d = await vRes.json();
@@ -356,14 +272,10 @@ async function recognizeProductFromImage(groqKey, openRouterKey, imageBase64, us
     }
   }
 
-  // 3. Резервный Pollinations
   try {
     const b = await fetchWithTimeout('https://text.pollinations.ai/openai', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'openai',
-        messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }]
-      })
+      body: JSON.stringify({ model: 'openai', messages: [{ role: 'user', content: [{ type: 'text', text: visionPrompt }, { type: 'image_url', image_url: { url: imageBase64 } }] }] })
     }, 20000);
     if (b.ok) {
       const d = await b.json();
@@ -371,35 +283,20 @@ async function recognizeProductFromImage(groqKey, openRouterKey, imageBase64, us
       if (t && t.length > 5) return t;
     }
   } catch {}
-  
   return null;
 }
 
-// === Генерация JSON с цепочкой: Groq → OpenRouter → Pollinations ===
 async function generateFunnelJSON(groqKey, openRouterKey, systemPrompt, product) {
   const groqModels = ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
-  const openRouterModels = [
-    'meta-llama/llama-3.3-70b-instruct:free',
-    'google/gemini-2.0-flash-exp:free',
-    'deepseek/deepseek-r1:free'
-  ];
+  const openRouterModels = ['meta-llama/llama-3.3-70b-instruct:free', 'google/gemini-2.0-flash-exp:free', 'deepseek/deepseek-r1:free'];
+  let lastError = 'Все провайдеры недоступны', rawContent = null;
 
-  let lastError = 'Все провайдеры недоступны';
-  let rawContent = null;
-
-  // 1. Пробуем Groq
   if (groqKey) {
     for (const model of groqModels) {
       try {
         const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            response_format: { type: 'json_object' },
-            messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }],
-            temperature: 0.3, max_tokens: 2000
-          })
+          method: 'POST', headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }], temperature: 0.3, max_tokens: 2000 })
         }, 40000);
         if (res.ok) {
           const d = await res.json();
@@ -410,24 +307,12 @@ async function generateFunnelJSON(groqKey, openRouterKey, systemPrompt, product)
     }
   }
 
-  // 2. Пробуем OpenRouter
   if (!rawContent && openRouterKey) {
     for (const model of openRouterModels) {
       try {
         const res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openRouterKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://kard-pro.ru',
-            'X-Title': 'KARD-PRO'
-          },
-          body: JSON.stringify({
-            model,
-            response_format: { type: 'json_object' },
-            messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }],
-            temperature: 0.3, max_tokens: 2000
-          })
+          method: 'POST', headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://kard-pro.ru', 'X-Title': 'KARD-PRO' },
+          body: JSON.stringify({ model, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }], temperature: 0.3, max_tokens: 2000 })
         }, 40000);
         if (res.ok) {
           const d = await res.json();
@@ -438,28 +323,17 @@ async function generateFunnelJSON(groqKey, openRouterKey, systemPrompt, product)
     }
   }
 
-  // 3. Pollinations
   if (!rawContent) {
     try {
       const res = await fetchWithTimeout('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'openai',
-          response_format: { type: 'json_object' },
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }],
-          temperature: 0.3, max_tokens: 2000
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'openai', response_format: { type: 'json_object' }, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: `Товар: ${product}. Сформируй JSON:` }], temperature: 0.3, max_tokens: 2000 })
       }, 40000);
-      if (res.ok) {
-        const d = await res.json();
-        rawContent = d.choices?.[0]?.message?.content;
-      }
+      if (res.ok) { const d = await res.json(); rawContent = d.choices?.[0]?.message?.content; }
     } catch (e) { lastError = `Pollinations: ${e.message}`; }
   }
 
   if (!rawContent) throw new Error(lastError);
-
   const cleaned = rawContent.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   try { return JSON.parse(cleaned); } catch (e) { throw new Error(`Невалидный JSON: ${e.message}`); }
 }
@@ -467,15 +341,10 @@ async function generateFunnelJSON(groqKey, openRouterKey, systemPrompt, product)
 export default async function handler(req, res) {
   const { groqKey, openRouterKey, sbUrl, sbServiceKey, secretSalt, allowedOrigins } = getEnvConfig();
   const origin = req.headers.origin || '';
-
+  
   if (allowedOrigins.length > 0) {
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
-    }
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+    if (allowedOrigins.includes(origin)) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
+  } else { res.setHeader('Access-Control-Allow-Origin', '*'); }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -485,9 +354,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-    if (contentLength > LIMITS.MAX_BODY_BYTES) return res.status(413).json({ error: 'Слишком большое тело' });
-
+    if (parseInt(req.headers['content-length'] || '0', 10) > LIMITS.MAX_BODY_BYTES) return res.status(413).json({ error: 'Слишком большое тело' });
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     let product = clampString(body?.product || '', LIMITS.MAX_PRODUCT_LEN);
     const tone = body?.tone || 'hit';
@@ -501,9 +368,7 @@ export default async function handler(req, res) {
     }
 
     if (!secretSalt) return res.status(500).json({ error: 'KARDPRO_SESSION_SALT не задан' });
-    if (!groqKey && !openRouterKey) {
-      return res.status(500).json({ error: 'Нужен хотя бы один ключ: GROQ_API_KEY или OPENROUTER_API_KEY' });
-    }
+    if (!groqKey && !openRouterKey) return res.status(500).json({ error: 'Нужен хотя бы один ключ ИИ' });
     if (!sbUrl || !sbServiceKey) return res.status(500).json({ error: 'Supabase не настроен' });
 
     const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
@@ -514,50 +379,27 @@ export default async function handler(req, res) {
 
     const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     const rate = checkRateLimit(`${clientIp}:${userObj.id}`);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfter));
-      return res.status(429).json({ error: 'RATE_LIMIT', message: `Подождите ${rate.retryAfter}с.` });
-    }
+    if (!rate.allowed) { res.setHeader('Retry-After', String(rate.retryAfter)); return res.status(429).json({ error: 'RATE_LIMIT', message: `Подождите ${rate.retryAfter}с.` }); }
 
     const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
     const appMeta = sbUser?.app_metadata || {};
     const userId = emailToDeterministicUUID(userObj.email);
 
     const profile = await readProfile(sbUrl, sbServiceKey, userId);
-    let currentCredits = 0;
-    let bonusGranted = false;
+    let currentCredits = 0, bonusGranted = false;
 
     if (profile === null) {
-      const hasSpent = !!appMeta.kp_has_spent;
       const isOAuth = userObj.provider !== 'email';
-
-      if (isOAuth && !hasSpent) {
-        currentCredits = BONUS_CREDITS;
-        bonusGranted = true;
-      } else {
-        currentCredits = 0;
-        bonusGranted = isOAuth;
-      }
-
+      if (isOAuth && !appMeta.kp_has_spent) { currentCredits = BONUS_CREDITS; bonusGranted = true; }
+      else { currentCredits = 0; bonusGranted = isOAuth; }
       const created = await upsertProfile(sbUrl, sbServiceKey, userId, userObj.email, currentCredits, bonusGranted);
-      if (!created.ok) {
-        return res.status(500).json({
-          error: `Ошибка БД: ${created.error}`,
-          creditsNotCharged: true
-        });
-      }
+      if (!created.ok) return res.status(500).json({ error: 'Ошибка создания профиля', creditsNotCharged: true });
     } else {
       currentCredits = profile.credits;
       bonusGranted = profile.bonusGranted;
     }
 
-    if (currentCredits <= 0) {
-      return res.status(402).json({
-        error: 'NO_CREDITS',
-        message: 'Генерации закончились. Пополните баланс от 50 ₽!',
-        creditsNotCharged: true
-      });
-    }
+    if (currentCredits <= 0) return res.status(402).json({ error: 'NO_CREDITS', message: 'Пополните баланс от 50 ₽!', creditsNotCharged: true });
 
     let recognizedProduct = null;
     if (imageBase64) {
@@ -566,56 +408,26 @@ export default async function handler(req, res) {
         recognizedProduct = clampString(recognizedProduct, LIMITS.MAX_RECOGNIZED_LEN);
         product = clampString(product ? `${product} (${recognizedProduct})` : recognizedProduct, LIMITS.MAX_PRODUCT_LEN);
       } else if (!product) {
-        return res.status(422).json({ 
-          error: 'ИИ не смог распознать товар на фото. Попробуйте загрузить фото с белым фоном или добавьте 1-2 слова в поле "Опишите ваш товар" (например, "черные наушники").', 
-          creditsNotCharged: true 
-        });
+        return res.status(422).json({ error: 'ИИ не смог распознать товар. Напишите пару слов в поле "Опишите товар" или загрузите фото на белом фоне.', creditsNotCharged: true });
       }
     }
 
     if (!product) return res.status(400).json({ error: 'Опишите товар или загрузите фото!', creditsNotCharged: true });
 
-    const toneInstructions = {
-      hit: 'Упор на максимальный CTR, яркую выгоду и бестселлер.',
-      luxury: 'Упор на премиальность, статус, долговечность.',
-      trust: 'Упор на надежность, качество, безопасность и гарантию.',
-      gift: 'Упор на идею для подарка, эмоции и богатую комплектацию.'
-    };
-
-    const systemPrompt = `Ты топ-маркетолог и арт-директор маркетплейсов Ozon, Wildberries, Яндекс Маркет и Авито.
-Задача: ${toneInstructions[tone] || toneInstructions.hit}
-КРИТИЧНО: не используй номера телефонов, email, ссылки на соцсети, слова "скидка/акция/распродажа", "лучший/№1/лидер", медицинские утверждения. Ozon/WB блокируют такие карточки.
-Создай продающую воронку из 3 слайдов и верни СТРОГО валидный JSON без markdown:
-{"title_variants":["Заголовок 1","Заголовок 2","Заголовок 3"],"ai_colors":{"bg1":"#HEX","bg2":"#HEX","accent":"#HEX","badge":"#HEX"},"slides":[{"title":"ЗАГОЛОВОК","subtitle":"УТП","badge":"ХИТ ПРОДАЖ","sticker":"ГАРАНТИЯ 1 ГОД","bullets":["Выгода 1","Выгода 2","Выгода 3"]},{"title":"ХАРАКТЕРИСТИКИ","subtitle":"Надежные материалы","badge":"ПАРАМЕТРЫ","sticker":"ПРЕМИУМ","bullets":["Материал: ...","Мощность: ...","Особенность: ...","Вес: ..."]},{"title":"КОМПЛЕКТАЦИЯ","subtitle":"Полный набор","badge":"ЧТО В КОРОБКЕ","sticker":"ПОДАРОК","bullets":["1. Товар","2. Кабель","3. Инструкция","4. Коробка"]}],"dimensions":{"width":"18 см","height":"24 см"},"bg_prompt":"English studio prompt, empty center podium, 8k","seo":"SEO-описание 500-700 символов."}`;
+    const systemPrompt = `Ты топ-маркетолог. Задача: ${tone === 'luxury' ? 'Премиум' : tone === 'trust' ? 'Надежность' : tone === 'gift' ? 'Подарок' : 'Хит продаж'}. КРИТИЧНО: без телефонов, email, ссылок, слов "скидка", "акция", "лучший", "№1". Верни СТРОГО валидный JSON без markdown: {"title_variants":["Заголовок 1","Заголовок 2","Заголовок 3"],"ai_colors":{"bg1":"#HEX","bg2":"#HEX","accent":"#HEX","badge":"#HEX"},"slides":[{"title":"ЗАГОЛОВОК","subtitle":"УТП","badge":"ХИТ ПРОДАЖ","sticker":"ГАРАНТИЯ 1 ГОД","bullets":["Выгода 1","Выгода 2","Выгода 3"]},{"title":"ХАРАКТЕРИСТИКИ","subtitle":"Надежные материалы","badge":"ПАРАМЕТРЫ","sticker":"ПРЕМИУМ","bullets":["Материал: ...","Мощность: ...","Особенность: ...","Вес: ..."]},{"title":"КОМПЛЕКТАЦИЯ","subtitle":"Полный набор","badge":"ЧТО В КОРОБКЕ","sticker":"ПОДАРОК","bullets":["1. Товар","2. Кабель","3. Инструкция","4. Коробка"]}],"dimensions":{"width":"18 см","height":"24 см"},"bg_prompt":"English studio prompt, empty center podium, 8k","seo":"SEO-описание 500-700 символов."}`;
 
     let content;
     try { content = await generateFunnelJSON(groqKey, openRouterKey, systemPrompt, product); }
     catch (e) { return res.status(500).json({ error: e.message, creditsNotCharged: true }); }
 
     const validation = validateCardContent(content);
-
     const nextCredits = Math.max(0, currentCredits - 1);
     const saved = await patchProfileCredits(sbUrl, sbServiceKey, userId, nextCredits);
-    if (!saved.ok) {
-      return res.status(500).json({
-        error: `Ошибка сохранения в БД: ${saved.error}`,
-        creditsNotCharged: true
-      });
-    }
+    if (!saved.ok) return res.status(500).json({ error: 'Ошибка сохранения в БД', creditsNotCharged: true });
 
-    if (sbUser?.id) {
-      updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
-        ...appMeta,
-        kp_initialized: true,
-        kp_has_spent: true
-      }).catch(() => {});
-    }
+    if (sbUser?.id) updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, { ...appMeta, kp_initialized: true, kp_has_spent: true }).catch(() => {});
 
-    const updatedRecord = {
-      id: userId, email: userObj.email, name: userObj.name,
-      provider: userObj.provider || 'yandex',
-      credits: nextCredits, hasSpent: true, bonusGranted
-    };
+    const updatedRecord = { id: userId, email: userObj.email, name: userObj.name, provider: userObj.provider || 'yandex', credits: nextCredits, hasSpent: true, bonusGranted };
     global.usersVault[userId] = updatedRecord;
 
     if (recognizedProduct) content.recognized_product = recognizedProduct;
@@ -624,7 +436,5 @@ export default async function handler(req, res) {
     content.validation = validation;
 
     return res.status(200).json(content);
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Внутренняя ошибка', creditsNotCharged: true });
-  }
+  } catch (err) { return res.status(500).json({ error: err.message || 'Внутренняя ошибка', creditsNotCharged: true }); }
 }
