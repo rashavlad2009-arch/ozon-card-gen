@@ -1,23 +1,8 @@
 {
-  "version": 2,
   "cleanUrls": true,
-  "functions": {
-    "api/*.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  },
   "rewrites": [
     { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
-      ]
-    }
   ]
 }
