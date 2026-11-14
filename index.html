@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="google-site-verification" content="ieRm3zn0yTHyGfkvfpJlwj08CANscvpwdTH_lBNu2LA" />
   <meta name="yandex-verification" content="c0a1b279f8ecf95c" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>KARD-PRO — ИИ-генератор карточек товаров для Ozon, Wildberries, Яндекс Маркета и Авито</title>
   <meta name="description" content="Создайте продающую карточку товара за 1 клик: 3 слайда (обложка, характеристики, комплектация) + SEO-описание + автопроверка требований Ozon и WB. Распознавание товара по фото, экспорт Ultra HD.">
   <meta name="keywords" content="карточки товаров, инфографика для маркетплейсов, генератор карточек Ozon, карточки для Wildberries, инфографика WB, карточки Авито, ИИ карточки, нейросеть для карточек, SEO описание товара">
@@ -59,25 +59,49 @@
   <script defer src="/_vercel/speed-insights/script.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800;900&family=Oswald:wght@700&family=Rubik:wght@600;800&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #06080f; color: #f8fafc; overflow-x: hidden; }
+    body { font-family: 'Inter', sans-serif; background-color: #06080f; color: #f8fafc; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
     .canvas-bg { background-color: #090d16; background-image: radial-gradient(#1e293b 1px, transparent 1px); background-size: 20px 20px; }
-    canvas { max-height: 64vh; width: auto; max-width: 100%; box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08); border-radius: 16px; cursor: grab; touch-action: none; transition: aspect-ratio 0.15s ease; }
+    
+    /* Улучшенный холст для мобильных */
+    canvas { 
+      max-height: 55vh; 
+      width: auto; 
+      max-width: 100%; 
+      box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08); 
+      border-radius: 16px; 
+      cursor: grab; 
+      touch-action: none; 
+      transition: aspect-ratio 0.15s ease; 
+      object-fit: contain;
+    }
+    @media (min-width: 1024px) {
+      canvas { max-height: 64vh; }
+    }
+    
     canvas.eraser-cursor { cursor: crosshair !important; }
     canvas.resize-cursor { cursor: nwse-resize !important; }
     canvas:active { cursor: grabbing; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 99px; }
+    
+    /* Скрыть скроллбар для горизонтальных панелей на мобильных */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
     input[type="range"] { accent-color: #6366f1; }
     .inline-editor { position: fixed !important; z-index: 9999 !important; padding: 6px 10px !important; background: #0f1423 !important; border: 2px solid #6366f1 !important; color: #fff !important; border-radius: 8px !important; outline: none !important; font-size: 13px !important; box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    
+    /* Кастомный скролл для модалок */
+    .modal-scroll { max-height: 90vh; overflow-y: auto; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col select-none" translate="no">
 
   <h1 class="sr-only">KARD-PRO — ИИ-генератор продающих карточек товаров для Ozon, Wildberries, Яндекс Маркета и Авито</h1>
 
-  <div id="toastContainer" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none px-4 w-full sm:w-auto"></div>
 
   <!-- ОНБОРДИНГ -->
   <div id="onboardingOverlay" class="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md hidden items-center justify-center p-4">
@@ -89,30 +113,30 @@
   </div>
 
   <!-- CSV МАССОВЫЙ ИМПОРТ -->
-  <div id="batchModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl relative max-h-[94vh] overflow-y-auto">
-      <button onclick="closeBatchModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+  <div id="batchModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl relative modal-scroll hide-scrollbar">
+      <button onclick="closeBatchModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1">
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">📦 Массовый импорт</div>
-        <h2 class="text-2xl font-extrabold text-white">Генерация по CSV</h2>
-        <p class="text-xs text-slate-400">Колонки: <b>name, description, tone</b> (tone: hit/luxury/trust/gift)</p>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white">Генерация по CSV</h2>
+        <p class="text-[11px] sm:text-xs text-slate-400">Колонки: <b>name, description, tone</b> (tone: hit/luxury/trust/gift)</p>
       </div>
       <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3 text-xs space-y-2">
         <div class="text-indigo-300 font-bold">Пример CSV:</div>
         <pre class="bg-black/40 rounded p-2 text-[10px] text-slate-300 overflow-x-auto">name,description,tone
-Наушники,"Беспроводные наушники ANC, 40 часов",hit
-Термокружка,"Термокружка 500 мл, нержавейка",luxury</pre>
+Наушники,"Беспроводные наушники ANC",hit
+Термокружка,"Термокружка 500 мл",luxury</pre>
         <button onclick="downloadCsvTemplate()" class="bg-white/10 hover:bg-white/15 border border-white/10 text-slate-200 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer">⬇ Скачать шаблон</button>
       </div>
       <div class="space-y-2">
         <label class="text-[11px] text-slate-400 font-semibold block">1. Загрузите CSV-файл:</label>
         <input id="batchCsvFile" type="file" accept=".csv,text/csv" class="w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white cursor-pointer bg-[#070a12] rounded-xl border border-white/10 p-1">
         <div class="text-[11px] text-slate-500 text-center">— или —</div>
-        <textarea id="batchCsvText" rows="5" placeholder="name,description,tone&#10;Товар 1,Описание 1,hit" class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 font-mono"></textarea>
+        <textarea id="batchCsvText" rows="4" placeholder="name,description,tone&#10;Товар 1,Описание 1,hit" class="w-full bg-[#070a12] border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500 font-mono"></textarea>
       </div>
       <div id="batchPreview" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-xs">
-        <div class="text-emerald-300 font-bold mb-1">📋 Найдено товаров: <span id="batchCount">0</span></div>
-        <div id="batchPreviewList" class="text-[11px] text-slate-300 max-h-32 overflow-y-auto space-y-0.5"></div>
+        <div class="text-emerald-300 font-bold mb-1">📋 Найдено: <span id="batchCount">0</span></div>
+        <div id="batchPreviewList" class="text-[11px] text-slate-300 max-h-24 overflow-y-auto space-y-0.5"></div>
       </div>
       <div id="batchProgress" class="hidden space-y-2">
         <div class="flex justify-between text-[11px]">
@@ -124,27 +148,25 @@
         </div>
         <div id="batchCurrent" class="text-[11px] text-slate-400 truncate">Ожидание...</div>
       </div>
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-2 gap-2 mt-2">
         <button onclick="previewBatchCsv()" class="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white font-bold text-xs cursor-pointer">👁️ Предпросмотр</button>
-        <button id="batchStartBtn" onclick="runBatchImport()" disabled class="py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs cursor-pointer opacity-50">🚀 Запустить импорт</button>
+        <button id="batchStartBtn" onclick="runBatchImport()" disabled class="py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-extrabold text-xs cursor-pointer opacity-50">🚀 Запустить</button>
       </div>
-      <p class="text-[10px] text-slate-500 text-center">⚠️ Кредиты списываются по 1 за товар.</p>
     </div>
   </div>
 
   <!-- ОБРАТНАЯ СВЯЗЬ -->
   <div id="feedbackModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
-      <button onclick="closeFeedbackModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative modal-scroll hide-scrollbar">
+      <button onclick="closeFeedbackModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1.5">
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">✉️ Связь с автором</div>
         <h2 class="text-xl font-extrabold text-white">Поддержка KARD-PRO</h2>
-        <p class="text-xs text-slate-400">Идеи, вопросы или сотрудничество</p>
       </div>
       <div class="bg-[#070a12] border border-indigo-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-2">
         <div class="text-xs">
           <span class="text-[10px] text-slate-400 block">Почта автора:</span>
-          <b id="supportEmailText" class="text-sm text-indigo-300 select-all">vlad.gembar@mail.ru</b>
+          <b id="supportEmailText" class="text-[13px] text-indigo-300 select-all">vlad.gembar@mail.ru</b>
         </div>
         <button onclick="copySupportEmail()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">📋 Копировать</button>
       </div>
@@ -155,8 +177,8 @@
 
   <!-- АВТОРИЗАЦИЯ -->
   <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
-      <button onclick="closeAuthModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl relative modal-scroll hide-scrollbar">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1">
         <div class="inline-flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">🎁 +5 генераций через Яндекс ID</div>
         <h2 class="text-xl font-extrabold text-white">Вход в KARD-PRO</h2>
@@ -179,43 +201,43 @@
   </div>
 
   <!-- ТАРИФЫ -->
-  <div id="payModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative max-h-[94vh] overflow-y-auto">
-      <button onclick="closePayModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
+  <div id="payModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-[#0f1423] border border-white/10 rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl relative modal-scroll hide-scrollbar">
+      <button onclick="closePayModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white">✕</button>
       <div class="text-center space-y-1">
         <div class="inline-flex items-center gap-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">⚡ Пополнение</div>
-        <h2 class="text-2xl font-extrabold text-white">Пополнение генераций</h2>
-        <p class="text-xs text-slate-400">1 генерация = 3 слайда + SEO + валидация</p>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white">Пополнение генераций</h2>
+        <p class="text-[11px] sm:text-xs text-slate-400">1 генерация = 3 слайда + SEO + валидация</p>
       </div>
-      <div class="grid grid-cols-3 gap-2.5">
-        <div id="planCard5" onclick="selectPlan(5, 50)" class="cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
-          <div><div class="text-[11px] font-semibold text-slate-400">Старт</div><div class="text-xl font-black text-white mt-0.5">5 шт</div><div class="text-[10px] text-slate-400">15 слайдов</div></div>
-          <div class="mt-3 pt-2 border-t border-white/10 text-base font-extrabold text-indigo-400">50 ₽</div>
+      <div class="grid grid-cols-3 gap-2">
+        <div id="planCard5" onclick="selectPlan(5, 50)" class="cursor-pointer rounded-2xl p-2.5 sm:p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
+          <div><div class="text-[10px] sm:text-[11px] font-semibold text-slate-400">Старт</div><div class="text-lg sm:text-xl font-black text-white mt-0.5">5 шт</div><div class="text-[9px] sm:text-[10px] text-slate-400">15 слайдов</div></div>
+          <div class="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-white/10 text-sm sm:text-base font-extrabold text-indigo-400">50 ₽</div>
         </div>
-        <div id="planCard10" onclick="selectPlan(10, 80)" class="cursor-pointer rounded-2xl p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg">
-          <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Хит -20%</span>
-          <div><div class="text-[11px] font-semibold text-indigo-300">Селлер</div><div class="text-xl font-black text-white mt-0.5">10 шт</div><div class="text-[10px] text-indigo-200/70">30 слайдов</div></div>
-          <div class="mt-3 pt-2 border-t border-indigo-500/30 text-base font-extrabold text-emerald-400">80 ₽</div>
+        <div id="planCard10" onclick="selectPlan(10, 80)" class="cursor-pointer rounded-2xl p-2.5 sm:p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg">
+          <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full uppercase">Хит -20%</span>
+          <div><div class="text-[10px] sm:text-[11px] font-semibold text-indigo-300">Селлер</div><div class="text-lg sm:text-xl font-black text-white mt-0.5">10 шт</div><div class="text-[9px] sm:text-[10px] text-indigo-200/70">30 слайдов</div></div>
+          <div class="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-indigo-500/30 text-sm sm:text-base font-extrabold text-emerald-400">80 ₽</div>
         </div>
-        <div id="planCard20" onclick="selectPlan(20, 150)" class="cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
-          <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">PRO -25%</span>
-          <div><div class="text-[11px] font-semibold text-slate-400">Магазин</div><div class="text-xl font-black text-white mt-0.5">20 шт</div><div class="text-[10px] text-slate-400">60 слайдов</div></div>
-          <div class="mt-3 pt-2 border-t border-white/10 text-base font-extrabold text-indigo-400">150 ₽</div>
+        <div id="planCard20" onclick="selectPlan(20, 150)" class="cursor-pointer rounded-2xl p-2.5 sm:p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative">
+          <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full uppercase">PRO -25%</span>
+          <div><div class="text-[10px] sm:text-[11px] font-semibold text-slate-400">Магазин</div><div class="text-lg sm:text-xl font-black text-white mt-0.5">20 шт</div><div class="text-[9px] sm:text-[10px] text-slate-400">60 слайдов</div></div>
+          <div class="mt-2 sm:mt-3 pt-1.5 sm:pt-2 border-t border-white/10 text-sm sm:text-base font-extrabold text-indigo-400">150 ₽</div>
         </div>
       </div>
-      <div id="customAmountBox" class="bg-[#070a12] border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition">
+      <div id="customAmountBox" class="bg-[#070a12] border border-white/10 rounded-2xl p-3 sm:p-3.5 space-y-2.5 transition">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-200">💰 Своя сумма:</span>
-          <span id="customDiscountBadge" class="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-md font-bold">Выгода до -50%</span>
+          <span class="text-[11px] sm:text-xs font-bold text-slate-200">💰 Своя сумма:</span>
+          <span id="customDiscountBadge" class="text-[9px] sm:text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded-md font-bold">Выгода до -50%</span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 items-center">
           <div class="relative">
             <input id="customRubInput" type="number" min="50" max="50000" step="10" placeholder="500" oninput="onCustomAmountInput(this.value)" class="w-full bg-[#0f1423] border border-indigo-500/40 focus:border-emerald-400 rounded-xl pl-3.5 pr-9 py-2.5 text-sm font-black text-white outline-none">
             <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-400">₽</span>
           </div>
-          <div class="bg-indigo-500/10 border border-indigo-500/25 rounded-xl px-3.5 py-2 flex items-center justify-between">
-            <div><div class="text-[10px] text-slate-400">Вы получите:</div><div id="customCreditsOutput" class="text-base font-black text-emerald-400">⚡ +10</div></div>
-            <div class="text-right"><div id="customSlidesOutput" class="text-[11px] font-bold text-indigo-200">30 слайдов</div><div id="customPerUnitOutput" class="text-[10px] text-slate-400">по 8 ₽</div></div>
+          <div class="bg-indigo-500/10 border border-indigo-500/25 rounded-xl px-3 py-2 flex items-center justify-between">
+            <div><div class="text-[9px] sm:text-[10px] text-slate-400">Вы получите:</div><div id="customCreditsOutput" class="text-sm sm:text-base font-black text-emerald-400">⚡ +10</div></div>
+            <div class="text-right"><div id="customSlidesOutput" class="text-[10px] sm:text-[11px] font-bold text-indigo-200">30 слайдов</div><div id="customPerUnitOutput" class="text-[9px] sm:text-[10px] text-slate-400">по 8 ₽</div></div>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
@@ -227,49 +249,66 @@
       </div>
       <button id="payLinkBtn" onclick="payWithYooMoney()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl cursor-pointer">💳 Оплатить 80 ₽ и получить +10</button>
       <div id="payWaitBox" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-center space-y-1">
-        <p class="text-xs text-amber-300 font-semibold animate-pulse">⏳ Ожидаем подтверждение оплаты...</p>
+        <p class="text-[11px] sm:text-xs text-amber-300 font-semibold animate-pulse">⏳ Ожидаем подтверждение оплаты...</p>
       </div>
       <div class="border-t border-white/10 pt-3 flex items-center gap-2">
         <input id="promoCodeInput" type="text" placeholder="Промокод..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs uppercase outline-none focus:border-indigo-500 text-white">
-        <button onclick="activatePromoCode()" class="bg-white/10 hover:bg-white/15 text-white font-bold px-4 py-2 rounded-xl text-xs shrink-0 cursor-pointer">Применить</button>
+        <button onclick="activatePromoCode()" class="bg-white/10 hover:bg-white/15 text-white font-bold px-3 sm:px-4 py-2 rounded-xl text-xs shrink-0 cursor-pointer">Применить</button>
       </div>
     </div>
   </div>
 
   <!-- ШАПКА -->
-  <header class="h-14 border-b border-white/10 bg-[#0b0f19]/90 backdrop-blur-xl px-3 lg:px-6 flex items-center justify-between sticky top-0 z-30">
-    <div class="flex items-center gap-2.5">
+  <header class="min-h-[3.5rem] border-b border-white/10 bg-[#0b0f19]/90 backdrop-blur-xl px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between sticky top-0 z-30 gap-2">
+    <div class="flex items-center gap-2">
       <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-black text-white text-sm shadow-lg">K</div>
-      <div>
+      <div class="hidden sm:block">
         <div class="flex items-center gap-1.5">
           <span class="font-extrabold text-sm tracking-tight text-white">KARD-PRO</span>
           <span class="text-[9px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">🛡️ Автосейв</span>
         </div>
-        <p class="text-[10px] text-slate-400 hidden sm:block">Ozon • WB • Яндекс • Авито</p>
+        <p class="text-[10px] text-slate-400">Ozon • WB • Яндекс • Авито</p>
       </div>
     </div>
+
+    <!-- Десктопные переключатели МП -->
     <div class="hidden xl:flex items-center gap-1.5 bg-white/[0.04] border border-white/10 p-1 rounded-xl text-xs">
       <button id="mpBtn_ozon" onclick="setMarketplacePreset('ozon')" class="px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold cursor-pointer">🔵 Ozon (3:4)</button>
       <button id="mpBtn_wb" onclick="setMarketplacePreset('wb')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-fuchsia-300 font-semibold cursor-pointer">🟣 WB (3:4)</button>
       <button id="mpBtn_ym" onclick="setMarketplacePreset('ym')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-amber-300 font-semibold cursor-pointer">🟡 Яндекс (1:1)</button>
       <button id="mpBtn_avito" onclick="setMarketplacePreset('avito')" class="px-2.5 py-1 rounded-lg hover:bg-white/10 text-emerald-300 font-semibold cursor-pointer">🟢 Авито (4:3)</button>
     </div>
-    <div class="flex items-center gap-1.5 sm:gap-2">
-      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer" title="Написать автору: vlad.gembar@mail.ru">✉️ Связь</button>
-      <button onclick="openBatchModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 font-bold px-2.5 py-1.5 rounded-xl text-xs cursor-pointer">📦 CSV</button>
-      <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer"><span id="authNavText">👤 Войти</span></button>
+
+    <!-- Мобильный переключатель МП -->
+    <div class="flex xl:hidden items-center bg-[#070a12] border border-white/10 rounded-xl px-1 py-1">
+      <select id="mobileMpSelect" onchange="setMarketplacePreset(this.value)" class="bg-transparent text-xs text-indigo-300 font-bold outline-none px-1 py-1 w-[100px]">
+        <option value="ozon">🔵 Ozon</option>
+        <option value="wb">🟣 WB</option>
+        <option value="ym">🟡 Яндекс</option>
+        <option value="avito">🟢 Авито</option>
+      </select>
+    </div>
+
+    <div class="flex items-center gap-1.5 sm:gap-2 ml-auto">
+      <button onclick="openFeedbackModal()" class="hidden sm:flex bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer" title="Написать автору">✉️</button>
+      <button onclick="openBatchModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 font-bold px-2 py-1.5 rounded-xl text-xs cursor-pointer">📦 <span class="hidden sm:inline">CSV</span></button>
+      <button id="authNavBtn" onclick="openAuthModal()" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-200 px-2 py-1.5 rounded-xl text-xs font-bold cursor-pointer max-w-[100px] sm:max-w-none truncate"><span id="authNavText">👤 Войти</span></button>
       <button id="logoutBtn" onclick="logoutUser()" class="hidden bg-white/5 hover:bg-rose-500/20 border border-white/10 text-slate-400 hover:text-rose-300 px-2 py-1.5 rounded-xl text-xs font-bold">🚪</button>
-      <button onclick="handleTopUpClick()" class="bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer">
-        <span class="text-xs font-semibold text-slate-300">⚡ <b id="creditsCount" class="text-white">…</b></span>
-        <span class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-lg">+</span>
+      
+      <!-- Кнопка баланса: яркая и заметная -->
+      <button onclick="handleTopUpClick()" class="bg-indigo-600 hover:bg-indigo-500 border border-indigo-400 text-white px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition">
+        <span class="text-xs font-bold">⚡ <b id="creditsCount" class="text-white">…</b></span>
+        <span class="w-4 h-4 sm:w-5 sm:h-5 bg-white/20 rounded-md flex items-center justify-center text-white text-[10px] sm:text-xs font-black">+</span>
       </button>
+      
       <select id="exportQualitySelect" class="hidden md:block bg-[#070a12] border border-white/10 rounded-xl px-2 py-1.5 text-[11px] text-emerald-300 font-bold outline-none">
         <option value="png_2x">Ultra HD 2x (PNG)</option>
         <option value="webp_2x">Ultra HD 2x (WebP)</option>
         <option value="png_1x">Стандарт 1x (PNG)</option>
         <option value="webp_1x">Стандарт 1x (WebP)</option>
       </select>
-      <button onclick="downloadAllSlides()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-lg cursor-pointer">📦 Скачать 3</button>
+      
+      <button onclick="downloadAllSlides()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-2.5 sm:px-3 py-1.5 rounded-xl text-xs shadow-lg cursor-pointer">📦 <span class="hidden sm:inline">Скачать 3</span></button>
     </div>
   </header>
 
@@ -283,7 +322,7 @@
         <button id="tabBtn_layers" onclick="switchTab('layers')" class="py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition flex flex-col items-center gap-0.5"><span>🗂️ 5. Слои</span></button>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+      <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
         <div id="tab_ai" class="space-y-4">
           <div class="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-4 rounded-2xl border border-indigo-500/30 space-y-3">
             <div class="flex items-center justify-between">
@@ -658,38 +697,43 @@
           <button onclick="saveProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300">💾 Сохранить</button>
           <button onclick="loadProjectJSON()" class="bg-white/5 hover:bg-white/10 border border-white/10 py-1.5 rounded-xl font-semibold text-slate-300">📂 Открыть</button>
         </div>
-        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/5 px-1">
-          <span>Связь с автором:</span>
-          <button onclick="openFeedbackModal()" class="text-indigo-400 hover:text-indigo-300 font-bold underline">✉️ Написать</button>
-        </div>
       </div>
     </aside>
 
-    <main id="dropZoneMain" class="flex-1 canvas-bg flex flex-col items-center justify-between p-2 sm:p-4 relative order-1 lg:order-2">
-      <div class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10">
-        <button id="slideTab_0" onclick="switchSlide(0)" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1 cursor-pointer"><span>1. Обложка</span></button>
-        <button id="slideTab_1" onclick="switchSlide(1)" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1 cursor-pointer"><span>2. Размеры 📏</span></button>
-        <button id="slideTab_2" onclick="switchSlide(2)" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1 cursor-pointer"><span>3. Набор 📦</span></button>
-        <div class="h-5 w-px bg-white/10 mx-0.5"></div>
-        <span id="canvasSizeBadge" class="text-[11px] bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 px-2.5 py-1 rounded-xl font-bold">📐 900×1200 (3:4)</span>
-        <div class="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2 py-1 rounded-xl text-xs">
+    <main id="dropZoneMain" class="flex-1 canvas-bg flex flex-col items-center justify-between p-2 sm:p-4 relative order-1 lg:order-2 overflow-hidden">
+      
+      <!-- Панель управления над холстом (горизонтальный скролл на мобильных) -->
+      <div class="flex flex-nowrap overflow-x-auto hide-scrollbar w-full items-center justify-start sm:justify-center gap-2 bg-[#0b0f19]/95 border border-white/10 p-1.5 rounded-2xl backdrop-blur-xl shadow-xl z-10 shrink-0">
+        <button id="slideTab_0" onclick="switchSlide(0)" class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"><span>1. Обложка</span></button>
+        <button id="slideTab_1" onclick="switchSlide(1)" class="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"><span>2. Размеры 📏</span></button>
+        <button id="slideTab_2" onclick="switchSlide(2)" class="px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"><span>3. Набор 📦</span></button>
+        
+        <div class="h-5 w-px bg-white/10 mx-0.5 shrink-0"></div>
+        
+        <!-- Кнопка переключения формата (КЛИКАБЕЛЬНАЯ) -->
+        <button onclick="cycleCanvasFormat()" id="canvasSizeBadge" class="text-[11px] bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-200 px-3 py-1.5 rounded-xl font-bold cursor-pointer transition active:scale-95 whitespace-nowrap shrink-0">📐 900×1200 (3:4)</button>
+        
+        <div class="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2 py-1 rounded-xl text-xs shrink-0">
           <span class="text-[11px] text-slate-300 hidden sm:inline">🔍 Фото:</span>
           <button onclick="stepProductScale(-10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center cursor-pointer">−</button>
           <input id="quickScaleSlider" type="range" min="15" max="260" value="85" class="w-16 sm:w-20" oninput="updateProductScaleFromSlider(this.value)">
           <button onclick="stepProductScale(10)" class="w-5 h-5 rounded bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center cursor-pointer">+</button>
           <span id="quickScaleText" class="text-[10px] font-bold text-indigo-300 w-8 text-right">85%</span>
         </div>
-        <button onclick="undoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer" title="Ctrl+Z">↶</button>
-        <button onclick="redoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer" title="Ctrl+Y">↷</button>
+        
+        <!-- Кнопки Отмена/Вперед перенесены в конец -->
+        <div class="h-5 w-px bg-white/10 mx-0.5 shrink-0"></div>
+        <button onclick="undoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer shrink-0" title="Отменить">↶</button>
+        <button onclick="redoAction()" class="px-2 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold cursor-pointer shrink-0" title="Вернуть">↷</button>
       </div>
 
-      <div class="my-auto flex items-center justify-center py-2 w-full">
-        <canvas id="cardCanvas" width="900" height="1200" style="aspect-ratio: 900 / 1200;"></canvas>
+      <div class="my-auto flex items-center justify-center py-4 w-full overflow-hidden">
+        <canvas id="cardCanvas" width="900" height="1200" class="max-h-[60vh] sm:max-h-[65vh] lg:max-h-[70vh] w-auto max-w-full object-contain" style="aspect-ratio: 900 / 1200;"></canvas>
       </div>
 
-      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-md">
+      <div class="flex flex-wrap items-center justify-center gap-2 text-[10px] sm:text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-md shrink-0">
         <span>📐 Двойной клик на тексте = редактирование</span>
-        <span class="text-white/20">•</span>
+        <span class="text-white/20 hidden sm:inline">•</span>
         <button onclick="downloadCard()" class="text-indigo-400 hover:text-indigo-300 font-bold underline">Скачать слайд</button>
       </div>
     </main>
@@ -750,9 +794,9 @@
     </div>
   </section>
 
-  <footer class="bg-black/50 border-t border-white/10 py-6 px-4">
-    <div class="max-w-4xl mx-auto text-center text-xs text-slate-500 space-y-2">
-      <p class="pt-2">© 2024-2026 KARD-PRO. ИИ-генератор карточек для Ozon, Wildberries, Яндекс Маркета и Авито.</p>
+  <footer class="bg-black/50 border-t border-white/10 py-4 px-4 shrink-0">
+    <div class="max-w-4xl mx-auto text-center text-[10px] sm:text-xs text-slate-500 space-y-1">
+      <p>© 2024-2026 KARD-PRO. ИИ-генератор карточек для Ozon, Wildberries, Яндекс Маркета и Авито.</p>
       <p class="text-[10px]">KARD-PRO не связан с Ozon, Wildberries, Яндекс Маркет или Авито. Все товарные знаки принадлежат их владельцам.</p>
     </div>
   </footer>
@@ -816,9 +860,9 @@
     function renderOnboardingStep() {
       const step = ONBOARDING_STEPS[onboardingIdx];
       document.getElementById('onboardingStep').innerHTML = `
-        <div class="text-6xl mb-3">${step.icon}</div>
+        <div class="text-5xl mb-3">${step.icon}</div>
         <div class="text-xs text-indigo-300 font-bold uppercase tracking-wider mb-2">Шаг ${onboardingIdx + 1} из ${ONBOARDING_STEPS.length}</div>
-        <h2 class="text-2xl font-extrabold text-white mb-2">${step.title}</h2>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-2">${step.title}</h2>
         <p class="text-slate-300 text-sm">${step.text}</p>`;
       document.getElementById('onboardingBtn').textContent = onboardingIdx === ONBOARDING_STEPS.length - 1 ? '🎉 Начать' : 'Далее →';
     }
@@ -899,11 +943,11 @@
       [5, 10, 20].forEach(c => {
         const el = document.getElementById('planCard' + c);
         if (!el) return;
-        if (c === credits) el.className = 'cursor-pointer rounded-2xl p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg';
-        else el.className = 'cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
+        if (c === credits) el.className = 'cursor-pointer rounded-2xl p-2.5 sm:p-3 border-2 border-indigo-500 bg-indigo-500/15 transition flex flex-col justify-between text-center relative shadow-lg';
+        else el.className = 'cursor-pointer rounded-2xl p-2.5 sm:p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
       });
       const customBox = document.getElementById('customAmountBox');
-      if (customBox) customBox.className = 'bg-[#070a12] border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition';
+      if (customBox) customBox.className = 'bg-[#070a12] border border-white/10 rounded-2xl p-3 sm:p-3.5 space-y-2.5 transition';
       const inputEl = document.getElementById('customRubInput');
       if (inputEl) inputEl.value = '';
       const rate = +(price / credits).toFixed(2);
@@ -919,10 +963,10 @@
       if (!str) { selectPlan(10, 80); return; }
       [5, 10, 20].forEach(c => {
         const el = document.getElementById('planCard' + c);
-        if (el) el.className = 'cursor-pointer rounded-2xl p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
+        if (el) el.className = 'cursor-pointer rounded-2xl p-2.5 sm:p-3 border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition flex flex-col justify-between text-center relative';
       });
       const customBox = document.getElementById('customAmountBox');
-      if (customBox) customBox.className = 'bg-[#070a12] border-2 border-emerald-500/70 rounded-2xl p-3.5 space-y-2.5 transition shadow-lg';
+      if (customBox) customBox.className = 'bg-[#070a12] border-2 border-emerald-500/70 rounded-2xl p-3 sm:p-3.5 space-y-2.5 transition shadow-lg';
       const rub = Math.min(50000, Math.max(0, parseInt(str, 10) || 0));
       const { credits, rate, discount } = calculateCreditsForCustomRub(rub);
       updateCustomOutputDisplay(rub, credits, rate, discount);
@@ -1795,8 +1839,8 @@
       currentSlideIndex = idx;
       [0, 1, 2].forEach(i => {
         const btn = document.getElementById('slideTab_' + i);
-        if (i === idx) btn.className = 'px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1 cursor-pointer shadow-lg';
-        else btn.className = 'px-2.5 sm:px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1 cursor-pointer';
+        if (i === idx) btn.className = 'px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-extrabold transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 shadow-lg';
+        else btn.className = 'px-3 py-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-bold transition flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0';
       });
       syncUIFromCurrentSlide();
       drawCard();
@@ -2007,18 +2051,40 @@
       minimal: { bg1: '#f8fafc', bg2: '#cbd5e1', accent: '#2563eb', badge: '#ef4444', pillBg: '#ffffff', text: '#0f172a' }
     };
 
+    // ================== ЦИКЛИЧЕСКОЕ ПЕРЕКЛЮЧЕНИЕ ФОРМАТА ==================
+    function cycleCanvasFormat() {
+      const formats = ['ozon', 'square', 'avito_h', 'story'];
+      const select = document.getElementById('canvasFormat');
+      let currentIndex = formats.indexOf(select.value);
+      if (currentIndex === -1) currentIndex = 0;
+      
+      let nextIndex = (currentIndex + 1) % formats.length;
+      select.value = formats[nextIndex];
+      
+      changeCanvasFormat(true);
+      
+      const labels = { ozon: 'Ozon/WB (3:4)', square: 'Яндекс (1:1)', avito_h: 'Авито (4:3)', story: 'Сторис (9:16)' };
+      showToast(`Формат: ${labels[formats[nextIndex]]}`, 'info');
+    }
+
     function setMarketplacePreset(mp) {
       pushHistoryState();
+      
+      const mobileSelect = document.getElementById('mobileMpSelect');
+      if (mobileSelect) mobileSelect.value = mp;
+      
       const map = { ozon: { fmt: 'ozon', theme: 'ozon' }, wb: { fmt: 'ozon', theme: 'wb' }, ym: { fmt: 'square', theme: 'ym' }, avito: { fmt: 'avito_h', theme: 'avito' } };
       const cfg = map[mp] || map.ozon;
       document.getElementById('canvasFormat').value = cfg.fmt;
       document.getElementById('themeSelect').value = cfg.theme;
+      
       ['ozon', 'wb', 'ym', 'avito'].forEach(id => {
         const btn = document.getElementById('mpBtn_' + id);
         if (!btn) return;
         if (id === mp) btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-500/25 border border-indigo-400/50 text-white font-extrabold cursor-pointer';
         else btn.className = 'px-2.5 py-1 rounded-lg hover:bg-white/10 text-slate-300 font-semibold cursor-pointer';
       });
+      
       applyThemePreset(false, true);
       changeCanvasFormat(true);
       triggerAutoSave();
@@ -2031,11 +2097,14 @@
       else if (val === 'square') { canvas.width = 1000; canvas.height = 1000; labelText = '📐 1000×1000 (1:1)'; }
       else if (val === 'avito_h') { canvas.width = 1200; canvas.height = 900; labelText = '📐 1200×900 (4:3)'; }
       else if (val === 'story') { canvas.width = 1080; canvas.height = 1920; labelText = '📐 1080×1920 (9:16)'; }
+      
       canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`;
       const badgeEl = document.getElementById('canvasSizeBadge');
       if (badgeEl) badgeEl.textContent = labelText;
+      
       if (rearrange) autoArrangeAllSlides();
       else syncUIFromCurrentSlide();
+      
       drawCard();
       triggerAutoSave();
     }
