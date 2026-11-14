@@ -6,7 +6,8 @@ const YOOMONEY_WALLET = '4100119681467569';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RATE_WINDOW_MS = 60 * 1000;
 const BONUS_CREDITS = 5;
-const DB_TIMEOUT_MS = 20000;
+// ИСПРАВЛЕНИЕ 1: Снижаем таймаут до 8 секунд (лимит Vercel Hobby - 10 сек)
+const DB_TIMEOUT_MS = 8000;
 
 const BUILTIN_PROMOS = { 'START5': 5, 'PRO50': 5, 'SELLER10': 10, 'SHOP20': 20, 'VIP2026': 50 };
 
@@ -145,7 +146,7 @@ function checkRate(key, maxHits, windowMs = RATE_WINDOW_MS) {
   return { ok: true };
 }
 
-async function fetchWithRetry(url, opts = {}, timeoutMs = DB_TIMEOUT_MS, retries = 3) {
+async function fetchWithRetry(url, opts = {}, timeoutMs = DB_TIMEOUT_MS, retries = 2) {
   for (let i = 0; i < retries; i++) {
     try {
       const ctrl = new AbortController();
@@ -331,75 +332,86 @@ async function saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSa
 }
 
 export default async function handler(req, res) {
-  const { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt, allowedOrigins } = getEnvConfig();
-  const reqOrigin = req.headers.origin || '';
-  
-  if (allowedOrigins.length > 0) {
-    if (allowedOrigins.includes(reqOrigin)) {
-      res.setHeader('Access-Control-Allow-Origin', reqOrigin);
-      res.setHeader('Vary', 'Origin');
+  // ИСПРАВЛЕНИЕ 2: Принудительно ставим заголовок JSON, чтобы при любых ошибках клиент получал JSON
+  res.setHeader('Content-Type', 'application/json');
+
+  try {
+    const { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt, allowedOrigins } = getEnvConfig();
+    const reqOrigin = req.headers.origin || '';
+    
+    if (allowedOrigins.length > 0) {
+      if (allowedOrigins.includes(reqOrigin)) {
+        res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+        res.setHeader('Vary', 'Origin');
+      }
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!secretSalt) return res.status(500).json({ error: 'Server misconfiguration' });
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (!secretSalt) return res.status(500).json({ error: 'Server misconfiguration: secretSalt is missing' });
 
-  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+    const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
 
-  if (req.method === 'GET') {
-    const { action, label, fp } = req.query;
+    if (req.method === 'GET') {
+      const { action, label, fp } = req.query;
 
-    if (action === 'config') {
-      const urlValid = /^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(sbUrl);
-      return res.status(200).json({
-        supabaseUrl: sbUrl, supabaseAnonKey: sbAnonKey, yandexClientId, wallet: YOOMONEY_WALLET,
-        cloudSyncActive: Boolean(urlValid && sbServiceKey && (sbServiceKey.startsWith('sb_secret_') || sbServiceKey.startsWith('eyJ')))
-      });
+      if (action === 'config') {
+        const urlValid = /^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(sbUrl);
+        return res.status(200).json({
+          supabaseUrl: sbUrl, supabaseAnonKey: sbAnonKey, yandexClientId, wallet: YOOMONEY_WALLET,
+          cloudSyncActive: Boolean(urlValid && sbServiceKey && (sbServiceKey.startsWith('sb_secret_') || sbServiceKey.startsWith('eyJ')))
+        });
+      }
+
+      if (action === 'profile') {
+        const rate = checkRate(`profile:${clientIp}`, 30);
+        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
+        const userObj = resolveUserFromRequest(req, secretSalt);
+        if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
+        try {
+          const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false);
+          return res.status(200).json({ ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
+        } catch (err) { return res.status(500).json({ error: err.message }); }
+      }
+
+      if (action === 'check_payment') {
+        const rate = checkRate(`check_pay:${clientIp}`, 60);
+        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
+        const userObj = resolveUserFromRequest(req, secretSalt);
+        if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
+        const orderLabel = String(label || '').trim();
+        if (!orderLabel) return res.status(400).json({ error: 'Missing label' });
+
+        const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
+        const userId = emailToDeterministicUUID(userObj.email);
+        const appMeta = sbUser?.app_metadata || {};
+        const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
+        const isPaid = usedLabels.includes(orderLabel);
+        const profile = await readProfile(sbUrl, sbServiceKey, userId);
+        return res.status(200).json({ paid: isPaid, credits: profile ? profile.credits : 0 });
+      }
+
+      if (!label) return res.status(400).json({ error: 'Missing label' });
+      if (global.usersVault[`paid_${label}`]) return res.status(200).json({ paid: true, credits: global.usersVault[`paid_${label}`] });
+      return res.status(200).json({ paid: false });
     }
 
-    if (action === 'profile') {
-      const rate = checkRate(`profile:${clientIp}`, 30);
-      if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-      const userObj = resolveUserFromRequest(req, secretSalt);
-      if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
+    if (req.method === 'POST') {
+      // ИСПРАВЛЕНИЕ 3: Безопасный парсинг тела запроса
+      let body = {};
       try {
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false);
-        return res.status(200).json({ ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
-      } catch (err) { return res.status(500).json({ error: err.message }); }
-    }
-
-    if (action === 'check_payment') {
-      const rate = checkRate(`check_pay:${clientIp}`, 60);
-      if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-      const userObj = resolveUserFromRequest(req, secretSalt);
-      if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
-      const orderLabel = String(label || '').trim();
-      if (!orderLabel) return res.status(400).json({ error: 'Missing label' });
-
-      const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
-      const userId = emailToDeterministicUUID(userObj.email);
-      const appMeta = sbUser?.app_metadata || {};
-      const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-      const isPaid = usedLabels.includes(orderLabel);
-      const profile = await readProfile(sbUrl, sbServiceKey, userId);
-      return res.status(200).json({ paid: isPaid, credits: profile ? profile.credits : 0 });
-    }
-
-    if (!label) return res.status(400).json({ error: 'Missing label' });
-    if (global.usersVault[`paid_${label}`]) return res.status(200).json({ paid: true, credits: global.usersVault[`paid_${label}`] });
-    return res.status(200).json({ paid: false });
-  }
-
-  if (req.method === 'POST') {
-    try {
-      const body = (req.headers['content-type'] || '').includes('application/json') 
-        ? (typeof req.body === 'string' ? JSON.parse(req.body) : req.body) 
-        : Object.fromEntries(new URLSearchParams(req.body));
+        if (req.headers['content-type']?.includes('application/json')) {
+          body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+        } else {
+          body = Object.fromEntries(new URLSearchParams(req.body || ''));
+        }
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid request body format' });
+      }
 
       if (body?.action === 'social_auth') {
         const rate = checkRate(`social:${clientIp}`, 10);
@@ -408,7 +420,7 @@ export default async function handler(req, res) {
         let rawEmail = '', displayName = '';
         if (accessToken) {
           try {
-            const yaRes = await fetchWithRetry('https://login.yandex.ru/info?format=json', { headers: { Authorization: `OAuth ${accessToken}` } }, 8000);
+            const yaRes = await fetchWithRetry('https://login.yandex.ru/info?format=json', { headers: { Authorization: `OAuth ${accessToken}` } }, 5000);
             if (yaRes.ok) {
               const yaData = await yaRes.json();
               rawEmail = yaData.default_email || (Array.isArray(yaData.emails) && yaData.emails[0]) || `${yaData.login || yaData.id}@yandex.ru`;
@@ -478,25 +490,25 @@ export default async function handler(req, res) {
       }
 
       const yoomoneySecret = (findEnvVar(['YOOMONEY_NOTIFICATION_SECRET']) || '').trim();
-      if (!yoomoneySecret) return res.status(503).send('Payment webhook disabled');
+      if (!yoomoneySecret) return res.status(503).json({ error: 'Payment webhook disabled' });
 
       const { notification_type = '', operation_id = '', amount = '', currency = '', datetime = '', sender = '', codepro = '', label = '', sha1_hash = '' } = body || {};
       const checkString = `${notification_type}&${operation_id}&${amount}&${currency}&${datetime}&${sender}&${codepro}&${yoomoneySecret}&${label}`;
       const calculatedHash = createHash('sha1').update(checkString, 'utf-8').digest('hex');
       
-      if (!safeEqual(calculatedHash, String(sha1_hash).toLowerCase())) return res.status(400).send('Invalid signature');
-      if (String(currency) !== '643') return res.status(400).send('Unsupported currency');
+      if (!safeEqual(calculatedHash, String(sha1_hash).toLowerCase())) return res.status(400).json({ error: 'Invalid signature' });
+      if (String(currency) !== '643') return res.status(400).json({ error: 'Unsupported currency' });
       
       const amt = parseFloat(amount);
-      if (!Number.isFinite(amt) || amt <= 0) return res.status(400).send('Invalid amount');
-      if (!label || !label.startsWith('kp_')) return res.status(400).send('Invalid label');
+      if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
+      if (!label || !label.startsWith('kp_')) return res.status(400).json({ error: 'Invalid label' });
 
       const parts = label.split('_');
-      if (parts.length < 3) return res.status(400).send('Invalid label format');
+      if (parts.length < 3) return res.status(400).json({ error: 'Invalid label format' });
       const creditsToAdd = parseInt(parts[1], 10) || 5;
       const userId = parts[2];
 
-      if (!isValidAmountForCredits(amt, creditsToAdd)) return res.status(400).send('Amount insufficient');
+      if (!isValidAmountForCredits(amt, creditsToAdd)) return res.status(400).json({ error: 'Amount insufficient' });
 
       global.usersVault[`paid_${label}`] = creditsToAdd;
 
@@ -517,8 +529,18 @@ export default async function handler(req, res) {
           }
         } catch (e) { console.error('Sync failed', e); }
       }
+      // Для ЮMoney важно возвращать просто "OK" (не JSON), чтобы они не дублировали уведомления
       return res.status(200).send('OK');
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    }
+    
+    return res.status(405).json({ error: 'Method not allowed' });
+
+  } catch (globalError) {
+    // ИСПРАВЛЕНИЕ 4: Глобальный перехват. Если что-то упало, мы гарантированно отдаем JSON.
+    console.error('КРИТИЧЕСКАЯ ОШИБКА СЕРВЕРА:', globalError);
+    return res.status(500).json({ 
+      error: 'Внутренняя ошибка сервера', 
+      details: globalError.message 
+    });
   }
-  return res.status(405).json({ error: 'Method not allowed' });
 }
