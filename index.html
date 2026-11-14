@@ -762,6 +762,19 @@
   <script>
     // ================== ЯНДЕКС TOKEN ==================
     let pendingYandexToken = null;
+        // Универсальная защита от падения сервера (чтобы не было Unexpected end of JSON input)
+    async function safeParseJSON(res) {
+      const text = await res.text();
+      if (!text) {
+        throw new Error(`Сервер вернул пустой ответ (Код: ${res.status}). Проверьте логи Vercel.`);
+      }
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error('Сырой ответ сервера:', text.substring(0, 300));
+        throw new Error('Сервер вернул некорректный формат данных.');
+      }
+    }
     if (window.location.hash && window.location.hash.includes('access_token=')) {
       const hp = new URLSearchParams(window.location.hash.substring(1));
       pendingYandexToken = hp.get('access_token');
