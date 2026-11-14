@@ -1,0 +1,10 @@
+{
+  "builds": [
+    { "src": "robots.txt", "use": "@vercel/static" },
+    { "src": "sitemap.xml", "use": "@vercel/static" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "rewrites": [
+    { "source": "/((?!robots\\.txt|sitemap\\.xml).*)", "destination": "/index.html" }
+  ]
+}
