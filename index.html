@@ -687,7 +687,6 @@
         <canvas id="cardCanvas" width="900" height="1200" style="aspect-ratio: 900 / 1200;"></canvas>
       </div>
 
-      <!-- ИСПРАВЛЕНО: Убрана кнопка "Связь с автором" под холстом -->
       <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[11px] text-slate-400 bg-[#0b0f19]/90 border border-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-md">
         <span>📐 Двойной клик на тексте = редактирование</span>
         <span class="text-white/20">•</span>
@@ -751,7 +750,6 @@
     </div>
   </section>
 
-  <!-- ИСПРАВЛЕНО: Убрана кнопка из футера, чтобы не было 4-х мест -->
   <footer class="bg-black/50 border-t border-white/10 py-6 px-4">
     <div class="max-w-4xl mx-auto text-center text-xs text-slate-500 space-y-2">
       <p class="pt-2">© 2024-2026 KARD-PRO. ИИ-генератор карточек для Ozon, Wildberries, Яндекс Маркета и Авито.</p>
@@ -760,9 +758,9 @@
   </footer>
 
   <script>
-    // ================== ЯНДЕКС TOKEN ==================
+    // ================== БЕЗОПАСНЫЙ ПАРСИНГ JSON ==================
     let pendingYandexToken = null;
-        // Универсальная защита от падения сервера (чтобы не было Unexpected end of JSON input)
+    
     async function safeParseJSON(res) {
       const text = await res.text();
       if (!text) {
@@ -775,6 +773,7 @@
         throw new Error('Сервер вернул некорректный формат данных.');
       }
     }
+
     if (window.location.hash && window.location.hash.includes('access_token=')) {
       const hp = new URLSearchParams(window.location.hash.substring(1));
       pendingYandexToken = hp.get('access_token');
@@ -1001,7 +1000,7 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'social_auth', provider: 'yandex', accessToken, clientProfile, deviceFp: getHardwareFingerprint() })
         });
-        const data = await res.json();
+        const data = await safeParseJSON(res);
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка входа');
         applyServerUserSession({ id: data.id, email: data.email, name: data.name || data.email.split('@')[0], credits: typeof data.credits === 'number' ? data.credits : 5, session_token: data.session_token });
         showToast(`🎉 Вы вошли как ${data.name}! Генераций: ${data.credits}`, 'success');
@@ -1027,7 +1026,7 @@
         }
         if (pendingYandexToken) await processYandexToken(pendingYandexToken);
         const res = await fetch('/api/payment-webhook?action=config');
-        const cfg = await res.json();
+        const cfg = await safeParseJSON(res);
         if (cfg.yandexClientId) oauthConfig.yandexClientId = cfg.yandexClientId;
         if (currentSessionToken) {
           await fetchUserCreditsFromDB();
@@ -1050,7 +1049,7 @@
           headers: { 'Authorization': `Bearer ${currentSessionToken}` }
         });
         if (res.ok) {
-          const data = await res.json();
+          const data = await safeParseJSON(res);
           if (typeof data.credits === 'number') {
             updateCreditsUI(data.credits);
             try {
@@ -1092,7 +1091,7 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'email_auth', mode, email, password, deviceFp: getHardwareFingerprint() })
         });
-        const data = await res.json();
+        const data = await safeParseJSON(res);
         if (!res.ok || data.error) return showAuthStatus(data.error || 'Ошибка', true);
         applyServerUserSession({ id: data.id, email: data.email, name: data.name, credits: data.credits, session_token: data.session_token });
         if (data.credits === 0) showToast('ℹ️ Войдите через Яндекс для +5 бесплатных.', 'info');
@@ -1152,7 +1151,7 @@
             headers: { 'Authorization': `Bearer ${currentSessionToken}` }
           });
           if (res.ok) {
-            const data = await res.json();
+            const data = await safeParseJSON(res);
             if (data.paid) {
               clearInterval(pollInterval); pollInterval = null;
               await fetchUserCreditsFromDB();
@@ -1182,7 +1181,7 @@
             headers: { 'Authorization': `Bearer ${currentSessionToken}` }
           });
           if (!res.ok) return false;
-          const data = await res.json();
+          const data = await safeParseJSON(res);
           if (data.paid) {
             await fetchUserCreditsFromDB();
             showToast(`🎉 Оплата! Баланс: ${data.credits}`, 'success');
@@ -1215,7 +1214,7 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSessionToken}` },
           body: JSON.stringify({ action: 'promo', code, deviceFp: getHardwareFingerprint() })
         });
-        const data = await res.json();
+        const data = await safeParseJSON(res);
         if (!res.ok || data.error) throw new Error(data.error || 'Ошибка');
         document.getElementById('promoCodeInput').value = '';
         if (typeof data.credits === 'number') updateCreditsUI(data.credits);
@@ -1386,7 +1385,7 @@
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSessionToken}` },
             body: JSON.stringify({ product: item.description || item.name, tone: item.tone })
           });
-          const data = await res.json();
+          const data = await safeParseJSON(res);
           if (!res.ok || data.error) {
             if (data.error === 'NO_CREDITS' || res.status === 402) { showToast(`⚠️ Кредиты закончились на ${i + 1}`, 'error'); break; }
             if (res.status === 401) { showToast('⚠️ Сессия истекла', 'error'); break; }
@@ -2293,7 +2292,7 @@
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentSessionToken}` },
           body: JSON.stringify({ product: prompt, tone, imageBase64 })
         });
-        const data = await res.json();
+        const data = await safeParseJSON(res);
         if (res.status === 401 || data.error === 'AUTH_REQUIRED') { openAuthModal(); throw new Error(data.message || 'Войдите'); }
         if (res.status === 402 || data.error === 'NO_CREDITS') { openPayModal(); throw new Error(data.message || 'Лимит'); }
         if (data.error) throw new Error(data.error);
