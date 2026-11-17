@@ -1,8 +1,19 @@
 {
-  "rewrites": [
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
     {
-      "source": "/((?!api/|robots\\.txt|sitemap\\.xml).*)",
-      "destination": "/index.html"
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/(styles\\.min\\.css|libs/.*|icons/.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
     }
   ]
 }
