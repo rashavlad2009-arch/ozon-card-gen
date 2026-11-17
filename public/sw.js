@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kardpro-offline-v2';
+const CACHE_NAME = 'kardpro-offline-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
