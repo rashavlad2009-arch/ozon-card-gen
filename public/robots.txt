@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Clean-param: paid_order /
+
+Sitemap: https://kard-pro.ru/sitemap.xml
