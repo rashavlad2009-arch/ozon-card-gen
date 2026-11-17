@@ -1,10 +1,10 @@
 {
-  "name": "kard-pro",
-  "version": "1.0.0",
+  "name": "ozon-card-gen",
   "private": true,
-  "type": "module",
-  "engines": {
-    "node": "26.x"
+  "scripts": {
+    "build": "npx tailwindcss -i ./src/input.css -o ./public/styles.min.css --minify"
   },
-  "dependencies": {}
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
 }
