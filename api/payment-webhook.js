@@ -1,546 +1,562 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+const crypto = require('crypto');
 
-const FALLBACK_SUPABASE_URL = 'https://irxszktfwtravyeqnueh.supabase.co';
-const FALLBACK_YANDEX_CLIENT_ID = '5e55cf35d18a47eaa84b5e23f0d91427';
-const YOOMONEY_WALLET = '4100119681467569';
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const RATE_WINDOW_MS = 60 * 1000;
-const BONUS_CREDITS = 5;
-// ИСПРАВЛЕНИЕ 1: Снижаем таймаут до 8 секунд (лимит Vercel Hobby - 10 сек)
-const DB_TIMEOUT_MS = 8000;
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  '';
 
-const BUILTIN_PROMOS = { 'START5': 5, 'PRO50': 5, 'SELLER10': 10, 'SHOP20': 20, 'VIP2026': 50 };
+const YANDEX_CLIENT_ID =
+  process.env.YANDEX_CLIENT_ID || '5e55cf35d18a47eaa84b5e23f0d91427';
 
-global.usersVault = global.usersVault || {};
-global.claimedDevices = global.claimedDevices || {};
-global.rateBuckets = global.rateBuckets || new Map();
+const YOOMONEY_SECRET = process.env.YOOMONEY_SECRET || '';
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  SUPABASE_SERVICE_KEY ||
+  'kard_pro_fallback_secret_change_in_vercel';
 
-function findEnvVar(suffixes) {
-  for (const s of suffixes) if (process.env[s]) return process.env[s].trim();
-  const allKeys = Object.keys(process.env);
-  for (const s of suffixes) {
-    const m = allKeys.find(k => k.endsWith(s) && process.env[k]);
-    if (m) return process.env[m].trim();
-  }
-  return '';
-}
-
-function normalizeSupabaseUrl(raw) {
-  let url = String(raw || '').trim().replace(/\/$/, '');
-  if (!url) return '';
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    if (/^[a-z0-9]{15,40}$/i.test(url)) return `https://${url}.supabase.co`;
-    return url;
-  }
-  return url.replace(/^http:\/\//, 'https://');
-}
-
-function getEnvConfig() {
-  const sbUrl = normalizeSupabaseUrl(findEnvVar(['SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']) || FALLBACK_SUPABASE_URL);
-  const sbAnonKey = (findEnvVar(['SUPABASE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_PUBLISHABLE_KEY']) || '').trim();
-  const sbServiceKey = (findEnvVar(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY']) || '').trim();
-  const yandexClientId = findEnvVar(['YANDEX_CLIENT_ID']) || FALLBACK_YANDEX_CLIENT_ID;
-  const secretSalt = (findEnvVar(['KARDPRO_SESSION_SALT', 'SESSION_SECRET']) || sbServiceKey).trim();
-  const allowedOrigins = (findEnvVar(['ALLOWED_ORIGINS']) || '').split(',').map(s => s.trim()).filter(Boolean);
-  return { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt, allowedOrigins };
-}
-
-function safeEqual(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const bA = Buffer.from(a, 'utf8'), bB = Buffer.from(b, 'utf8');
-  if (bA.length !== bB.length) return false;
-  try { return timingSafeEqual(bA, bB); } catch { return false; }
-}
-
-function createSessionToken(u, salt) {
-  if (!salt) throw new Error('secretSalt не задан');
-  const payload = Buffer.from(JSON.stringify({
-    id: u.id, email: u.email, name: u.name,
-    provider: u.provider || 'yandex',
-    credits: typeof u.credits === 'number' ? u.credits : 0,
-    ts: Date.now()
-  })).toString('base64url');
-  const sig = createHmac('sha256', salt).update(payload).digest('base64url');
-  return `kp.${payload}.${sig}`;
-}
-
-function verifySessionToken(token, salt) {
-  if (!token || typeof token !== 'string' || !token.startsWith('kp.')) return null;
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const [, payload, sig] = parts;
-  const expected = createHmac('sha256', salt).update(payload).digest('base64url');
-  if (!safeEqual(sig, expected)) return null;
-  try {
-    const d = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
-    if (typeof d.ts !== 'number') return null;
-    if (Date.now() - d.ts > SESSION_TTL_MS) return null;
-    if (!d.id || !d.email) return null;
-    return d;
-  } catch { return null; }
-}
-
-function resolveUserFromRequest(req, secretSalt) {
-  const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
-  if (!token) return null;
-  return verifySessionToken(token, secretSalt);
-}
-
-function readCookieVault(req, salt) {
-  try {
-    const ch = req.headers.cookie || '';
-    const match = ch.split(';').map(c => c.trim()).find(c => c.startsWith('kp_vault='));
-    if (!match) return {};
-    const raw = decodeURIComponent(match.substring('kp_vault='.length));
-    const [b64, sig] = raw.split('.');
-    if (!b64 || !sig) return {};
-    const expected = createHmac('sha256', salt).update(b64).digest('base64url');
-    if (!safeEqual(sig, expected)) return {};
-    return JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) || {};
-  } catch { return {}; }
-}
-
-function writeCookieVault(res, vault, salt) {
-  try {
-    let payload = vault;
-    let b64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    if (b64.length > 3000) {
-      const entries = Object.entries(vault);
-      if (entries.length > 0) {
-        payload = { [entries[entries.length - 1][0]]: entries[entries.length - 1][1] };
-        b64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-      }
-    }
-    if (b64.length > 3500) return;
-    const sig = createHmac('sha256', salt).update(b64).digest('base64url');
-    const val = encodeURIComponent(`${b64}.${sig}`);
-    const isProd = process.env.VERCEL || process.env.NODE_ENV === 'production';
-    res.setHeader('Set-Cookie', `kp_vault=${val}; Path=/; Max-Age=31536000; HttpOnly;${isProd ? ' Secure;' : ''} SameSite=Lax`);
-  } catch {}
-}
-
-function creditsForRub(rub) {
-  const r = Math.max(0, Number(rub) || 0);
-  if (r < 50) return 0;
-  if (r < 80) return Math.floor(r / 10);
-  if (r < 150) return Math.floor(r / 8);
-  if (r < 500) return Math.floor(r / 7.5);
-  if (r < 1000) return Math.floor(r / 6.25);
-  return Math.floor(r / 5);
-}
-
-function isValidAmountForCredits(amountRub, credits) {
-  const amt = Number(amountRub), cred = Number(credits);
-  return Number.isFinite(amt) && amt > 0 && Number.isFinite(cred) && cred > 0 && cred <= creditsForRub(amt);
-}
-
-function checkRate(key, maxHits, windowMs = RATE_WINDOW_MS) {
-  const now = Date.now();
-  const b = global.rateBuckets.get(key);
-  if (!b || now - b.start > windowMs) {
-    global.rateBuckets.set(key, { start: now, hits: 1 });
-    return { ok: true };
-  }
-  if (b.hits >= maxHits) return { ok: false, retryAfter: Math.ceil((b.start + windowMs - now) / 1000) };
-  b.hits++;
-  return { ok: true };
-}
-
-async function fetchWithRetry(url, opts = {}, timeoutMs = DB_TIMEOUT_MS, retries = 2) {
-  for (let i = 0; i < retries; i++) {
+// Промокоды (можно переопределить через переменную окружения PROMO_CODES_JSON='{"BONUS5":5}')
+function getPromoCodes() {
+  if (process.env.PROMO_CODES_JSON) {
     try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-      const res = await fetch(url, { ...opts, signal: ctrl.signal });
-      clearTimeout(timer);
-      return res;
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    }
+      return JSON.parse(process.env.PROMO_CODES_JSON);
+    } catch (e) {}
   }
-}
-
-function emailToDeterministicUUID(email) {
-  const hex = createHash('sha256').update(`user_${String(email).toLowerCase()}`).digest('hex').substring(0, 32);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
-}
-
-function normalizeEmail(raw) {
-  const clean = String(raw || '').trim().toLowerCase();
-  if (!clean.includes('@')) return clean;
-  let [local, domain] = clean.split('@');
-  local = local.split('+')[0];
-  const yx = ['ya.ru', 'yandex.com', 'yandex.by', 'yandex.kz', 'yandex.ua', 'narod.ru'];
-  if (yx.includes(domain)) domain = 'yandex.ru';
-  if (domain === 'gmail.com' || domain === 'yandex.ru') local = local.replace(/\./g, '').replace(/-/g, '');
-  return `${local}@${domain}`;
-}
-
-async function getSupabaseUserByEmail(sbUrl, sbServiceKey, email) {
-  if (!sbUrl || !sbServiceKey || !email) return null;
-  try {
-    const res = await fetchWithRetry(
-      `${sbUrl}/auth/v1/admin/users?email=eq.${encodeURIComponent(email)}&per_page=1`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const users = data.users || data || [];
-    return Array.isArray(users) ? users.find(u => (u.email || '').toLowerCase() === email.toLowerCase()) || null : null;
-  } catch { return null; }
-}
-
-async function getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate = true) {
-  if (!sbUrl || !sbServiceKey || !email) return null;
-  const existing = await getSupabaseUserByEmail(sbUrl, sbServiceKey, email);
-  if (existing) return existing;
-  if (!allowCreate) return null;
-  try {
-    const linkRes = await fetchWithRetry(`${sbUrl}/auth/v1/admin/generate_link`, {
-      method: 'POST',
-      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'magiclink', email })
-    });
-    if (!linkRes.ok) return null;
-    const data = await linkRes.json();
-    return data?.user || (data?.id ? data : null);
-  } catch { return null; }
-}
-
-async function readProfile(sbUrl, sbServiceKey, userId) {
-  if (!sbUrl || !sbServiceKey || !userId) return null;
-  try {
-    const res = await fetchWithRetry(
-      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=credits,bonus_granted`,
-      { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } }
-    );
-    if (!res.ok) return null;
-    const list = await res.json();
-    if (Array.isArray(list) && list.length > 0) {
-      return { credits: typeof list[0].credits === 'number' ? list[0].credits : 0, bonusGranted: !!list[0].bonus_granted };
-    }
-    return null;
-  } catch { return null; }
-}
-
-async function upsertProfile(sbUrl, sbServiceKey, userId, email, credits, bonusGranted) {
-  if (!sbUrl || !sbServiceKey || !userId) return { ok: false };
-  try {
-    const res = await fetchWithRetry(`${sbUrl}/rest/v1/profiles`, {
-      method: 'POST',
-      headers: {
-        apikey: sbServiceKey,
-        Authorization: `Bearer ${sbServiceKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify({ id: userId, email, credits, bonus_granted: !!bonusGranted })
-    });
-    return { ok: res.ok };
-  } catch (e) { return { ok: false, error: e.message }; }
-}
-
-async function patchProfileCredits(sbUrl, sbServiceKey, userId, newCredits) {
-  if (!sbUrl || !sbServiceKey || !userId) return { ok: false };
-  try {
-    const res = await fetchWithRetry(
-      `${sbUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}`,
-      {
-        method: 'PATCH',
-        headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ credits: newCredits })
-      }
-    );
-    return { ok: res.ok };
-  } catch (e) { return { ok: false, error: e.message }; }
-}
-
-async function updateAppMetadata(sbUrl, sbServiceKey, sbUserId, patch) {
-  if (!sbUrl || !sbServiceKey || !sbUserId) return;
-  try {
-    await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${sbUserId}`, {
-      method: 'PUT',
-      headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ app_metadata: patch })
-    });
-  } catch (e) { /* ignore */ }
-}
-
-async function syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, name, deviceFp, isVerifiedOAuth, allowCreate = true) {
-  const cookieVault = readCookieVault(req, secretSalt);
-  const hwHash = deviceFp ? createHmac('sha256', secretSalt).update(`hw_${deviceFp}`).digest('hex').substring(0, 24) : null;
-  const sbUser = await getOrCreateSupabaseUser(sbUrl, sbServiceKey, email, allowCreate);
-  const appMeta = sbUser?.app_metadata || {};
-  const userId = emailToDeterministicUUID(email);
-
-  const profile = await readProfile(sbUrl, sbServiceKey, userId);
-  let currentCredits = 0;
-  let bonusGranted = false;
-
-  if (profile === null) {
-    const hasSpent = !!appMeta.kp_has_spent || !!cookieVault[userId]?.hasSpent;
-    const isOAuth = isVerifiedOAuth;
-    if (isOAuth && !hasSpent) {
-      if (hwHash && global.claimedDevices[hwHash] && global.claimedDevices[hwHash] !== email) {
-        currentCredits = 0; bonusGranted = true;
-      } else {
-        currentCredits = BONUS_CREDITS; bonusGranted = true;
-        if (hwHash) global.claimedDevices[hwHash] = email;
-      }
-    } else {
-      currentCredits = 0; bonusGranted = isOAuth;
-    }
-    const created = await upsertProfile(sbUrl, sbServiceKey, userId, email, currentCredits, bonusGranted);
-    if (!created.ok) throw new Error('Не удалось создать профиль в БД');
-  } else {
-    currentCredits = profile.credits;
-    bonusGranted = profile.bonusGranted;
-  }
-
-  const passHash = appMeta.kp_pass_hash || cookieVault[userId]?.passHash || null;
-  const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : (cookieVault[userId]?.usedLabels || []);
-  const displayName = name || (email ? email.split('@')[0] : 'Селлер');
-
-  const record = {
-    id: userId, email, name: displayName, credits: currentCredits,
-    bonusGranted, usedLabels, passHash, bonusBlocked: false,
-    hasSpent: !!appMeta.kp_has_spent,
-    provider: isVerifiedOAuth ? 'yandex' : 'email'
+  return {
+    START5: 5,
+    KARD10: 10
   };
+}
 
-  if (sbUser?.id) {
-    updateAppMetadata(sbUrl, sbServiceKey, sbUser.id, {
-      ...appMeta, kp_initialized: true, kp_pass_hash: passHash, kp_used_labels: usedLabels.slice(-100)
-    }).catch(() => {});
+// ================== РАБОТА С SUPABASE REST API ==================
+async function supabaseRequest(path, { method = 'GET', body = null, prefer = '' } = {}) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    throw new Error('Не заданы SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY в настройках Vercel.');
   }
 
-  global.usersVault[userId] = record;
-  cookieVault[userId] = record;
-  if (isVerifiedOAuth) cookieVault._yandex_owner_email = email;
-  writeCookieVault(res, cookieVault, secretSalt);
-  return record;
+  const headers = {
+    apikey: SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json'
+  };
+  if (prefer) headers['Prefer'] = prefer;
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      data = text;
+    }
+  }
+
+  if (!res.ok) {
+    const msg = (data && (data.message || data.error_description || data.hint)) || `Supabase HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return data;
 }
 
-async function saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record) {
-  global.usersVault[record.id] = record;
-  const cookieVault = readCookieVault(req, secretSalt);
-  cookieVault[record.id] = record;
-  writeCookieVault(res, cookieVault, secretSalt);
-  const saved = await patchProfileCredits(sbUrl, sbServiceKey, record.id, record.credits);
-  if (!saved.ok) throw new Error('Не удалось сохранить баланс');
+async function findUserByEmail(email) {
+  const clean = encodeURIComponent(email.trim().toLowerCase());
+  const rows = await supabaseRequest(`users?email=eq.${clean}&limit=1`);
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 }
 
-export default async function handler(req, res) {
-  // ИСПРАВЛЕНИЕ 2: Принудительно ставим заголовок JSON, чтобы при любых ошибках клиент получал JSON
-  res.setHeader('Content-Type', 'application/json');
+async function findUserByYandexId(yandexId) {
+  const clean = encodeURIComponent(String(yandexId));
+  const rows = await supabaseRequest(`users?yandex_id=eq.${clean}&limit=1`);
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+async function findUserById(id) {
+  const clean = encodeURIComponent(String(id));
+  const rows = await supabaseRequest(`users?id=eq.${clean}&limit=1`);
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+async function findUserBySessionToken(token) {
+  const clean = encodeURIComponent(String(token));
+  const rows = await supabaseRequest(`users?session_token=eq.${clean}&limit=1`);
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+async function hasDeviceClaimedBonus(deviceFp) {
+  if (!deviceFp || deviceFp === 'default_hw_fp') return false;
+  const clean = encodeURIComponent(String(deviceFp));
+  const rows = await supabaseRequest(
+    `users?device_fp=eq.${clean}&yandex_bonus_claimed=eq.true&select=id&limit=1`
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function updateUser(id, patch) {
+  const clean = encodeURIComponent(String(id));
+  const rows = await supabaseRequest(`users?id=eq.${clean}`, {
+    method: 'PATCH',
+    body: patch,
+    prefer: 'return=representation'
+  });
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+async function insertUser(payload) {
+  const rows = await supabaseRequest('users', {
+    method: 'POST',
+    body: payload,
+    prefer: 'return=representation'
+  });
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+// ================== ТОКЕНЫ СЕССИИ И ПАРОЛИ ==================
+function createSessionToken(userId, email) {
+  const payloadObj = {
+    uid: String(userId),
+    email: String(email).toLowerCase(),
+    iat: Date.now()
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
+  const sig = crypto
+    .createHmac('sha256', SESSION_SECRET)
+    .update(payloadB64)
+    .digest('base64url');
+  return `${payloadB64}.${sig}`;
+}
+
+function verifySessionToken(token) {
+  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
+  const [payloadB64, sig] = token.split('.');
+  if (!payloadB64 || !sig) return null;
+
+  const expectedSig = crypto
+    .createHmac('sha256', SESSION_SECRET)
+    .update(payloadB64)
+    .digest('base64url');
+
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return null;
+  }
 
   try {
-    const { sbUrl, sbAnonKey, sbServiceKey, yandexClientId, secretSalt, allowedOrigins } = getEnvConfig();
-    const reqOrigin = req.headers.origin || '';
-    
-    if (allowedOrigins.length > 0) {
-      if (allowedOrigins.includes(reqOrigin)) {
-        res.setHeader('Access-Control-Allow-Origin', reqOrigin);
-        res.setHeader('Vary', 'Origin');
-      }
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    return JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+  } catch (e) {
+    return null;
+  }
+}
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (!secretSalt) return res.status(500).json({ error: 'Server misconfiguration: secretSalt is missing' });
+async function authenticateRequest(req) {
+  const authHeader = req.headers.authorization || req.headers.Authorization || '';
+  if (!authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7).trim();
+  if (!token) return null;
 
-    const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  const decoded = verifySessionToken(token);
+  if (decoded && decoded.uid) {
+    const user = await findUserById(decoded.uid);
+    if (user) return user;
+  }
+  return await findUserBySessionToken(token);
+}
 
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash || !storedHash.includes(':')) return false;
+  const [salt, keyHex] = storedHash.split(':');
+  const derivedKey = crypto.scryptSync(password, salt, 64);
+  const keyBuf = Buffer.from(keyHex, 'hex');
+  if (derivedKey.length !== keyBuf.length) return false;
+  return crypto.timingSafeEqual(derivedKey, keyBuf);
+}
+
+// ================== ПАРСИНГ ТЕЛА ЗАПРОСА ==================
+function parseBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    return req.body;
+  }
+  const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body);
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    const params = new URLSearchParams(raw);
+    const obj = {};
+    for (const [k, v] of params.entries()) obj[k] = v;
+    return obj;
+  }
+}
+
+// ================== ОСНОВНОЙ ОБРАБОТЧИК ==================
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    // -------------------- GET ЗАПРОСЫ --------------------
     if (req.method === 'GET') {
-      const { action, label, fp } = req.query;
+      const action = String(req.query.action || '');
 
       if (action === 'config') {
-        const urlValid = /^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/i.test(sbUrl);
-        return res.status(200).json({
-          supabaseUrl: sbUrl, supabaseAnonKey: sbAnonKey, yandexClientId, wallet: YOOMONEY_WALLET,
-          cloudSyncActive: Boolean(urlValid && sbServiceKey && (sbServiceKey.startsWith('sb_secret_') || sbServiceKey.startsWith('eyJ')))
-        });
+        return res.status(200).json({ yandexClientId: YANDEX_CLIENT_ID });
       }
 
       if (action === 'profile') {
-        const rate = checkRate(`profile:${clientIp}`, 30);
-        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-        const userObj = resolveUserFromRequest(req, secretSalt);
-        if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
-        try {
-          const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, fp || '', userObj.provider !== 'email', false);
-          return res.status(200).json({ ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
-        } catch (err) { return res.status(500).json({ error: err.message }); }
+        const user = await authenticateRequest(req);
+        if (!user) {
+          return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Сессия не найдена' });
+        }
+        return res.status(200).json({
+          id: user.id,
+          email: user.email,
+          name: user.name || user.email.split('@')[0],
+          credits: Number(user.credits || 0),
+          session_token: user.session_token
+        });
       }
 
       if (action === 'check_payment') {
-        const rate = checkRate(`check_pay:${clientIp}`, 60);
-        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-        const userObj = resolveUserFromRequest(req, secretSalt);
-        if (!userObj || !userObj.email) return res.status(401).json({ error: 'Unauthorized' });
-        const orderLabel = String(label || '').trim();
-        if (!orderLabel) return res.status(400).json({ error: 'Missing label' });
+        const user = await authenticateRequest(req);
+        if (!user) {
+          return res.status(401).json({ error: 'AUTH_REQUIRED' });
+        }
+        const label = String(req.query.label || '').trim();
+        if (!label) {
+          return res.status(400).json({ error: 'Не указан label платежа' });
+        }
 
-        const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
-        const userId = emailToDeterministicUUID(userObj.email);
-        const appMeta = sbUser?.app_metadata || {};
-        const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-        const isPaid = usedLabels.includes(orderLabel);
-        const profile = await readProfile(sbUrl, sbServiceKey, userId);
-        return res.status(200).json({ paid: isPaid, credits: profile ? profile.credits : 0 });
+        const cleanLabel = encodeURIComponent(label);
+        const rows = await supabaseRequest(
+          `payments?label=eq.${cleanLabel}&status=eq.paid&limit=1`
+        );
+        const paid = Array.isArray(rows) && rows.length > 0;
+
+        return res.status(200).json({
+          paid,
+          credits: Number(user.credits || 0)
+        });
       }
 
-      if (!label) return res.status(400).json({ error: 'Missing label' });
-      if (global.usersVault[`paid_${label}`]) return res.status(200).json({ paid: true, credits: global.usersVault[`paid_${label}`] });
-      return res.status(200).json({ paid: false });
+      return res.status(400).json({ error: 'Неизвестное GET-действие' });
     }
 
+    // -------------------- POST ЗАПРОСЫ --------------------
     if (req.method === 'POST') {
-      // ИСПРАВЛЕНИЕ 3: Безопасный парсинг тела запроса
-      let body = {};
-      try {
-        if (req.headers['content-type']?.includes('application/json')) {
-          body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-        } else {
-          body = Object.fromEntries(new URLSearchParams(req.body || ''));
+      const body = parseBody(req);
+      const action = String(body.action || '');
+
+      // 1. ВХОД ЧЕРЕЗ ЯНДЕКС ID
+      if (action === 'social_auth') {
+        const accessToken = String(body.accessToken || '').trim();
+        const deviceFp = String(body.deviceFp || '').trim();
+
+        if (!accessToken) {
+          return res.status(400).json({ error: 'Отсутствует токен Яндекс ID' });
         }
-      } catch (e) {
-        return res.status(400).json({ error: 'Invalid request body format' });
-      }
 
-      if (body?.action === 'social_auth') {
-        const rate = checkRate(`social:${clientIp}`, 10);
-        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-        const { accessToken, clientProfile, deviceFp } = body;
-        let rawEmail = '', displayName = '';
-        if (accessToken) {
-          try {
-            const yaRes = await fetchWithRetry('https://login.yandex.ru/info?format=json', { headers: { Authorization: `OAuth ${accessToken}` } }, 5000);
-            if (yaRes.ok) {
-              const yaData = await yaRes.json();
-              rawEmail = yaData.default_email || (Array.isArray(yaData.emails) && yaData.emails[0]) || `${yaData.login || yaData.id}@yandex.ru`;
-              displayName = yaData.display_name || yaData.real_name || yaData.login || rawEmail.split('@')[0];
-            }
-          } catch {}
+        // Проверяем токен напрямую на сервере Яндекса (защита от подделки)
+        const yaRes = await fetch('https://login.yandex.ru/info?format=json', {
+          headers: { Authorization: `OAuth ${accessToken}` }
+        });
+
+        if (!yaRes.ok) {
+          return res.status(401).json({ error: 'Не удалось подтвердить токен Яндекс ID' });
         }
-        if (!rawEmail && clientProfile?.email) { rawEmail = String(clientProfile.email); displayName = clientProfile.name || rawEmail.split('@')[0]; }
-        if (!rawEmail) return res.status(401).json({ error: 'Не удалось получить профиль Яндекса' });
 
-        const verifiedEmail = normalizeEmail(rawEmail);
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, verifiedEmail, displayName, deviceFp || '', true, true);
-        return res.status(200).json({ ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits, bonus_blocked: record.bonusBlocked, session_token: createSessionToken(record, secretSalt) });
-      }
+        const yaInfo = await yaRes.json();
+        if (!yaInfo || !yaInfo.id) {
+          return res.status(401).json({ error: 'Яндекс не вернул данные профиля' });
+        }
 
-      if (body?.action === 'email_auth') {
-        const rate = checkRate(`email_auth:${clientIp}`, 8);
-        if (!rate.ok) return res.status(429).json({ error: `Подождите ${rate.retryAfter}с.` });
-        const rawEmail = String(body.email || '').trim();
-        const password = String(body.password || '').trim();
-        const mode = body.mode || 'login';
-        const deviceFp = body.deviceFp || '';
-        if (!rawEmail || !rawEmail.includes('@') || password.length < 6) return res.status(400).json({ error: 'Некорректный Email или пароль' });
+        const yandexId = String(yaInfo.id);
+        const rawEmail =
+          yaInfo.default_email ||
+          (Array.isArray(yaInfo.emails) && yaInfo.emails[0]) ||
+          `${yaInfo.login || yandexId}@yandex.ru`;
+        const email = String(rawEmail).trim().toLowerCase();
+        const displayName =
+          yaInfo.display_name ||
+          yaInfo.real_name ||
+          yaInfo.login ||
+          email.split('@')[0];
 
-        const email = normalizeEmail(rawEmail);
-        const passHash = createHmac('sha256', secretSalt).update(`${email}:${password}`).digest('hex');
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, email, email.split('@')[0], deviceFp, false, mode === 'signup');
+        // Ищем существующий аккаунт по yandex_id или по email (независимо от устройства!)
+        let user = await findUserByYandexId(yandexId);
+        if (!user) {
+          user = await findUserByEmail(email);
+        }
 
-        if (mode === 'signup' && record.passHash) return res.status(409).json({ error: 'Аккаунт уже существует' });
-        if (mode === 'login' && !record.passHash) return res.status(404).json({ error: 'Аккаунт не найден' });
-        if (mode === 'login' && record.passHash && !safeEqual(record.passHash, passHash)) return res.status(401).json({ error: 'Неверный пароль' });
+        if (user) {
+          // Пользователь уже существует: сохраняем его текущий баланс!
+          let updatedCredits = Number(user.credits || 0);
+          let bonusClaimed = Boolean(user.yandex_bonus_claimed);
 
-        record.passHash = passHash;
-        await saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record);
-        return res.status(200).json({ ok: true, id: record.id, email: record.email, name: record.name, credits: record.credits, bonus_blocked: record.bonusBlocked, session_token: createSessionToken(record, secretSalt) });
-      }
-
-      if (body?.action === 'promo') {
-        const rate = checkRate(`promo:${clientIp}`, 20);
-        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-        const userObj = resolveUserFromRequest(req, secretSalt);
-        if (!userObj || !userObj.email) return res.status(401).json({ error: 'Войдите в аккаунт' });
-        const record = await syncUserAccount(req, res, sbUrl, sbServiceKey, secretSalt, userObj.email, userObj.name, body.deviceFp || '', userObj.provider !== 'email', false);
-        const code = String(body.code || '').trim().toUpperCase();
-        const bonus = (BUILTIN_PROMOS[code] || 0) + (findEnvVar(['KARDPRO_OWNER_PROMOS']) || '').split(',').filter(e => e.startsWith(code + ':')).reduce((s, e) => s + parseInt(e.split(':')[1], 10), 0);
-        if (!bonus) return res.status(400).json({ error: 'Неверный промокод' });
-        const isOwnerUnlimited = code === 'GEMBAR9000' || code === 'VLAD9000';
-        if (!isOwnerUnlimited && record.usedLabels.includes(`promo_used_${code}`)) return res.status(400).json({ error: 'Промокод уже активирован' });
-        record.credits += bonus;
-        if (!isOwnerUnlimited) record.usedLabels.push(`promo_used_${code}`);
-        await saveUserBalanceEverywhere(req, res, sbUrl, sbServiceKey, secretSalt, record);
-        return res.status(200).json({ ok: true, added: bonus, credits: record.credits, session_token: createSessionToken(record, secretSalt) });
-      }
-
-      if (body?.action === 'confirm_return') {
-        const rate = checkRate(`confirm:${clientIp}`, 30);
-        if (!rate.ok) return res.status(429).json({ error: 'RATE_LIMIT' });
-        const userObj = resolveUserFromRequest(req, secretSalt);
-        if (!userObj || !userObj.email) return res.status(401).json({ error: 'Войдите в аккаунт' });
-        const orderId = String(body.orderId || '').trim();
-        const sbUser = await getSupabaseUserByEmail(sbUrl, sbServiceKey, userObj.email);
-        const userId = emailToDeterministicUUID(userObj.email);
-        const appMeta = sbUser?.app_metadata || {};
-        const usedLabels = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-        const profile = await readProfile(sbUrl, sbServiceKey, userId);
-        return res.status(200).json({ ok: true, paid: usedLabels.includes(orderId), credits: profile ? profile.credits : 0, added: 0, session_token: createSessionToken(userObj, secretSalt) });
-      }
-
-      const yoomoneySecret = (findEnvVar(['YOOMONEY_NOTIFICATION_SECRET']) || '').trim();
-      if (!yoomoneySecret) return res.status(503).json({ error: 'Payment webhook disabled' });
-
-      const { notification_type = '', operation_id = '', amount = '', currency = '', datetime = '', sender = '', codepro = '', label = '', sha1_hash = '' } = body || {};
-      const checkString = `${notification_type}&${operation_id}&${amount}&${currency}&${datetime}&${sender}&${codepro}&${yoomoneySecret}&${label}`;
-      const calculatedHash = createHash('sha1').update(checkString, 'utf-8').digest('hex');
-      
-      if (!safeEqual(calculatedHash, String(sha1_hash).toLowerCase())) return res.status(400).json({ error: 'Invalid signature' });
-      if (String(currency) !== '643') return res.status(400).json({ error: 'Unsupported currency' });
-      
-      const amt = parseFloat(amount);
-      if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
-      if (!label || !label.startsWith('kp_')) return res.status(400).json({ error: 'Invalid label' });
-
-      const parts = label.split('_');
-      if (parts.length < 3) return res.status(400).json({ error: 'Invalid label format' });
-      const creditsToAdd = parseInt(parts[1], 10) || 5;
-      const userId = parts[2];
-
-      if (!isValidAmountForCredits(amt, creditsToAdd)) return res.status(400).json({ error: 'Amount insufficient' });
-
-      global.usersVault[`paid_${label}`] = creditsToAdd;
-
-      if (userId && sbUrl && sbServiceKey) {
-        try {
-          const uRes = await fetchWithRetry(`${sbUrl}/auth/v1/admin/users/${userId}`, { headers: { apikey: sbServiceKey, Authorization: `Bearer ${sbServiceKey}` } });
-          if (uRes.ok) {
-            const uData = await uRes.json();
-            const appMeta = uData?.app_metadata || {};
-            const used = Array.isArray(appMeta.kp_used_labels) ? appMeta.kp_used_labels : [];
-            if (!used.includes(label)) {
-              const profile = await readProfile(sbUrl, sbServiceKey, userId);
-              const base = profile ? profile.credits : 0;
-              await patchProfileCredits(sbUrl, sbServiceKey, userId, base + creditsToAdd);
-              if (!profile) await upsertProfile(sbUrl, sbServiceKey, userId, uData.email || '', base + creditsToAdd, true);
-              await updateAppMetadata(sbUrl, sbServiceKey, uData.id, { ...appMeta, kp_initialized: true, kp_used_labels: [...used, label] });
+          // Если ранее аккаунт был создан по паролю (0 кредитов) и бонус Яндекса ещё не выдавался
+          if (!bonusClaimed) {
+            const deviceAlreadyUsed = await hasDeviceClaimedBonus(deviceFp);
+            if (!deviceAlreadyUsed) {
+              updatedCredits += 5;
             }
+            bonusClaimed = true;
           }
-        } catch (e) { console.error('Sync failed', e); }
-      }
-      // Для ЮMoney важно возвращать просто "OK" (не JSON), чтобы они не дублировали уведомления
-      return res.status(200).send('OK');
-    }
-    
-    return res.status(405).json({ error: 'Method not allowed' });
 
-  } catch (globalError) {
-    // ИСПРАВЛЕНИЕ 4: Глобальный перехват. Если что-то упало, мы гарантированно отдаем JSON.
-    console.error('КРИТИЧЕСКАЯ ОШИБКА СЕРВЕРА:', globalError);
-    return res.status(500).json({ 
-      error: 'Внутренняя ошибка сервера', 
-      details: globalError.message 
-    });
+          // Переиспользуем текущий session_token, чтобы не выкидывать пользователя на первом устройстве
+          const sessionToken =
+            user.session_token && verifySessionToken(user.session_token)
+              ? user.session_token
+              : createSessionToken(user.id, user.email);
+
+          user = await updateUser(user.id, {
+            yandex_id: yandexId,
+            name: user.name || displayName,
+            credits: updatedCredits,
+            yandex_bonus_claimed: bonusClaimed,
+            session_token: sessionToken,
+            last_login_at: new Date().toISOString()
+          });
+        } else {
+          // Новый пользователь: проверяем, не получало ли это устройство приветственные 5 генераций ранее
+          const deviceAlreadyUsed = await hasDeviceClaimedBonus(deviceFp);
+          const welcomeCredits = deviceAlreadyUsed ? 0 : 5;
+
+          const created = await insertUser({
+            email,
+            name: displayName,
+            yandex_id: yandexId,
+            credits: welcomeCredits,
+            yandex_bonus_claimed: true,
+            device_fp: deviceFp || null,
+            last_login_at: new Date().toISOString()
+          });
+
+          const sessionToken = createSessionToken(created.id, created.email);
+          user = await updateUser(created.id, { session_token: sessionToken });
+        }
+
+        return res.status(200).json({
+          id: user.id,
+          email: user.email,
+          name: user.name || displayName,
+          credits: Number(user.credits || 0),
+          session_token: user.session_token
+        });
+      }
+
+      // 2. ВХОД И РЕГИСТРАЦИЯ ПО EMAIL И ПАРОЛЮ
+      if (action === 'email_auth') {
+        const mode = String(body.mode || 'login');
+        const email = String(body.email || '').trim().toLowerCase();
+        const password = String(body.password || '');
+        const deviceFp = String(body.deviceFp || '').trim();
+
+        if (!email || !email.includes('@') || password.length < 6) {
+          return res.status(400).json({ error: 'Введите корректный Email и пароль от 6 символов' });
+        }
+
+        let user = await findUserByEmail(email);
+
+        if (mode === 'signup') {
+          if (user) {
+            return res.status(400).json({ error: 'Этот Email уже зарегистрирован. Нажмите «Войти».' });
+          }
+
+          const created = await insertUser({
+            email,
+            name: email.split('@')[0],
+            password_hash: hashPassword(password),
+            credits: 0,
+            yandex_bonus_claimed: false,
+            device_fp: deviceFp || null,
+            last_login_at: new Date().toISOString()
+          });
+
+          const sessionToken = createSessionToken(created.id, created.email);
+          user = await updateUser(created.id, { session_token: sessionToken });
+
+          return res.status(200).json({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            credits: 0,
+            session_token: user.session_token
+          });
+        }
+
+        // Режим входа (login)
+        if (!user) {
+          return res.status(401).json({ error: 'Аккаунт не найден. Нажмите «Создать» или войдите через Яндекс.' });
+        }
+
+        if (!user.password_hash) {
+          return res.status(401).json({ error: 'Аккаунт создан через Яндекс ID. Войдите через кнопку Яндекса.' });
+        }
+
+        if (!verifyPassword(password, user.password_hash)) {
+          return res.status(401).json({ error: 'Неверный пароль' });
+        }
+
+        const sessionToken =
+          user.session_token && verifySessionToken(user.session_token)
+            ? user.session_token
+            : createSessionToken(user.id, user.email);
+
+        user = await updateUser(user.id, {
+          session_token: sessionToken,
+          last_login_at: new Date().toISOString()
+        });
+
+        return res.status(200).json({
+          id: user.id,
+          email: user.email,
+          name: user.name || email.split('@')[0],
+          credits: Number(user.credits || 0),
+          session_token: user.session_token
+        });
+      }
+
+      // 3. АКТИВАЦИЯ ПРОМОКОДА
+      if (action === 'promo') {
+        const user = await authenticateRequest(req);
+        if (!user) {
+          return res.status(401).json({ error: 'Войдите в аккаунт для активации промокода' });
+        }
+
+        const code = String(body.code || '').trim().toUpperCase();
+        const promoMap = getPromoCodes();
+        const bonus = Number(promoMap[code] || 0);
+
+        if (!bonus) {
+          return res.status(400).json({ error: 'Неверный или истёкший промокод' });
+        }
+
+        const usedList = Array.isArray(user.used_promos) ? user.used_promos : [];
+        if (usedList.includes(code)) {
+          return res.status(400).json({ error: 'Вы уже активировали этот промокод' });
+        }
+
+        const newCredits = Number(user.credits || 0) + bonus;
+        const updated = await updateUser(user.id, {
+          credits: newCredits,
+          used_promos: [...usedList, code]
+        });
+
+        return res.status(200).json({
+          added: bonus,
+          credits: Number(updated.credits || newCredits),
+          session_token: updated.session_token
+        });
+      }
+
+      // 4. HTTP-УВЕДОМЛЕНИЕ ОБ ОПЛАТЕ ОТ ЮMONEY
+      if (body.notification_type || body.label) {
+        const {
+          notification_type = '',
+          operation_id = '',
+          amount = '',
+          currency = '',
+          datetime = '',
+          sender = '',
+          codepro = '',
+          label = '',
+          sha1_hash = '',
+          unaccepted = ''
+        } = body;
+
+        // Проверка подписи SHA-1 от ЮMoney
+        if (YOOMONEY_SECRET) {
+          const checkStr = [
+            notification_type,
+            operation_id,
+            amount,
+            currency,
+            datetime,
+            sender,
+            codepro,
+            YOOMONEY_SECRET,
+            label
+          ].join('&');
+
+          const expectedHash = crypto
+            .createHash('sha1')
+            .update(checkStr)
+            .digest('hex');
+
+          if (expectedHash.toLowerCase() !== String(sha1_hash).toLowerCase()) {
+            return res.status(403).send('Invalid sha1_hash');
+          }
+        }
+
+        if (String(codepro) === 'true' || String(unaccepted) === 'true') {
+          return res.status(200).send('Payment held');
+        }
+
+        // Формат label из index.html: kp_<credits>_<userId>_<rand>
+        const match = /^kp_(\d+)_([^_]+)_[a-z0-9]+$/i.exec(String(label).trim());
+        if (!match) {
+          return res.status(200).send('Ignored label');
+        }
+
+        const creditsToAdd = parseInt(match[1], 10);
+        const userId = match[2];
+
+        // Защита от повторного начисления при дублировании вебхука ЮMoney
+        const existingPay = await supabaseRequest(
+          `payments?label=eq.${encodeURIComponent(label)}&limit=1`
+        );
+        if (Array.isArray(existingPay) && existingPay.length > 0) {
+          return res.status(200).send('Already processed');
+        }
+
+        const user = await findUserById(userId);
+        if (!user) {
+          return res.status(404).send('User not found');
+        }
+
+        await supabaseRequest('payments', {
+          method: 'POST',
+          body: {
+            label,
+            operation_id: String(operation_id || label),
+            user_id: user.id,
+            credits: creditsToAdd,
+            amount: parseFloat(amount) || 0,
+            status: 'paid'
+          }
+        });
+
+        await updateUser(user.id, {
+          credits: Number(user.credits || 0) + creditsToAdd
+        });
+
+        return res.status(200).send('OK');
+      }
+
+      return res.status(400).json({ error: 'Неизвестное действие' });
+    }
+
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  } catch (err) {
+    console.error('payment-webhook error:', err);
+    return res.status(500).json({ error: err.message || 'Внутренняя ошибка сервера' });
   }
-}
+};
