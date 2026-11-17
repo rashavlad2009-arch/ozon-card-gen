@@ -2,6 +2,9 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "outputDirectory": "public",
+  "framework": null,
+  "buildCommand": null,
+  "installCommand": null,
   "headers": [
     {
       "source": "/sw.js",
