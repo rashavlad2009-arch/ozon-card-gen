@@ -1,0 +1,25 @@
+{
+  "name": "KARD-PRO — ИИ-генератор карточек товаров",
+  "short_name": "KARD-PRO",
+  "description": "Создание продающих карточек и инфографики для Ozon, Wildberries, Яндекс Маркета и Авито.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06080f",
+  "theme_color": "#06080f",
+  "orientation": "any",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
