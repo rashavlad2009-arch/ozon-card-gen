@@ -1,0 +1,10 @@
+{
+  "name": "ozon-card-gen",
+  "private": true,
+  "scripts": {
+    "build": "npx tailwindcss -i ./src/input.css -o ./public/styles.min.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
