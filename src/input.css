@@ -1,3 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+npm init -y
+npm install -D tailwindcss
+npx tailwindcss -i ./src/input.css -o ./public/styles.min.css --minify
